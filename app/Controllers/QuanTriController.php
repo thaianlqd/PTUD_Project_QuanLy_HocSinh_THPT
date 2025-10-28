@@ -1,0 +1,590 @@
+<?php
+// Đảm bảo session đã được khởi động (nên đặt ở public/index.php)
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+class QuanTriController extends Controller {
+
+    private $userModel;
+    private $tkbModel;
+    private $accountModel; 
+    private $giaoVienModel;
+    private $tuyenSinhModel; // <-- ĐÃ THÊM
+
+    public function __construct() {
+        // Kiểm tra quyền Quản trị
+        if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] != 'QuanTriVien') {
+            header('Location: ' . BASE_URL . '/auth/index');
+            exit;
+        }
+        
+        // Load tất cả model cần thiết
+        $this->userModel = $this->loadModel('UserModel');
+        $this->tkbModel = $this->loadModel('TkbModel');
+        $this->accountModel = $this->loadModel('AccountModel');
+        $this->giaoVienModel = $this->loadModel('GiaoVienModel');
+        $this->tuyenSinhModel = $this->loadModel('TuyenSinhModel'); // <-- ĐÃ THÊM
+
+        // Kiểm tra xem Model có load thành công không
+        if ($this->tkbModel === null || $this->accountModel === null || $this->giaoVienModel === null || $this->tuyenSinhModel === null) {
+             die("Lỗi nghiêm trọng: Không thể tải một hoặc nhiều Model (Tkb/Account/GiaoVien/TuyenSinh).");
+        }
+    }
+
+    /**
+     * Sửa: Hàm index mặc định trỏ về Dashboard chung
+     */
+    public function index() {
+         // Trỏ về /dashboard (nơi có các card chức năng) sẽ hợp lý hơn
+        header('Location: ' . BASE_URL . '/dashboard');
+        exit;
+    }
+
+    // --- CÁC HÀM XẾP THỜI KHÓA BIỂU (GIỮ NGUYÊN) ---
+
+    /**
+     * URL: /quantri/xeptkb
+     */
+    public function xeptkb() {
+        $danhSachLop = $this->tkbModel->getDanhSachLop();
+        $data = [
+            'user_name' => $_SESSION['user_name'] ?? 'Admin',
+            'lop_hoc' => $danhSachLop
+        ];
+        if (isset($_SESSION['flash_message'])) {
+            $data['flash_message'] = $_SESSION['flash_message'];
+            unset($_SESSION['flash_message']);
+        }
+        $content = $this->loadView('QuanTri/danh_sach_lop_tkb', $data);
+        echo $content;
+    }
+
+    /**
+     * URL: /quantri/chiTietTkb/1
+     */
+    public function chiTietTkb($ma_lop = 0) {
+        $ma_lop = (int)$ma_lop;
+        if ($ma_lop <= 0) {
+            header('Location: ' . BASE_URL . '/quantri/xeptkb'); // Sửa lại ' '
+            exit;
+        }
+
+        $rangBuoc = $this->tkbModel->getRangBuocLop($ma_lop);
+        if ($rangBuoc['ten_lop'] === 'Không tìm thấy' || $rangBuoc['ten_lop'] === 'Lỗi CSDL') {
+             $_SESSION['flash_message'] = ['type' => 'danger', 'message' => "Không tìm thấy thông tin lớp học (ID: $ma_lop)."];
+             header('Location: ' . BASE_URL . '/quantri/xeptkb');
+             exit;
+        }
+
+        $tkbData = $this->tkbModel->getChiTietTkbLop($ma_lop);
+        $phongHocChinhID = $this->tkbModel->getPhongHocChinhID($ma_lop);
+        $danhSachTatCaLop = $this->tkbModel->getDanhSachLop(); 
+
+        $data = [
+            'user_name' => $_SESSION['user_name'] ?? 'Admin',
+            'ma_lop' => $ma_lop,
+            'nam_hoc' => '2025-2026', // Nên lấy động
+            'rang_buoc' => $rangBuoc,
+            'tkb_data' => $tkbData,
+            'phong_hoc_chinh_id' => $phongHocChinhID,
+            'danh_sach_lop' => $danhSachTatCaLop
+        ];
+        if (isset($_SESSION['flash_message'])) {
+            $data['flash_message'] = $_SESSION['flash_message'];
+            unset($_SESSION['flash_message']);
+        }
+
+        $content = $this->loadView('QuanTri/chi_tiet_tkb', $data);
+        echo $content;
+    }
+
+    /**
+     * URL: /quantri/luuTietHoc (POST)
+     */
+    public function luuTietHoc() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            $ma_lop = filter_input(INPUT_POST, 'ma_lop', FILTER_VALIDATE_INT);
+            $thu = filter_input(INPUT_POST, 'thu', FILTER_VALIDATE_INT);
+            $tiet = filter_input(INPUT_POST, 'tiet', FILTER_VALIDATE_INT);
+
+            if (!$ma_lop || !$thu || !$tiet || $thu < 2 || $thu > 7 || $tiet < 1 || $tiet > 7) {
+                $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Dữ liệu không hợp lệ (lớp, thứ, tiết).'];
+                header('Location: ' . BASE_URL . '/quantri/chiTietTkb/' . ($ma_lop ?? ''));
+                exit;
+            }
+
+            if (isset($_POST['delete']) && $_POST['delete'] == '1') {
+                $success = $this->tkbModel->xoaTietHoc($ma_lop, $thu, $tiet);
+                $_SESSION['flash_message'] = $success ? ['type' => 'success', 'message' => 'Đã xóa tiết học.'] : ['type' => 'danger', 'message' => 'Xóa thất bại.'];
+                header('Location: ' . BASE_URL . '/quantri/chiTietTkb/' . $ma_lop);
+                exit;
+            }
+
+            if (isset($_POST['save']) && $_POST['save'] == '1') {
+                $ma_phan_cong = filter_input(INPUT_POST, 'ma_phan_cong', FILTER_VALIDATE_INT);
+                if (!$ma_phan_cong) {
+                    $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Vui lòng chọn Môn học.'];
+                    header('Location: ' . BASE_URL . '/quantri/chiTietTkb/' . $ma_lop);
+                    exit;
+                }
+                
+                $kiemTra = $this->tkbModel->kiemTraRangBuoc($ma_lop, $thu, $tiet, $ma_phan_cong);
+                if ($kiemTra !== true) {
+                    $_SESSION['flash_message'] = ['type' => 'danger', 'message' => "Không thể lưu: " . $kiemTra];
+                    header('Location: ' . BASE_URL . '/quantri/chiTietTkb/' . $ma_lop);
+                    exit;
+                }
+
+                $success = $this->tkbModel->luuTietHoc($ma_lop, $thu, $tiet, $ma_phan_cong);
+                $_SESSION['flash_message'] = $success ? ['type' => 'success', 'message' => 'Đã lưu tiết học.'] : ['type' => 'danger', 'message' => 'Lưu thất bại.'];
+                header('Location: ' . BASE_URL . '/quantri/chiTietTkb/' . $ma_lop);
+                exit;
+            }
+        }
+        header('Location: ' . BASE_URL . '/quantri/xeptkb');
+        exit;
+    }
+
+    /**
+     * API: /quantri/getDanhSachMonHocGV/1/2/3 (lop/thu/tiet)
+     */
+    public function getDanhSachMonHocGV($ma_lop = 0, $thu = 0, $tiet = 0) {
+        header('Content-Type: application/json');
+        $ma_lop = (int)$ma_lop; $thu = (int)$thu; $tiet = (int)$tiet;
+        if ($ma_lop <= 0 || $thu < 2 || $thu > 7 || $tiet < 1 || $tiet > 7) {
+            echo json_encode(['error' => 'Thiếu thông tin (lớp, thứ, tiết).']);
+            return;
+        }
+
+        $ds_mon_gv_phan_cong = $this->tkbModel->getDanhSachMonHocGV($ma_lop);
+        $phong_hoc_chinh_id = $this->tkbModel->getPhongHocChinhID($ma_lop);
+        $result = ['mon_hoc_gv' => []];
+
+        foreach ($ds_mon_gv_phan_cong as $item) {
+            $ma_giao_vien = $item['ma_giao_vien'];
+            $ma_phan_cong = $item['ma_phan_cong'];
+            $ma_phong_du_kien = $item['ma_phong_dac_biet'] ?? $phong_hoc_chinh_id;
+            
+            $gv_ban_lich = $this->tkbModel->getGVBan($ma_giao_vien);
+            $is_gv_ban = isset($gv_ban_lich[$thu][$tiet]);
+            
+            $is_phong_ban = false;
+            if ($ma_phong_du_kien !== null) {
+                 $phong_ban_lich = $this->tkbModel->getPhongBan($ma_phong_du_kien);
+                 $is_phong_ban = isset($phong_ban_lich[$thu][$tiet]);
+            }
+
+            $is_option_ban = $is_gv_ban || $is_phong_ban;
+            $ly_do_ban = $is_gv_ban ? '(GV bận)' : ($is_phong_ban ? '(Phòng bận)' : '');
+            
+            $result['mon_hoc_gv'][] = [
+                'ma_phan_cong' => $ma_phan_cong,
+                'ten_hien_thi' => $item['ten_mon_hoc'] . ' - (GV: ' . $item['ten_giao_vien'] . ')',
+                'is_ban' => $is_option_ban,
+                'ly_do' => $ly_do_ban
+            ];
+        }
+        echo json_encode($result);
+    }
+    
+    // --- CÁC HÀM QUẢN LÝ TÀI KHOẢN (GIỮ NGUYÊN) ---
+
+    /**
+     * URL: /quantri/quanlytaikhoan
+     */
+    public function quanlytaikhoan() {
+        if (!$this->accountModel) { die("Lỗi: AccountModel chưa được load."); }
+        $accounts = $this->accountModel->getAllAccounts();
+        $data = [
+            'user_name' => $_SESSION['user_name'] ?? 'Admin',
+            'accounts' => $accounts
+        ];
+        $content = $this->loadView('QuanTri/quan_ly_taikhoan', $data);
+        echo $content;
+    }
+
+    /**
+     * API: /quantri/updateTaiKhoan (POST)
+     */
+    public function updateTaiKhoan() {
+        header('Content-Type: application/json');
+        $data = json_decode(file_get_contents('php://input'), true);
+        if (!$data || !isset($data['ma_tai_khoan']) || empty($data['ho_ten']) || empty($data['email']) || empty($data['vai_tro'])) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ.']);
+            return;
+        }
+        $success = $this->accountModel->updateAccount($data);
+        if ($success === true) {
+            echo json_encode(['success' => true, 'message' => 'Cập nhật tài khoản thành công!']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => is_string($success) ? $success : 'Lỗi: Không thể cập nhật tài khoản.']);
+        }
+    }
+
+    /**
+     * API: /quantri/deleteTaiKhoan (POST)
+     */
+    public function deleteTaiKhoan() {
+        header('Content-Type: application/json');
+        $data = json_decode(file_get_contents('php://input'), true);
+        $ma_tai_khoan = filter_var($data['ma_tai_khoan'] ?? null, FILTER_VALIDATE_INT);
+        if (!$ma_tai_khoan) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Mã tài khoản không hợp lệ.']);
+            return;
+        }
+        $success = $this->accountModel->deleteAccount($ma_tai_khoan);
+        if ($success === true) {
+            echo json_encode(['success' => true, 'message' => 'Xóa tài khoản thành công!']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => is_string($success) ? $success : 'Lỗi: Không thể xóa tài khoản.']);
+        }
+    }
+    
+    
+    // --- CÁC HÀM QUẢN LÝ GIÁO VIÊN (GIỮ NGUYÊN) ---
+    
+    /**
+     * URL: /quantri/quanlygiaovien
+     */
+    public function quanlygiaovien() {
+        $danhSachGiaoVien = $this->giaoVienModel->getDanhSachGiaoVien();
+        $data = [
+            'user_name' => $_SESSION['user_name'] ?? 'Admin',
+            'giao_vien' => $danhSachGiaoVien
+        ];
+        $content = $this->loadView('QuanTri/quan_ly_giaovien', $data);
+        echo $content;
+    }
+
+    /**
+     * API: /quantri/getGiaoVienDetailsApi/{id} (GET)
+     */
+    public function getGiaoVienDetailsApi($ma_nguoi_dung = 0) {
+        header('Content-Type: application/json');
+        $ma_nguoi_dung = (int)$ma_nguoi_dung;
+        if ($ma_nguoi_dung <= 0) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'ID Giáo viên không hợp lệ.']);
+            return;
+        }
+        $details = $this->giaoVienModel->getGiaoVienById($ma_nguoi_dung);
+        if ($details) {
+            echo json_encode(['success' => true, 'data' => $details]);
+        } else {
+             http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy giáo viên.']);
+        }
+    }
+
+    /**
+     * API: /quantri/addGiaoVienApi (POST)
+     */
+    public function addGiaoVienApi() {
+        header('Content-Type: application/json');
+        $data = json_decode(file_get_contents('php://input'), true);
+        if (empty($data['email']) || empty($data['password']) || empty($data['ho_ten']) || empty($data['so_dien_thoai']) || empty($data['ngay_sinh'])) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Vui lòng điền đầy đủ các trường bắt buộc (*).']);
+            return;
+        }
+        $result = $this->giaoVienModel->addGiaoVien($data);
+        if ($result === true) {
+            echo json_encode(['success' => true, 'message' => 'Thêm giáo viên mới thành công!']);
+        } else {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => is_string($result) ? $result : 'Lỗi không xác định khi thêm.']);
+        }
+    }
+
+    /**
+     * API: /quantri/updateGiaoVienApi (POST)
+     */
+    public function updateGiaoVienApi() {
+        header('Content-Type: application/json');
+        $data = json_decode(file_get_contents('php://input'), true);
+        if (empty($data['ma_nguoi_dung']) || empty($data['ma_tai_khoan']) || empty($data['ho_ten']) || empty($data['email'])) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ.']);
+            return;
+        }
+        $result = $this->giaoVienModel->updateGiaoVien($data);
+        if ($result === true) {
+            echo json_encode(['success' => true, 'message' => 'Cập nhật thông tin giáo viên thành công!']);
+        } else {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => is_string($result) ? $result : 'Lỗi không xác định khi cập nhật.']);
+        }
+    }
+    
+    /**
+     * API: /quantri/deleteGiaoVienApi (POST)
+     */
+    public function deleteGiaoVienApi() {
+        header('Content-Type: application/json');
+        $data = json_decode(file_get_contents('php://input'), true);
+        $ma_tai_khoan = filter_var($data['ma_tai_khoan'] ?? null, FILTER_VALIDATE_INT);
+        if (!$ma_tai_khoan) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Mã tài khoản không hợp lệ.']);
+            return;
+        }
+        $result = $this->giaoVienModel->deleteGiaoVien($ma_tai_khoan);
+        if ($result === true) {
+            echo json_encode(['success' => true, 'message' => 'Xóa giáo viên thành công!']);
+        } else {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => is_string($result) ? $result : 'Lỗi không xác định khi xóa.']);
+        }
+    }
+    
+    
+    // ===================================================================
+    // --- HÀM MỚI CHO QUẢN LÝ TUYỂN SINH (HOÀN TOÀN ĐỘC LẬP) ---
+    // ===================================================================
+    
+    /**
+     * HIỂN THỊ TRANG QUẢN LÝ TUYỂN SINH
+     * URL: /quantri/quanlytuyensinh
+     */
+    public function quanlytuyensinh() {
+        if (!$this->tuyenSinhModel) { die("Lỗi: TuyenSinhModel chưa được load."); }
+        $data = [
+            'user_name' => $_SESSION['user_name'] ?? 'Admin',
+        ];
+        // Dùng file view bạn đã có
+        $content = $this->loadView('QuanTri/quan_ly_tuyen_sinh', $data); 
+        echo $content;
+    }
+
+    /**
+     * API: LẤY DANH SÁCH CÁC TRƯỜNG THPT (cho mục Chỉ Tiêu)
+     * URL: /quantri/getDsTruongApi (GET)
+     */
+    public function getDsTruongApi() {
+        header('Content-Type: application/json');
+        if (!$this->tuyenSinhModel) { 
+             http_response_code(500);
+             echo json_encode(['success' => false, 'message' => 'Lỗi server: TuyenSinhModel không khả dụng.']);
+             return;
+        }
+        $ds_truong = $this->tuyenSinhModel->getDanhSachTruong();
+        echo json_encode(['success' => true, 'data' => $ds_truong]);
+    }
+
+    /**
+     * API MỚI: LẤY DANH SÁCH LỚP HỌC (cho mục Lọc Ảo)
+     * URL: /quantri/getDsLopApi (GET)
+     * * *** ĐÃ SỬA: Gọi tuyenSinhModel thay vì tkbModel ***
+     */
+    public function getDsLopApi() {
+        header('Content-Type: application/json');
+        if (!$this->tuyenSinhModel) { // Sửa check
+             http_response_code(500);
+             echo json_encode(['success' => false, 'message' => 'Lỗi server: TuyenSinhModel không khả dụng.']);
+             return;
+        }
+        // Lấy danh sách lớp (giả sử đang trong năm học 1)
+        $ds_lop = $this->tuyenSinhModel->getDanhSachLop(1); // Sửa $this->tkbModel
+        echo json_encode(['success' => true, 'data' => $ds_lop]);
+    }
+    
+    /**
+     * API: CẬP NHẬT CHỈ TIÊU TRƯỜNG (HỖ TRỢ BATCH)
+     * URL: /quantri/updateChiTieuApi (POST)
+     */
+    public function updateChiTieuApi() {
+        header('Content-Type: application/json');
+        $data = json_decode(file_get_contents('php://input'), true);
+        
+        if (!is_array($data) || empty($data)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ (phải là object {ma_truong: chi_tieu}).']);
+            return;
+        }
+
+        $successCount = 0;
+        foreach ($data as $ma_truong_str => $chi_tieu) {
+            $ma_truong = filter_var($ma_truong_str, FILTER_VALIDATE_INT);
+            $chi_tieu = filter_var($chi_tieu, FILTER_VALIDATE_INT);
+            if ($ma_truong && $chi_tieu !== false && $chi_tieu >= 0) {
+                if ($this->tuyenSinhModel->updateChiTieu($ma_truong, $chi_tieu)) {
+                    $successCount++;
+                }
+            }
+        }
+
+        if ($successCount > 0) {
+            echo json_encode(['success' => true, 'message' => "Cập nhật chỉ tiêu thành công cho $successCount trường."]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Không có trường nào được cập nhật thành công.']);
+        }
+    }
+
+    /**
+     * API: LẤY DANH SÁCH THÍ SINH (FILTER THEO TRƯỜNG THPT - NV1)
+     * URL: /quantri/getDsThiSinhApi/{ma_truong?} (GET)
+     */
+    public function getDsThiSinhApi($ma_truong = null) {
+        header('Content-Type: application/json');
+        $ds_thi_sinh = $this->tuyenSinhModel->getDanhSachThiSinh($ma_truong ? (int)$ma_truong : null);
+        echo json_encode(['success' => true, 'data' => $ds_thi_sinh]);
+    }
+
+    /**
+     * API: CẬP NHẬT ĐIỂM THI (HỖ TRỢ BATCH)
+     * URL: /quantri/updateDiemApi (POST)
+     */
+    public function updateDiemApi() {
+        header('Content-Type: application/json');
+        $data = json_decode(file_get_contents('php://input'), true);
+        
+        if (!is_array($data)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Dữ liệu phải là array các object thí sinh.']);
+            return;
+        }
+
+        $successCount = 0;
+        foreach ($data as $item) {
+            $ma_nguoi_dung = filter_var($item['ma_nguoi_dung'] ?? null, FILTER_VALIDATE_INT);
+            $diem_toan = isset($item['diem_toan']) ? filter_var($item['diem_toan'], FILTER_VALIDATE_FLOAT, FILTER_NULL_ON_FAILURE) : null;
+            $diem_van = isset($item['diem_van']) ? filter_var($item['diem_van'], FILTER_VALIDATE_FLOAT, FILTER_NULL_ON_FAILURE) : null;
+            $diem_anh = isset($item['diem_anh']) ? filter_var($item['diem_anh'], FILTER_VALIDATE_FLOAT, FILTER_NULL_ON_FAILURE) : null;
+
+            if (!$ma_nguoi_dung) {
+                error_log("Lỗi updateDiemApi: Mã thí sinh không hợp lệ cho item: " . json_encode($item));
+                continue;
+            }
+            
+            $validate = function($diem) {
+                return $diem === null || ($diem >= 0 && $diem <= 10);
+            };
+            if (!$validate($diem_toan) || !$validate($diem_van) || !$validate($diem_anh)) {
+                error_log("Lỗi updateDiemApi: Điểm không hợp lệ cho ma_nguoi_dung $ma_nguoi_dung");
+                continue;
+            }
+
+            if ($this->tuyenSinhModel->updateDiemThi($ma_nguoi_dung, $diem_toan, $diem_van, $diem_anh)) {
+                $successCount++;
+            }
+        }
+
+        if ($successCount > 0) {
+            echo json_encode(['success' => true, 'message' => "Cập nhật điểm thành công cho $successCount thí sinh."]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Không có điểm nào được cập nhật thành công.']);
+        }
+    }
+    
+    /**
+     * API: CHẠY LỌC ẢO VÀ XÉT TUYỂN
+     * URL: /quantri/runLocAoApi (POST)
+     */
+    public function runLocAoApi() {
+        header('Content-Type: application/json');
+        $result = $this->tuyenSinhModel->runXetTuyen();
+        
+        if ($result['success']) {
+            echo json_encode(['success' => true, 'message' => $result['message']]);
+        } else {
+             http_response_code(500);
+             echo json_encode(['success' => false, 'message' => $result['message']]);
+        }
+    }
+    
+     /**
+     * API: LẤY KẾT QUẢ SAU KHI LỌC (cho mục Lọc Ảo)
+     * URL: /quantri/getKetQuaLocApi (GET)
+     */
+    public function getKetQuaLocApi() {
+        header('Content-Type: application/json');
+        $ket_qua_thi_sinh = $this->tuyenSinhModel->getKetQuaThiSinh();
+        $ket_qua_truong = $this->tuyenSinhModel->getKetQuaTruong();
+        
+        echo json_encode([
+            'success' => true, 
+            'thi_sinh' => $ket_qua_thi_sinh,
+            'truong' => $ket_qua_truong
+        ]);
+    }
+
+    /**
+     * API: LẤY DANH SÁCH THÍ SINH TRÚNG TUYỂN THEO TRƯỜNG (cho lọc ảo chi tiết)
+     * URL: /quantri/getThiSinhTrungTuyenTheoTruongApi/{ma_truong} (GET)
+     */
+    public function getThiSinhTrungTuyenTheoTruongApi($ma_truong = 0) {
+        header('Content-Type: application/json');
+        $ma_truong = (int)$ma_truong;
+        if ($ma_truong <= 0) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Mã trường không hợp lệ.']);
+            return;
+        }
+        $ds_thi_sinh = $this->tuyenSinhModel->getDanhSachThiSinhTrungTuyenTheoTruong($ma_truong);
+        echo json_encode(['success' => true, 'data' => $ds_thi_sinh]);
+    }
+
+    /**
+     * API: CẬP NHẬT TRẠNG THÁI XÁC NHẬN BATCH
+     * URL: /quantri/capNhatXacNhanApi (POST)
+     */
+    public function capNhatXacNhanApi() {
+        header('Content-Type: application/json');
+        $data = json_decode(file_get_contents('php://input'), true);
+        
+        if (!is_array($data) || empty($data['danh_sach_xac_nhan']) || !isset($data['ma_truong'])) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ (cần danh_sach_xac_nhan và ma_truong).']);
+            return;
+        }
+        
+        $ma_truong = (int)$data['ma_truong'];
+        $success = $this->tuyenSinhModel->capNhatTrangThaiXacNhanBatch($data['danh_sach_xac_nhan'], $ma_truong);
+        
+        if ($success) {
+            echo json_encode(['success' => true, 'message' => 'Cập nhật trạng thái xác nhận thành công.']);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Lỗi khi cập nhật trạng thái.']);
+        }
+    }
+    
+    /**
+     * API MỚI: CHỐT DANH SÁCH NHẬP HỌC VÀ CHUYỂN LỚP
+     * URL: /quantri/chotNhapHocApi (POST)
+     */
+    public function chotNhapHocApi() {
+        header('Content-Type: application/json');
+        $data = json_decode(file_get_contents('php://input'), true);
+        
+        $ma_truong = filter_var($data['ma_truong'] ?? null, FILTER_VALIDATE_INT);
+        $ma_lop_dich = filter_var($data['ma_lop_dich'] ?? null, FILTER_VALIDATE_INT);
+
+        if (!$ma_truong || !$ma_lop_dich) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Vui lòng chọn trường và lớp đích hợp lệ.']);
+            return;
+        }
+
+        if (!$this->tuyenSinhModel) { die("Lỗi: TuyenSinhModel chưa được load."); }
+        
+        $result = $this->tuyenSinhModel->chotDanhSachNhapHoc($ma_truong, $ma_lop_dich);
+        
+        if ($result['success']) {
+            echo json_encode($result);
+        } else {
+            http_response_code(500);
+            echo json_encode($result);
+        }
+    }
+    
+    // --- HẾT PHẦN TUYỂN SINH ---
+}
+?>

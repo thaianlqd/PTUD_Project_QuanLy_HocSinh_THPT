@@ -1,0 +1,13 @@
+<?php
+session_start();
+
+// ĐỊNH NGHĨA BASE URL (Sửa GD_Full_ChucNang nếu tên thư mục của bạn khác)
+define('BASE_URL', '/GD_Full_ChucNang/public');
+
+// Tải các file lõi của ứng dụng
+require_once '../app/Core/App.php';
+require_once '../app/Core/Controller.php';
+require_once '../app/Core/Router.php';
+
+// Khởi động ứng dụng
+$app = new App();
