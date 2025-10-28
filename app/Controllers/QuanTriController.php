@@ -1,5 +1,5 @@
 <?php
-// Đảm bảo session đã được khởi động (nên đặt ở public/index.php)
+// Đảm bảo session đã được khởi động (nên đặt ở public/index.php) a
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
