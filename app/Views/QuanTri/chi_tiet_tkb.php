@@ -7,7 +7,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
-    <!-- CSS Tùy chỉnh cho TKB - Sửa lỗi border -->
     <style>
         :root {
             --fc-border-color: #dee2e6;
@@ -21,31 +20,20 @@
         .timetable-main { overflow-x: auto; background-color: #fff; border: 1px solid var(--fc-border-color); border-radius: 0.375rem; }
         .timetable-grid { display: grid; grid-template-columns: 80px repeat(6, minmax(120px, 1fr)); grid-template-rows: auto auto repeat(4, minmax(var(--slot-min-height), auto)) auto repeat(3, minmax(var(--slot-min-height), auto)); }
 
-        /* --- SỬA LOGIC BORDER --- */
         .timetable-header, .timetable-slot, .timetable-period-label {
             padding: 0.5rem;
             text-align: center;
             border-bottom: 1px solid var(--fc-border-color);
-            border-right: 1px solid var(--fc-border-color); /* Dùng border-right */
+            border-right: 1px solid var(--fc-border-color);
             font-size: 0.9rem;
         }
-        /* Bỏ border phải cho cột cuối cùng (Thứ 7) */
-        .timetable-grid > div:nth-child(7n) {
-             border-right: none;
-        }
-        /* Thêm border trái chỉ cho cột đầu tiên (Tiết) để có viền ngoài */
-        .timetable-period-label, .timetable-grid > div:nth-child(7n+1) {
-             border-left: 1px solid var(--fc-border-color);
-        }
-        /* Bỏ border dưới cho hàng cuối cùng */
-         .timetable-grid > div:nth-last-child(-n+7) {
-            border-bottom: none;
-         }
-        /* --- HẾT SỬA LOGIC BORDER --- */
+        .timetable-grid > div:nth-child(7n) { border-right: none; }
+        .timetable-period-label, .timetable-grid > div:nth-child(7n+1) { border-left: 1px solid var(--fc-border-color); }
+        .timetable-grid > div:nth-last-child(-n+7) { border-bottom: none; }
 
         .timetable-header { font-weight: 600; background-color: #f1f3f5; position: sticky; top: 0; z-index: 10; }
         .timetable-period-label { font-weight: bold; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa; position: sticky; left: 0; z-index: 5; writing-mode: vertical-rl; transform: rotate(180deg); }
-        .timetable-session-label { grid-column: 1 / -1; text-align: center; font-weight: bold; font-size: 1rem; padding: 0.5rem; border-bottom: 1px solid var(--fc-border-color); /* Giữ border bottom */ border-right: 1px solid var(--fc-border-color); /* Thêm border right */ border-left: 1px solid var(--fc-border-color); /* Thêm border left */ position: sticky; top: 40px; z-index: 9; }
+        .timetable-session-label { grid-column: 1 / -1; text-align: center; font-weight: bold; font-size: 1rem; padding: 0.5rem; border-bottom: 1px solid var(--fc-border-color); border-right: 1px solid var(--fc-border-color); border-left: 1px solid var(--fc-border-color); position: sticky; top: 58px; z-index: 9; } /* Cập nhật top */
         .session-morning { background-color: #fff3cd; color: #664d03; }
         .session-afternoon { background-color: #cfe2ff; color: #0a3675; }
         .timetable-slot { position: relative; padding: 5px; }
@@ -69,11 +57,17 @@
         .badge.bg-danger i { margin-right: 3px; }
         .progress-bar.bg-danger { background-color: #dc3545 !important; }
         .progress-bar.bg-danger::after { content: " (Vượt quá!)"; font-weight: normal; font-size: 0.8em;}
+        
+        .slot-holiday {
+            background-color: #f8f9fa;
+            justify-content: center;
+            align-items: center;
+            display: flex;
+            padding: 10px;
+        }
     </style>
 </head>
-<!-- Phần body giữ nguyên -->
 <body class="d-flex flex-column min-vh-100">
-    <!-- Navbar -->
     <header class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
         <div class="container-fluid">
             <a class="navbar-brand fw-bold" href="<?php echo BASE_URL ?? ''; ?>/dashboard">
@@ -104,9 +98,8 @@
 
     <main class="container-fluid p-4">
 
-        <!-- Header thông tin lớp & Dropdown chuyển lớp -->
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-             <div>
+            <div>
                 <h1 class="h3 mb-0">Xếp Thời Khóa Biểu:
                     <span class="text-primary fw-bold"><?php echo htmlspecialchars($data['rang_buoc']['ten_lop'] ?? 'N/A'); ?></span>
                 </h1>
@@ -116,15 +109,26 @@
                     Phòng chính: <span class="fw-bold"><?php echo htmlspecialchars($data['rang_buoc']['phong_chinh'] ?? 'N/A'); ?></span>
                 </p>
             </div>
-            <div class="d-flex align-items-center mt-2 mt-md-0">
-                <label for="lop_select" class="form-label me-2 mb-0 fw-bold">Chuyển lớp:</label>
+            
+            <div class="d-flex align-items-center mt-2 mt-md-0 gap-2">
+                
+                <input type="date" id="date_picker" class="form-control" style="width: auto;"
+                       value="<?php echo htmlspecialchars($data['selected_date']); ?>" 
+                       onchange="jumpToDate(this.value)">
+
+                <a href="<?php echo htmlspecialchars($data['prev_week_link']); ?>" class="btn btn-outline-primary" title="Tuần trước">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+                <a href="<?php echo htmlspecialchars($data['next_week_link']); ?>" class="btn btn-outline-primary" title="Tuần sau">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+
+                <label for="lop_select" class="form-label ms-3 mb-0 fw-bold">Chuyển lớp:</label>
                 <select id="lop_select" class="form-select d-inline-block w-auto shadow-sm" onchange="changeLop(this.value)">
                     <?php $lop_hien_tai = $data['ma_lop'] ?? 0; ?>
                      <?php
-                        // Sắp xếp danh sách lớp theo tên trước khi hiển thị
                         $danh_sach_lop_sorted = $data['danh_sach_lop'] ?? [];
                         usort($danh_sach_lop_sorted, function($a, $b) {
-                             // So sánh khối trước, sau đó đến tên lớp
                             preg_match('/^(\d+)/', $a['ten_lop'], $matches_a);
                             preg_match('/^(\d+)/', $b['ten_lop'], $matches_b);
                             $khoi_a = $matches_a[1] ?? 0;
@@ -144,7 +148,7 @@
             </div>
         </div>
 
-        <!-- Hiển thị thông báo (nếu có) -->
+
         <?php if (isset($data['flash_message'])): ?>
             <div class="alert alert-<?php echo htmlspecialchars($data['flash_message']['type']); ?> alert-dismissible fade show" role="alert">
                 <?php echo htmlspecialchars($data['flash_message']['message']); ?>
@@ -152,81 +156,101 @@
             </div>
         <?php endif; ?>
 
-        <!-- Container chính: Lưới TKB + Sidebar Ràng buộc -->
         <div class="timetable-container">
 
-            <!-- CỘT 1: LƯỚI TKB -->
             <div class="timetable-main shadow-sm">
-                <div class="timetable-grid">
-                    <!-- Header -->
-                    <div class="timetable-header">Tiết</div> <div class="timetable-header">Thứ 2</div> <div class="timetable-header">Thứ 3</div> <div class="timetable-header">Thứ 4</div> <div class="timetable-header">Thứ 5</div> <div class="timetable-header">Thứ 6</div> <div class="timetable-header">Thứ 7</div>
-                    <!-- Buổi sáng -->
-                    <div class="timetable-session-label session-morning"><i class="bi bi-brightness-high-fill me-2"></i> SÁNG</div>
-                    <!-- Tiết Sáng -->
-                    <?php $tkb = $data['tkb_data'] ?? []; $rang_buoc_mon = $data['rang_buoc']['mon_hoc'] ?? []; ?>
-                    <?php
-                        // Lấy mã phân công Chào Cờ, Sinh Hoạt
-                        $ma_pc_chao_co = null; $ma_pc_sinh_hoat = null;
-                        foreach($rang_buoc_mon as $ten_mon => $details) {
-                            if ($ten_mon == 'Chào cờ' && isset($details['ma_phan_cong_list'][0])) $ma_pc_chao_co = $details['ma_phan_cong_list'][0];
-                            if ($ten_mon == 'Sinh hoạt' && isset($details['ma_phan_cong_list'][0])) $ma_pc_sinh_hoat = $details['ma_phan_cong_list'][0];
-                        }
-                    ?>
-                    <?php for ($tiet = 1; $tiet <= 4; $tiet++): ?>
-                        <div class="timetable-period-label">Tiết <?php echo $tiet; ?></div>
-                        <?php for ($thu = 2; $thu <= 7; $thu++): ?>
-                            <?php
-                                $slot = $tkb[$thu][$tiet] ?? null; $is_fixed = false; $fixed_data = null; $current_ma_phong = null;
-                                if ($thu == 2 && $tiet == 1) { // Chào cờ
-                                    $is_fixed = true; $fixed_data = ['mon' => 'Chào cờ', 'gv' => $data['rang_buoc']['gvcn'] ?? 'GVCN', 'phong' => $data['rang_buoc']['phong_chinh'] ?? 'Sân trường', 'ma_phan_cong' => $ma_pc_chao_co]; $current_ma_phong = null;
-                                } elseif ($thu == 2 && $tiet == 2) { // Sinh hoạt
-                                    $is_fixed = true; $fixed_data = ['mon' => 'Sinh hoạt', 'gv' => $data['rang_buoc']['gvcn'] ?? 'GVCN', 'phong' => $data['rang_buoc']['phong_chinh'] ?? 'Phòng học', 'ma_phan_cong' => $ma_pc_sinh_hoat]; $current_ma_phong = $data['phong_hoc_chinh_id'];
-                                } elseif ($slot) { // Tiết đã xếp
-                                    $is_fixed = true; $fixed_data = $slot; $current_ma_phong = $slot['ma_phong'] ?? $data['phong_hoc_chinh_id'] ?? ''; if ($current_ma_phong === null) $current_ma_phong = '';
-                                }
-                            ?>
-                            <div class="timetable-slot <?php echo ($is_fixed && ($thu == 2 && ($tiet == 1 || $tiet == 2))) ? 'slot-fixed' : ''; ?>">
-                                <?php if ($is_fixed): ?>
-                                    <div class="event-card <?php echo ($thu == 2 && ($tiet == 1 || $tiet == 2)) ? 'bg-secondary' : 'bg-success'; ?>" data-bs-toggle="modal" data-bs-target="#scheduleModal" data-thu="<?php echo $thu; ?>" data-tiet="<?php echo $tiet; ?>" data-ma-phan-cong="<?php echo $fixed_data['ma_phan_cong'] ?? ''; ?>" data-ma-phong-hoc="<?php echo $current_ma_phong; ?>" data-is-fixed="<?php echo ($thu == 2 && ($tiet == 1 || $tiet == 2)) ? '1' : '0'; ?>">
-                                        <div class="event-title"><?php echo htmlspecialchars($fixed_data['mon'] ?? 'N/A'); ?></div>
-                                        <p><i class="bi bi-person-fill"></i> <?php echo htmlspecialchars($fixed_data['gv'] ?? 'N/A'); ?></p>
-                                        <p><i class="bi bi-geo-alt-fill"></i> <?php echo htmlspecialchars($fixed_data['phong'] ?? 'N/A'); ?></p>
-                                    </div>
-                                <?php else: ?>
-                                    <div class="add-event-btn" data-bs-toggle="modal" data-bs-target="#scheduleModal" data-thu="<?php echo $thu; ?>" data-tiet="<?php echo $tiet; ?>" data-is-fixed="0"><i class="bi bi-plus-lg"></i></div>
-                                <?php endif; ?>
-                            </div>
-                        <?php endfor; ?>
-                    <?php endfor; ?>
-                    <!-- Buổi chiều -->
-                    <div class="timetable-session-label session-afternoon"><i class="bi bi-cloud-sun-fill me-2"></i> CHIỀU</div>
-                    <!-- Tiết Chiều -->
-                     <?php for ($tiet = 5; $tiet <= 7; $tiet++): ?>
-                        <div class="timetable-period-label">Tiết <?php echo $tiet; ?></div>
-                        <?php for ($thu = 2; $thu <= 7; $thu++): ?>
-                            <?php
-                                $slot = $tkb[$thu][$tiet] ?? null; $is_fixed = false; $fixed_data = null; $current_ma_phong = null;
-                                if ($slot) {
-                                    $is_fixed = true; $fixed_data = $slot; $current_ma_phong = $slot['ma_phong'] ?? $data['phong_hoc_chinh_id'] ?? ''; if ($current_ma_phong === null) $current_ma_phong = '';
-                                }
-                            ?>
-                            <div class="timetable-slot">
-                                <?php if ($is_fixed): ?>
-                                    <div class="event-card bg-primary" data-bs-toggle="modal" data-bs-target="#scheduleModal" data-thu="<?php echo $thu; ?>" data-tiet="<?php echo $tiet; ?>" data-ma-phan-cong="<?php echo $fixed_data['ma_phan_cong'] ?? ''; ?>" data-ma-phong-hoc="<?php echo $current_ma_phong; ?>" data-is-fixed="0">
-                                        <div class="event-title"><?php echo htmlspecialchars($fixed_data['mon'] ?? 'N/A'); ?></div>
-                                        <p><i class="bi bi-person-fill"></i> <?php echo htmlspecialchars($fixed_data['gv'] ?? 'N/A'); ?></p>
-                                        <p><i class="bi bi-geo-alt-fill"></i> <?php echo htmlspecialchars($fixed_data['phong'] ?? 'N/A'); ?></p>
-                                    </div>
-                                <?php else: ?>
-                                    <div class="add-event-btn" data-bs-toggle="modal" data-bs-target="#scheduleModal" data-thu="<?php echo $thu; ?>" data-tiet="<?php echo $tiet; ?>" data-is-fixed="0"><i class="bi bi-plus-lg"></i></div>
-                                <?php endif; ?>
-                            </div>
-                        <?php endfor; ?>
-                    <?php endfor; ?>
-                </div>
-            </div>
 
-            <!-- CỘT 2: SIDEBAR RÀNG BUỘC -->
+                <div class="alert alert-primary mb-0 border-0 rounded-0 fw-bold text-center">
+                    <?php echo htmlspecialchars($data['ten_hoc_ky']); ?>
+                </div>
+
+                <?php if ($data['ma_hoc_ky'] !== null): ?>
+                
+                    <div class="timetable-grid">
+                        <div class="timetable-header">Tiết</div>
+                        <div class="timetable-header">Thứ 2<br><small class="fw-normal"><?php echo $data['week_dates'][0]; ?></small></div>
+                        <div class="timetable-header">Thứ 3<br><small class="fw-normal"><?php echo $data['week_dates'][1]; ?></small></div>
+                        <div class="timetable-header">Thứ 4<br><small class="fw-normal"><?php echo $data['week_dates'][2]; ?></small></div>
+                        <div class="timetable-header">Thứ 5<br><small class="fw-normal"><?php echo $data['week_dates'][3]; ?></small></div>
+                        <div class="timetable-header">Thứ 6<br><small class="fw-normal"><?php echo $data['week_dates'][4]; ?></small></div>
+                        <div class="timetable-header">Thứ 7<br><small class="fw-normal"><?php echo $data['week_dates'][5]; ?></small></div>
+
+                        <div class="timetable-session-label session-morning"><i class="bi bi-brightness-high-fill me-2"></i> SÁNG</div>
+                        <?php $tkb = $data['tkb_data'] ?? []; $rang_buoc_mon = $data['rang_buoc']['mon_hoc'] ?? []; ?>
+                        <?php
+                            // Lấy mã phân công Chào Cờ, Sinh Hoạt
+                            $ma_pc_chao_co = null; $ma_pc_sinh_hoat = null;
+                            if(isset($rang_buoc_mon) && is_array($rang_buoc_mon)) {
+                                foreach($rang_buoc_mon as $ten_mon => $details) {
+                                    if ($ten_mon == 'Chào cờ' && isset($details['ma_phan_cong_list'][0])) $ma_pc_chao_co = $details['ma_phan_cong_list'][0];
+                                    if ($ten_mon == 'Sinh hoạt' && isset($details['ma_phan_cong_list'][0])) $ma_pc_sinh_hoat = $details['ma_phan_cong_list'][0];
+                                }
+                            }
+                        ?>
+                        <?php for ($tiet = 1; $tiet <= 4; $tiet++): ?>
+                            <div class="timetable-period-label">Tiết <?php echo $tiet; ?></div>
+                            <?php for ($thu = 2; $thu <= 7; $thu++): ?>
+                                <?php
+                                    $slot = $tkb[$thu][$tiet] ?? null; $is_fixed = false; $fixed_data = null; $current_ma_phong = null;
+                                    if ($thu == 2 && $tiet == 1) { // Chào cờ
+                                        $is_fixed = true; $fixed_data = ['mon' => 'Chào cờ', 'gv' => $data['rang_buoc']['gvcn'] ?? 'GVCN', 'phong' => $data['rang_buoc']['phong_chinh'] ?? 'Sân trường', 'ma_phan_cong' => $ma_pc_chao_co]; $current_ma_phong = null;
+                                    } elseif ($thu == 2 && $tiet == 2) { // Sinh hoạt
+                                        $is_fixed = true; $fixed_data = ['mon' => 'Sinh hoạt', 'gv' => $data['rang_buoc']['gvcn'] ?? 'GVCN', 'phong' => $data['rang_buoc']['phong_chinh'] ?? 'Phòng học', 'ma_phan_cong' => $ma_pc_sinh_hoat]; $current_ma_phong = $data['phong_hoc_chinh_id'];
+                                    } elseif ($slot) { // Tiết đã xếp
+                                        $is_fixed = true; $fixed_data = $slot; $current_ma_phong = $slot['ma_phong'] ?? $data['phong_hoc_chinh_id'] ?? ''; if ($current_ma_phong === null) $current_ma_phong = '';
+                                    }
+                                ?>
+                                <div class="timetable-slot <?php echo ($is_fixed && ($thu == 2 && ($tiet == 1 || $tiet == 2))) ? 'slot-fixed' : ''; ?>">
+                                    <?php if ($is_fixed): ?>
+                                        <div class="event-card <?php echo ($thu == 2 && ($tiet == 1 || $tiet == 2)) ? 'bg-secondary' : 'bg-success'; ?>" data-bs-toggle="modal" data-bs-target="#scheduleModal" data-thu="<?php echo $thu; ?>" data-tiet="<?php echo $tiet; ?>" data-ma-phan-cong="<?php echo $fixed_data['ma_phan_cong'] ?? ''; ?>" data-ma-phong-hoc="<?php echo $current_ma_phong; ?>" data-is-fixed="<?php echo ($thu == 2 && ($tiet == 1 || $tiet == 2)) ? '1' : '0'; ?>">
+                                            <div class="event-title"><?php echo htmlspecialchars($fixed_data['mon'] ?? 'N/A'); ?></div>
+                                            <p><i class="bi bi-person-fill"></i> <?php echo htmlspecialchars($fixed_data['gv'] ?? 'N/A'); ?></p>
+                                            <p><i class="bi bi-geo-alt-fill"></i> <?php echo htmlspecialchars($fixed_data['phong'] ?? 'N/A'); ?></p>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="add-event-btn" data-bs-toggle="modal" data-bs-target="#scheduleModal" data-thu="<?php echo $thu; ?>" data-tiet="<?php echo $tiet; ?>" data-is-fixed="0"><i class="bi bi-plus-lg"></i></div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endfor; ?>
+                        <?php endfor; ?>
+                        <div class="timetable-session-label session-afternoon"><i class="bi bi-cloud-sun-fill me-2"></i> CHIỀU</div>
+                        <?php for ($tiet = 5; $tiet <= 7; $tiet++): ?>
+                            <div class="timetable-period-label">Tiết <?php echo $tiet; ?></div>
+                            <?php for ($thu = 2; $thu <= 7; $thu++): ?>
+                                <?php
+                                    $slot = $tkb[$thu][$tiet] ?? null; $is_fixed = false; $fixed_data = null; $current_ma_phong = null;
+                                    if ($slot) {
+                                        $is_fixed = true; $fixed_data = $slot; $current_ma_phong = $slot['ma_phong'] ?? $data['phong_hoc_chinh_id'] ?? ''; if ($current_ma_phong === null) $current_ma_phong = '';
+                                    }
+                                ?>
+                                <div class="timetable-slot">
+                                    <?php if ($is_fixed): ?>
+                                        <div class="event-card bg-primary" data-bs-toggle="modal" data-bs-target="#scheduleModal" data-thu="<?php echo $thu; ?>" data-tiet="<?php echo $tiet; ?>" data-ma-phan-cong="<?php echo $fixed_data['ma_phan_cong'] ?? ''; ?>" data-ma-phong-hoc="<?php echo $current_ma_phong; ?>" data-is-fixed="0">
+                                            <div class="event-title"><?php echo htmlspecialchars($fixed_data['mon'] ?? 'N/A'); ?></div>
+                                            <p><i class="bi bi-person-fill"></i> <?php echo htmlspecialchars($fixed_data['gv'] ?? 'N/A'); ?></p>
+                                            <p><i class="bi bi-geo-alt-fill"></i> <?php echo htmlspecialchars($fixed_data['phong'] ?? 'N/A'); ?></p>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="add-event-btn" data-bs-toggle="modal" data-bs-target="#scheduleModal" data-thu="<?php echo $thu; ?>" data-tiet="<?php echo $tiet; ?>" data-is-fixed="0"><i class="bi bi-plus-lg"></i></div>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endfor; ?>
+                        <?php endfor; ?>
+                    </div>
+                
+                <?php else: ?>
+
+                    <div class="d-flex align-items-center justify-content-center" style="min-height: 400px;">
+                        <div class="text-center text-muted">
+                            <i class="bi bi-calendar-x-fill" style="font-size: 3rem;"></i>
+                            <h3 class="mt-2">Ngoài Giai Đoạn Học</h3>
+                            <p>Không có lịch học để xếp cho tuần này.</p>
+                        </div>
+                    </div>
+
+                <?php endif; ?>
+                </div>
+
             <aside class="info-sidebar">
                 <div class="card shadow-sm sticky-top" style="top: 80px;">
                     <div class="card-header bg-primary text-white">
@@ -236,9 +260,8 @@
                         <?php
                             $tong_da_xep = $data['rang_buoc']['tong_tiet_da_xep'] ?? 0;
                             $tong_ke_hoach = $data['rang_buoc']['tong_tiet_ke_hoach'] ?? 0;
-                            $gioi_han_tuan = 45; // Đặt giới hạn tuần ở đây
+                            $gioi_han_tuan = 45; 
                             $tong_ke_hoach_safe = ($tong_ke_hoach == 0) ? 1 : $tong_ke_hoach;
-                            // Tính phần trăm dựa trên kế hoạch hoặc giới hạn tuần, lấy giá trị lớn hơn làm max
                             $max_tiet_tuan = max($tong_ke_hoach, $gioi_han_tuan);
                             $tong_phan_tram = ($max_tiet_tuan == 0) ? 0 : round(($tong_da_xep / $max_tiet_tuan) * 100);
                             $vuot_qua_tuan = $tong_da_xep > $gioi_han_tuan;
@@ -248,7 +271,7 @@
                             <div class="progress-bar progress-bar-striped fw-bold <?php echo $vuot_qua_tuan ? 'bg-danger' : (($tong_da_xep >= $tong_ke_hoach && $tong_ke_hoach > 0) ? 'bg-success' : 'bg-primary'); ?>"
                                  role="progressbar" style="width: <?php echo min($tong_phan_tram, 100); ?>%;"
                                  aria-valuenow="<?php echo $tong_da_xep; ?>" aria-valuemin="0" aria-valuemax="<?php echo $max_tiet_tuan; ?>">
-                                <?php echo "$tong_da_xep / $tong_ke_hoach"; ?>
+                                 <?php echo "$tong_da_xep / $tong_ke_hoach"; ?>
                             </div>
                         </div>
                          <?php if($vuot_qua_tuan): ?>
@@ -258,9 +281,14 @@
 
                         <h6 class="card-title mt-4">Kế hoạch môn học (Đã xếp / Kế hoạch)</h6>
                         <ul class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
-                             <?php
-                                $rang_buoc_mon_sorted = $rang_buoc_mon; ksort($rang_buoc_mon_sorted);
-                            ?>
+                               <?php
+                                $rang_buoc_mon_sorted = $rang_buoc_mon; 
+                                if(isset($rang_buoc_mon_sorted) && is_array($rang_buoc_mon_sorted)) {
+                                    ksort($rang_buoc_mon_sorted);
+                                } else {
+                                    $rang_buoc_mon_sorted = [];
+                                }
+                               ?>
                             <?php foreach ($rang_buoc_mon_sorted as $ten_mon => $details): ?>
                                 <?php
                                     if ($ten_mon == 'Chào cờ' || $ten_mon == 'Sinh hoạt') continue;
@@ -277,6 +305,11 @@
                                     <span class="badge <?php echo $bg_badge; ?> float-end"><?php echo $icon_warning . ' ' . $count_str; ?></span>
                                 </li>
                             <?php endforeach; ?>
+                            <?php if(empty($rang_buoc_mon_sorted)): ?>
+                                <li class="list-group-item px-0 text-muted text-center small">
+                                    (Không có kế hoạch môn học)
+                                </li>
+                            <?php endif; ?>
                         </ul>
                     </div>
                 </div>
@@ -284,7 +317,6 @@
         </div>
     </main>
 
-    <!-- Modal Xếp Lịch -->
     <div class="modal fade" id="scheduleModal" tabindex="-1" aria-hidden="true">
          <div class="modal-dialog">
             <div class="modal-content">
@@ -294,13 +326,12 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <!-- Hidden fields -->
-                        <input type="hidden" id="ma_lop_hidden" name="ma_lop" value="<?php echo $data['ma_lop']; ?>">
+                        <input type="hidden" name="ma_lop" value="<?php echo $data['ma_lop']; ?>">
+                        <input type="hidden" name="ma_hoc_ky" value="<?php echo $data['ma_hoc_ky']; ?>">
                         <input type="hidden" id="thu_hidden" name="thu">
                         <input type="hidden" id="tiet_hidden" name="tiet">
-                        <!-- Loading indicator -->
+                        
                         <div id="modalLoading" class="text-center p-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2 text-muted">Đang tải...</p></div>
-                        <!-- Form content -->
                         <div id="modalFormContent" style="display: none;">
                             <div class="alert alert-info py-2"><strong>Thứ <span id="info_thu"></span> - Tiết <span id="info_tiet"></span></strong></div>
                             <div class="mb-3">
@@ -308,7 +339,6 @@
                                 <select class="form-select shadow-sm" id="ma_phan_cong_select" name="ma_phan_cong" required><option value="">Chọn...</option></select>
                                 <div class="form-text text-muted small">Giáo viên/Phòng bận sẽ bị vô hiệu hóa.</div>
                             </div>
-                            <!-- Room selection removed -->
                             <div id="modalError" class="alert alert-danger mt-3" style="display: none;"></div>
                         </div>
                     </div>
@@ -324,13 +354,13 @@
     <footer class="footer mt-auto py-3 bg-dark text-white mt-5"><div class="container text-center"><span class="text-white-50">&copy; <?php echo date("Y"); ?> Hệ thống Quản lý Trường THPT.</span></div></footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
     <script>
         const scheduleModal = new bootstrap.Modal(document.getElementById('scheduleModal'));
         const modalElement = document.getElementById('scheduleModal');
         const modalFormContent = document.getElementById('modalFormContent');
         const modalLoading = document.getElementById('modalLoading');
         const maPhanCongSelect = document.getElementById('ma_phan_cong_select');
-        // const maPhongHocSelect = document.getElementById('ma_phong_hoc_select'); // Removed
         const deleteButton = document.getElementById('deleteButton');
         const saveButton = document.getElementById('saveButton');
         const infoThu = document.getElementById('info_thu');
@@ -338,40 +368,47 @@
         const modalError = document.getElementById('modalError');
 
         const maLop = <?php echo $data['ma_lop']; ?>;
+        const maHocKy = <?php echo $data['ma_hoc_ky'] ?? 'null'; ?>;
         const BASE_URL = "<?php echo BASE_URL ?? ''; ?>";
-        // const phongHocChinhID = <?php echo $data['phong_hoc_chinh_id'] ? $data['phong_hoc_chinh_id'] : '""'; ?>; // Removed
+        const CURRENT_DATE_PARAM = "<?php echo $data['current_date_param'] ?? ''; ?>";
+        
+        // Lưu lại date param để dùng cho form POST
+        <?php $_SESSION['last_date_param'] = $data['current_date_param'] ?? ''; ?>
 
         modalElement.addEventListener('show.bs.modal', async (event) => {
             const button = event.relatedTarget;
+            
+            // Nếu không phải học kỳ, không mở modal
+            if (maHocKy === null) {
+                event.preventDefault();
+                return;
+            }
+
             const thu = button.dataset.thu;
             const tiet = button.dataset.tiet;
             const maPhanCongHienTai = button.dataset.maPhanCong || '';
-            // const maPhongHocHienTai = button.dataset.maPhongHoc || ''; // Removed
             const isFixed = button.dataset.isFixed === '1';
 
             // Reset Modal state
             modalFormContent.style.display = 'none'; modalLoading.style.display = 'block'; modalError.style.display = 'none';
             saveButton.disabled = true; deleteButton.style.display = 'none';
             maPhanCongSelect.innerHTML = '<option value="">Đang tải...</option>';
-            // maPhongHocSelect.innerHTML = `<option value="">-- Dùng phòng chính (${<?php echo json_encode($data['rang_buoc']['phong_chinh'] ?? 'N/A'); ?>}) --</option>`; // Removed
 
             document.getElementById('thu_hidden').value = thu; document.getElementById('tiet_hidden').value = tiet;
             infoThu.textContent = thu; infoTiet.textContent = tiet;
 
-            // Handle buttons and form lock for fixed slots
             if (isFixed) {
                 saveButton.disabled = true; deleteButton.style.display = 'none';
                 maPhanCongSelect.disabled = true;
-                // maPhongHocSelect.disabled = true; // Removed
                  modalFormContent.style.display = 'block'; modalLoading.style.display = 'none';
             } else {
                  maPhanCongSelect.disabled = false;
-                 // maPhongHocSelect.disabled = false; // Removed
                  if (maPhanCongHienTai) { deleteButton.style.display = 'block'; }
             }
 
-            // Fetch dynamic data (mon_hoc_gv only now)
+            // Fetch dynamic data
             try {
+                // API không cần ma_hoc_ky vì ràng buộc GV/Phòng là real-time
                 const apiUrl = `${BASE_URL}/quantri/getDanhSachMonHocGV/${maLop}/${thu}/${tiet}`;
                 const response = await fetch(apiUrl);
                 if (!response.ok) throw new Error(`Lỗi HTTP ${response.status}: ${apiUrl}`);
@@ -381,29 +418,29 @@
                 // Populate Mon Hoc/GV Select
                 maPhanCongSelect.innerHTML = '<option value="">-- Chọn môn học & giáo viên --</option>';
                 let foundSelectedPhanCong = false;
-                dataApi.mon_hoc_gv.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.ma_phan_cong;
-                    option.textContent = item.ten_hien_thi;
-                    if (item.is_ban && item.ma_phan_cong != maPhanCongHienTai) {
-                        option.disabled = true;
-                        option.textContent += ` ${item.ly_do || '(Bận)'}`; // Show reason
-                        option.style.backgroundColor = '#f8d7da'; option.style.color = '#842029';
-                    }
-                    if (item.ma_phan_cong == maPhanCongHienTai) {
-                        option.selected = true; foundSelectedPhanCong = true;
-                    }
-                    maPhanCongSelect.appendChild(option);
-                });
-                // Handle case where editing and old phan_cong not found
+                if(dataApi.mon_hoc_gv) {
+                    dataApi.mon_hoc_gv.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.ma_phan_cong;
+                        option.textContent = item.ten_hien_thi;
+                        if (item.is_ban && item.ma_phan_cong != maPhanCongHienTai) {
+                            option.disabled = true;
+                            option.textContent += ` ${item.ly_do || '(Bận)'}`;
+                            option.style.backgroundColor = '#f8d7da'; option.style.color = '#842029';
+                        }
+                        if (item.ma_phan_cong == maPhanCongHienTai) {
+                            option.selected = true; foundSelectedPhanCong = true;
+                        }
+                        maPhanCongSelect.appendChild(option);
+                    });
+                }
+                
                 if(maPhanCongHienTai && !foundSelectedPhanCong && !isFixed){
                      const option = document.createElement('option'); option.value = maPhanCongHienTai;
                      option.textContent = `Môn/GV ID ${maPhanCongHienTai} (Lỗi?)`;
                      option.selected = true; option.disabled = true;
                      maPhanCongSelect.insertBefore(option, maPhanCongSelect.firstChild);
                 }
-
-                // Room population logic removed
 
             } catch (error) {
                 console.error('Lỗi khi tải dữ liệu TKB:', error);
@@ -418,9 +455,9 @@
         // Reset form on modal close
         modalElement.addEventListener('hidden.bs.modal', () => {
              document.getElementById('tkbForm').reset();
-             maPhanCongSelect.innerHTML = ''; /* maPhongHocSelect removed */ deleteButton.style.display = 'none';
+             maPhanCongSelect.innerHTML = ''; deleteButton.style.display = 'none';
              saveButton.disabled = true; modalError.style.display = 'none'; modalError.textContent = '';
-             maPhanCongSelect.disabled = false; /* maPhongHocSelect removed */
+             maPhanCongSelect.disabled = false;
         });
 
         // Delete button confirmation
@@ -437,16 +474,23 @@
             }
         });
 
-        // Change class function
+        // HÀM MỚI: Dùng cho Date Picker
+        function jumpToDate(selectedDate) {
+            if (selectedDate) {
+                document.body.style.opacity = '0.5'; 
+                document.body.style.cursor = 'wait';
+                window.location.href = `${BASE_URL}/quantri/chiTietTkb/${maLop}?date=${selectedDate}`;
+            }
+        }
+
+        // HÀM CŨ: ĐÃ CẬP NHẬT
         function changeLop(ma_lop) {
             if (ma_lop) {
-                 document.body.style.opacity = '0.5'; document.body.style.cursor = 'wait';
-                window.location.href = `${BASE_URL}/quantri/chiTietTkb/${ma_lop}`;
+                document.body.style.opacity = '0.5'; 
+                document.body.style.cursor = 'wait';
+                window.location.href = `${BASE_URL}/quantri/chiTietTkb/${ma_lop}${CURRENT_DATE_PARAM}`;
             }
         }
     </script>
 </body>
 </html>
-
-
-

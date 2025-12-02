@@ -20,11 +20,17 @@ class AuthController extends Controller {
             $user = $userModel->checkLogin($username, $password);
 
             if ($user) {
-                // $user trả về từ model mới sẽ có dạng ['id', 'name', 'role']
-                // (ma_nguoi_dung AS id, ho_ten AS name, vai_tro AS role)
+
                 $_SESSION['user_role'] = $user['role'];
                 $_SESSION['user_name'] = $user['name'];
-                $_SESSION['user_id'] = $user['id']; // Đây là ma_nguoi_dung
+                $_SESSION['user_id'] = $user['id'];
+                
+                // THÊM DÒNG NÀY VÀO
+                $_SESSION['user_chuc_vu'] = $user['chuc_vu']; // Sẽ lưu là 'BanGiamHieu'
+
+                // === THÊM DÒNG NÀY ĐỂ SỬA LỖI ===
+                $_SESSION['ma_lop'] = $user['ma_lop'] ?? null;
+                // === HẾT PHẦN SỬA ===
 
                 header('Location: ' . BASE_URL . '/dashboard');
                 exit;

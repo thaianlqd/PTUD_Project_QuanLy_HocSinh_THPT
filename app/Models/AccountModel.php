@@ -124,5 +124,120 @@ class AccountModel {
             return false;
         }
     }
+
+    /**
+     * HÀM MỚI (private): Kiểm tra email/sdt đã tồn tại chưa
+     */
+    private function checkDuplicates($email, $so_dien_thoai) {
+        try {
+            // 1. Kiểm tra username (email)
+            $stmt = $this->db->prepare("SELECT 1 FROM tai_khoan WHERE username = ?");
+            $stmt->execute([$email]);
+            if ($stmt->fetch()) {
+                return "Email (Tên đăng nhập) đã tồn tại.";
+            }
+
+            // 2. Kiểm tra email (trong nguoi_dung)
+            $stmt = $this->db->prepare("SELECT 1 FROM nguoi_dung WHERE email = ?");
+            $stmt->execute([$email]);
+            if ($stmt->fetch()) {
+                return "Email đã tồn tại.";
+            }
+
+            // 3. Kiểm tra SĐT (nếu có)
+            if (!empty($so_dien_thoai)) {
+                $stmt = $this->db->prepare("SELECT 1 FROM nguoi_dung WHERE so_dien_thoai = ?");
+                $stmt->execute([$so_dien_thoai]);
+                if ($stmt->fetch()) {
+                    return "Số điện thoại đã tồn tại.";
+                }
+            }
+            return true; // Không trùng
+        } catch (PDOException $e) {
+            error_log("Lỗi checkDuplicates: " . $e->getMessage());
+            return "Lỗi máy chủ khi kiểm tra dữ liệu.";
+        }
+    }
+
+    /**
+     * HÀM MỚI: Cấp tài khoản mới (Sử dụng Transaction)
+     */
+    public function createAccount($data) {
+        if ($this->db === null) return "Lỗi kết nối CSDL.";
+
+        // 1. Kiểm tra trùng lặp trước
+        $check = $this->checkDuplicates($data['email'], $data['so_dien_thoai']);
+        if ($check !== true) {
+            return $check; // Trả về thông báo lỗi
+        }
+
+        $this->db->beginTransaction();
+        try {
+            // Bảng 1: Tạo tai_khoan
+            $sql_tk = "INSERT INTO tai_khoan (username, password, vai_tro) 
+                       VALUES (:username, MD5(:password), :vai_tro)";
+            $stmt_tk = $this->db->prepare($sql_tk);
+            $stmt_tk->execute([
+                ':username' => $data['email'], // Dùng email làm username
+                ':password' => $data['password'],
+                ':vai_tro' => $data['vai_tro']
+            ]);
+            $ma_tai_khoan = $this->db->lastInsertId();
+
+            // Bảng 2: Tạo nguoi_dung
+            $sql_nd = "INSERT INTO nguoi_dung (ma_tai_khoan, ho_ten, email, so_dien_thoai, dia_chi, ngay_sinh, gioi_tinh) 
+                       VALUES (:ma_tai_khoan, :ho_ten, :email, :so_dien_thoai, :dia_chi, :ngay_sinh, :gioi_tinh)";
+            $stmt_nd = $this->db->prepare($sql_nd);
+            $stmt_nd->execute([
+                ':ma_tai_khoan' => $ma_tai_khoan,
+                ':ho_ten' => $data['ho_ten'],
+                ':email' => $data['email'],
+                ':so_dien_thoai' => $data['so_dien_thoai'],
+                ':dia_chi' => $data['dia_chi'] ?? null,
+                ':ngay_sinh' => $data['ngay_sinh'] ?? null,
+                ':gioi_tinh' => $data['gioi_tinh'] ?? null
+            ]);
+            $ma_nguoi_dung = $this->db->lastInsertId();
+
+            // 
+            // Bảng 3: Tạo vai trò cụ thể
+            $sql_role = "";
+            switch ($data['vai_tro']) {
+                case 'GiaoVien':
+                    $sql_role = "INSERT INTO giao_vien (ma_giao_vien) VALUES (?)";
+                    break;
+                case 'HocSinh':
+                    $sql_role = "INSERT INTO hoc_sinh (ma_hoc_sinh) VALUES (?)";
+                    break;
+                case 'PhuHuynh':
+                    $sql_role = "INSERT INTO phu_huynh (ma_phu_huynh) VALUES (?)";
+                    break;
+                case 'NhanVienSoGD':
+                    $sql_role = "INSERT INTO nhan_vien_so_gd (ma_nv_so) VALUES (?)";
+                    break;
+                case 'ThiSinh':
+                    $sql_role = "INSERT INTO thi_sinh (ma_nguoi_dung) VALUES (?)";
+                    break;
+            }
+
+            if (!empty($sql_role)) {
+                $stmt_role = $this->db->prepare($sql_role);
+                $stmt_role->execute([$ma_nguoi_dung]);
+            }
+
+            $this->db->commit();
+            return true;
+
+        } catch (PDOException $e) {
+            $this->db->rollBack();
+            error_log("Lỗi createAccount: " . $e->getMessage());
+            
+            // Sửa lỗi "vàng" (tương thích PHP 7)
+            if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+                return "Dữ liệu (Email hoặc SĐT) bị trùng lặp.";
+            }
+            return "Lỗi hệ thống khi tạo tài khoản.";
+        }
+    }
 }
 ?>

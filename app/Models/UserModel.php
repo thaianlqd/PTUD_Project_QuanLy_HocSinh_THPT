@@ -19,37 +19,67 @@ class UserModel {
 
     public function checkLogin($username, $password) {
         if ($this->db === null) return false;
+
         $hashed_password = md5($password);
+
         $sql = "SELECT 
                     tk.ma_tai_khoan, 
                     tk.vai_tro, 
                     nd.ho_ten,
-                    nd.ma_nguoi_dung
+                    nd.ma_nguoi_dung,
+
+                    -- Lấy chức vụ từ giáo viên hoặc quản trị viên
+                    COALESCE(gv.chuc_vu, qtv.chuc_vu) AS chuc_vu,
+
+                    -- Lấy mã lớp của học sinh
+                    hs.ma_lop
                 FROM 
                     tai_khoan AS tk
                 JOIN 
                     nguoi_dung AS nd ON tk.ma_tai_khoan = nd.ma_tai_khoan
+
+                -- Join bảng giáo viên
+                LEFT JOIN 
+                    giao_vien AS gv ON nd.ma_nguoi_dung = gv.ma_giao_vien
+
+                -- Join bảng quản trị viên
+                LEFT JOIN 
+                    quan_tri_vien AS qtv ON nd.ma_nguoi_dung = qtv.ma_qtv
+
+                -- Join bảng học sinh
+                LEFT JOIN
+                    hoc_sinh AS hs ON nd.ma_nguoi_dung = hs.ma_hoc_sinh
+
                 WHERE 
-                    -- Cho phép đăng nhập bằng username, email hoặc SĐT
-                    (tk.username = :username OR nd.email = :username OR nd.so_dien_thoai = :username) 
+                    (tk.username = :username 
+                    OR nd.email = :username 
+                    OR nd.so_dien_thoai = :username)
                     AND tk.password = :password
                     AND tk.trang_thai = 'HoatDong'";
+
         $stmt = $this->db->prepare($sql);
+
         $stmt->execute([
             ':username' => $username,
             ':password' => $hashed_password
         ]);
+
         $user = $stmt->fetch();
+
         if ($user) {
             return [
-                'id' => $user['ma_nguoi_dung'], // ID này là ma_nguoi_dung (dùng cho HocSinh, GiaoVien...)
-                'ma_tai_khoan' => $user['ma_tai_khoan'], // Thêm mã tài khoản
+                'id' => $user['ma_nguoi_dung'],
+                'ma_tai_khoan' => $user['ma_tai_khoan'],
                 'name' => $user['ho_ten'],
-                'role' => $user['vai_tro']
+                'role' => $user['vai_tro'],
+                'chuc_vu' => $user['chuc_vu'],
+                'ma_lop' => $user['ma_lop']
             ];
         }
+
         return false;
     }
+
     
     /**
      * Lấy thông tin cơ bản của Học Sinh (cho dashboard)

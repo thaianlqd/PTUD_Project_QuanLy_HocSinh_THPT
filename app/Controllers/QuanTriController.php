@@ -41,7 +41,7 @@ class QuanTriController extends Controller {
         exit;
     }
 
-    // --- CÁC HÀM XẾP THỜI KHÓA BIỂU (GIỮ NGUYÊN) ---
+    // --- CÁC HÀM XẾP THỜI KHÓA BIỂU (ĐÃ CẬP NHẬT) ---
 
     /**
      * URL: /quantri/xeptkb
@@ -62,22 +62,86 @@ class QuanTriController extends Controller {
 
     /**
      * URL: /quantri/chiTietTkb/1
+     * HOẶC: /quantri/chiTietTkb/1?date=2025-11-20
+     * <-- ĐÃ CẬP NHẬT HOÀN TOÀN VỚI LOGIC HỌC KỲ -->
      */
     public function chiTietTkb($ma_lop = 0) {
         $ma_lop = (int)$ma_lop;
         if ($ma_lop <= 0) {
-            header('Location: ' . BASE_URL . '/quantri/xeptkb'); // Sửa lại ' '
+            header('Location: ' . BASE_URL . '/quantri/xeptkb');
             exit;
         }
 
-        $rangBuoc = $this->tkbModel->getRangBuocLop($ma_lop);
-        if ($rangBuoc['ten_lop'] === 'Không tìm thấy' || $rangBuoc['ten_lop'] === 'Lỗi CSDL') {
+        // --- Logic Xử lý Ngày (Đã có) ---
+        $selected_date_str = $_GET['date'] ?? date('Y-m-d');
+        try {
+            $selected_date = new DateTime($selected_date_str);
+        } catch (Exception $e) {
+            $selected_date = new DateTime();
+        }
+
+        $day_of_week = (int)$selected_date->format('N'); // 1 = T2, ..., 7 = CN
+        $start_of_week = clone $selected_date;
+        $start_of_week->modify('-' . ($day_of_week - 1) . ' days'); // Lùi về Thứ 2
+        
+        $week_dates = [];
+        $week_dates_sql = []; // Mảng ngày để query SQL
+        $current_day_iterator = clone $start_of_week;
+        
+        for ($i = 0; $i < 6; $i++) {
+            $week_dates[] = $current_day_iterator->format('d/m/Y');
+            $week_dates_sql[] = $current_day_iterator->format('Y-m-d'); 
+            $current_day_iterator->modify('+1 day');
+        }
+
+        $prev_week_date = (clone $start_of_week)->modify('-7 days')->format('Y-m-d');
+        $next_week_date = (clone $start_of_week)->modify('+7 days')->format('Y-m-d');
+        $base_url_tkb = BASE_URL . '/quantri/chiTietTkb/' . $ma_lop;
+        $current_date_param = '?date=' . $selected_date->format('Y-m-d');
+        
+        // Lưu lại date param để dùng cho form POST (lưu/xóa)
+        $_SESSION['last_date_param'] = $current_date_param;
+
+        
+        // --- LOGIC MỚI: TÌM HỌC KỲ ---
+        $start_date_sql = $week_dates_sql[0]; // Ngày Thứ 2 của tuần
+        $hoc_ky = $this->tkbModel->getHocKyTuNgay($start_date_sql);
+        
+        $ma_hoc_ky = null;
+        $ten_hoc_ky = "Nghỉ (Ngoài thời gian học kỳ)"; // Mặc định là nghỉ
+
+        if ($hoc_ky) {
+            $ma_hoc_ky = $hoc_ky['ma_hoc_ky'];
+            $ten_hoc_ky = $hoc_ky['ten_hoc_ky'];
+        }
+        // --- KẾT THÚC LOGIC MỚI ---
+
+        // --- Cập nhật các lệnh gọi Model ---
+        $tkbData = [];
+        $rangBuoc = [];
+        // Luôn lấy tên lớp, kể cả khi nghỉ hè
+        $tenLop = $this->tkbModel->getTenLop($ma_lop); 
+
+        if ($tenLop === 'N/A') { // Kiểm tra nếu lớp không tồn tại
              $_SESSION['flash_message'] = ['type' => 'danger', 'message' => "Không tìm thấy thông tin lớp học (ID: $ma_lop)."];
              header('Location: ' . BASE_URL . '/quantri/xeptkb');
              exit;
         }
+        
+        // Chỉ tải TKB nếu chúng ta đang trong 1 học kỳ
+        if ($ma_hoc_ky !== null) {
+            $rangBuoc = $this->tkbModel->getRangBuocLop($ma_lop, $ma_hoc_ky);
+            $tkbData = $this->tkbModel->getChiTietTkbLop($ma_lop, $ma_hoc_ky);
+        } else {
+            // Nếu là nghỉ hè, tự tạo dữ liệu rỗng để View không bị lỗi
+            $rangBuoc = [
+                'ten_lop' => $tenLop,
+                'phong_chinh' => 'N/A', 'gvcn' => 'N/A',
+                'tong_tiet_da_xep' => 0, 'tong_tiet_ke_hoach' => 0,
+                'mon_hoc' => []
+            ];
+        }
 
-        $tkbData = $this->tkbModel->getChiTietTkbLop($ma_lop);
         $phongHocChinhID = $this->tkbModel->getPhongHocChinhID($ma_lop);
         $danhSachTatCaLop = $this->tkbModel->getDanhSachLop(); 
 
@@ -88,8 +152,20 @@ class QuanTriController extends Controller {
             'rang_buoc' => $rangBuoc,
             'tkb_data' => $tkbData,
             'phong_hoc_chinh_id' => $phongHocChinhID,
-            'danh_sach_lop' => $danhSachTatCaLop
+            'danh_sach_lop' => $danhSachTatCaLop,
+            
+            // Dữ liệu ngày tháng
+            'selected_date' => $selected_date->format('Y-m-d'),
+            'week_dates' => $week_dates,
+            'prev_week_link' => $base_url_tkb . '?date=' . $prev_week_date,
+            'next_week_link' => $base_url_tkb . '?date=' . $next_week_date,
+            'current_date_param' => $current_date_param,
+
+            // --- DỮ LIỆU MỚI ---
+            'ma_hoc_ky' => $ma_hoc_ky, // (sẽ là null nếu nghỉ hè)
+            'ten_hoc_ky' => $ten_hoc_ky
         ];
+        
         if (isset($_SESSION['flash_message'])) {
             $data['flash_message'] = $_SESSION['flash_message'];
             unset($_SESSION['flash_message']);
@@ -99,25 +175,35 @@ class QuanTriController extends Controller {
         echo $content;
     }
 
+
     /**
      * URL: /quantri/luuTietHoc (POST)
+     * <-- ĐÃ CẬP NHẬT HOÀN TOÀN VỚI LOGIC HỌC KỲ -->
      */
     public function luuTietHoc() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $ma_lop = filter_input(INPUT_POST, 'ma_lop', FILTER_VALIDATE_INT);
             $thu = filter_input(INPUT_POST, 'thu', FILTER_VALIDATE_INT);
             $tiet = filter_input(INPUT_POST, 'tiet', FILTER_VALIDATE_INT);
+            // --- DÒNG MỚI ---
+            $ma_hoc_ky = filter_input(INPUT_POST, 'ma_hoc_ky', FILTER_VALIDATE_INT);
 
-            if (!$ma_lop || !$thu || !$tiet || $thu < 2 || $thu > 7 || $tiet < 1 || $tiet > 7) {
-                $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Dữ liệu không hợp lệ (lớp, thứ, tiết).'];
-                header('Location: ' . BASE_URL . '/quantri/chiTietTkb/' . ($ma_lop ?? ''));
+            // Tạo link redirect có chứa ngày (lấy từ session đã lưu)
+            $date_param = $_SESSION['last_date_param'] ?? ''; 
+            $redirect_url = BASE_URL . '/quantri/chiTietTkb/' . ($ma_lop ?? '') . $date_param;
+
+
+            if (!$ma_lop || !$thu || !$tiet || !$ma_hoc_ky) { // <-- Thêm check !$ma_hoc_ky
+                $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Dữ liệu không hợp lệ (lớp, học kỳ, thứ, tiết).'];
+                header('Location: ' . $redirect_url);
                 exit;
             }
 
             if (isset($_POST['delete']) && $_POST['delete'] == '1') {
-                $success = $this->tkbModel->xoaTietHoc($ma_lop, $thu, $tiet);
+                // --- CẬP NHẬT HÀM ---
+                $success = $this->tkbModel->xoaTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet);
                 $_SESSION['flash_message'] = $success ? ['type' => 'success', 'message' => 'Đã xóa tiết học.'] : ['type' => 'danger', 'message' => 'Xóa thất bại.'];
-                header('Location: ' . BASE_URL . '/quantri/chiTietTkb/' . $ma_lop);
+                header('Location: ' . $redirect_url);
                 exit;
             }
 
@@ -125,29 +211,35 @@ class QuanTriController extends Controller {
                 $ma_phan_cong = filter_input(INPUT_POST, 'ma_phan_cong', FILTER_VALIDATE_INT);
                 if (!$ma_phan_cong) {
                     $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Vui lòng chọn Môn học.'];
-                    header('Location: ' . BASE_URL . '/quantri/chiTietTkb/' . $ma_lop);
+                    header('Location: ' . $redirect_url);
                     exit;
                 }
                 
-                $kiemTra = $this->tkbModel->kiemTraRangBuoc($ma_lop, $thu, $tiet, $ma_phan_cong);
+                // --- CẬP NHẬT HÀM ---
+                $kiemTra = $this->tkbModel->kiemTraRangBuoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong);
+                
                 if ($kiemTra !== true) {
                     $_SESSION['flash_message'] = ['type' => 'danger', 'message' => "Không thể lưu: " . $kiemTra];
-                    header('Location: ' . BASE_URL . '/quantri/chiTietTkb/' . $ma_lop);
+                    header('Location: ' . $redirect_url);
                     exit;
                 }
 
-                $success = $this->tkbModel->luuTietHoc($ma_lop, $thu, $tiet, $ma_phan_cong);
+                // --- CẬP NHẬT HÀM ---
+                $success = $this->tkbModel->luuTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong);
                 $_SESSION['flash_message'] = $success ? ['type' => 'success', 'message' => 'Đã lưu tiết học.'] : ['type' => 'danger', 'message' => 'Lưu thất bại.'];
-                header('Location: ' . BASE_URL . '/quantri/chiTietTkb/' . $ma_lop);
+                header('Location: ' . $redirect_url);
                 exit;
             }
         }
+        // Redirect về trang danh sách lớp nếu có lỗi gì đó
         header('Location: ' . BASE_URL . '/quantri/xeptkb');
         exit;
     }
 
+
     /**
      * API: /quantri/getDanhSachMonHocGV/1/2/3 (lop/thu/tiet)
+     * (Hàm này giữ nguyên, không cần thay đổi)
      */
     public function getDanhSachMonHocGV($ma_lop = 0, $thu = 0, $tiet = 0) {
         header('Content-Type: application/json');
@@ -166,11 +258,13 @@ class QuanTriController extends Controller {
             $ma_phan_cong = $item['ma_phan_cong'];
             $ma_phong_du_kien = $item['ma_phong_dac_biet'] ?? $phong_hoc_chinh_id;
             
+            // Kiểm tra GV bận (check TẤT CẢ các học kỳ để cảnh báo)
             $gv_ban_lich = $this->tkbModel->getGVBan($ma_giao_vien);
             $is_gv_ban = isset($gv_ban_lich[$thu][$tiet]);
             
             $is_phong_ban = false;
             if ($ma_phong_du_kien !== null) {
+                // Kiểm tra Phòng bận (check TẤT CẢ các học kỳ để cảnh báo)
                  $phong_ban_lich = $this->tkbModel->getPhongBan($ma_phong_du_kien);
                  $is_phong_ban = isset($phong_ban_lich[$thu][$tiet]);
             }
@@ -341,14 +435,38 @@ class QuanTriController extends Controller {
             echo json_encode(['success' => false, 'message' => is_string($result) ? $result : 'Lỗi không xác định khi xóa.']);
         }
     }
+
+    /**
+     * API MỚI: /quantri/addAccountApi (POST)
+     */
+    public function addAccountApi() {
+        header('Content-Type: application/json');
+        $data = json_decode(file_get_contents('php://input'), true);
+        
+        if (empty($data['email']) || empty($data['password']) || empty($data['ho_ten']) || empty($data['vai_tro']) || empty($data['so_dien_thoai'])) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Vui lòng điền đầy đủ các trường bắt buộc (*).']);
+            return;
+        }
+        
+        $result = $this->accountModel->createAccount($data);
+        
+        if ($result === true) {
+            echo json_encode(['success' => true, 'message' => 'Tạo tài khoản mới thành công!']);
+        } else {
+            http_response_code(400); 
+            echo json_encode(['success' => false, 'message' => $result]);
+        }
+    }
+
+    
     
     
     // ===================================================================
-    // --- HÀM MỚI CHO QUẢN LÝ TUYỂN SINH (HOÀN TOÀN ĐỘC LẬP) ---
+    // --- HÀM CHO QUẢN LÝ TUYỂN SINH (GIỮ NGUYÊN) ---
     // ===================================================================
     
     /**
-     * HIỂN THỊ TRANG QUẢN LÝ TUYỂN SINH
      * URL: /quantri/quanlytuyensinh
      */
     public function quanlytuyensinh() {
@@ -356,14 +474,12 @@ class QuanTriController extends Controller {
         $data = [
             'user_name' => $_SESSION['user_name'] ?? 'Admin',
         ];
-        // Dùng file view bạn đã có
         $content = $this->loadView('QuanTri/quan_ly_tuyen_sinh', $data); 
         echo $content;
     }
 
     /**
-     * API: LẤY DANH SÁCH CÁC TRƯỜNG THPT (cho mục Chỉ Tiêu)
-     * URL: /quantri/getDsTruongApi (GET)
+     * API: /quantri/getDsTruongApi (GET)
      */
     public function getDsTruongApi() {
         header('Content-Type: application/json');
@@ -377,9 +493,7 @@ class QuanTriController extends Controller {
     }
 
     /**
-     * API MỚI: LẤY DANH SÁCH LỚP HỌC (cho mục Lọc Ảo)
-     * URL: /quantri/getDsLopApi (GET)
-     * * *** ĐÃ SỬA: Gọi tuyenSinhModel thay vì tkbModel ***
+     * API MỚI: /quantri/getDsLopApi (GET)
      */
     public function getDsLopApi() {
         header('Content-Type: application/json');
@@ -388,14 +502,12 @@ class QuanTriController extends Controller {
              echo json_encode(['success' => false, 'message' => 'Lỗi server: TuyenSinhModel không khả dụng.']);
              return;
         }
-        // Lấy danh sách lớp (giả sử đang trong năm học 1)
-        $ds_lop = $this->tuyenSinhModel->getDanhSachLop(1); // Sửa $this->tkbModel
+        $ds_lop = $this->tuyenSinhModel->getDanhSachLop(1); 
         echo json_encode(['success' => true, 'data' => $ds_lop]);
     }
     
     /**
-     * API: CẬP NHẬT CHỈ TIÊU TRƯỜNG (HỖ TRỢ BATCH)
-     * URL: /quantri/updateChiTieuApi (POST)
+     * API: /quantri/updateChiTieuApi (POST)
      */
     public function updateChiTieuApi() {
         header('Content-Type: application/json');
@@ -427,8 +539,7 @@ class QuanTriController extends Controller {
     }
 
     /**
-     * API: LẤY DANH SÁCH THÍ SINH (FILTER THEO TRƯỜNG THPT - NV1)
-     * URL: /quantri/getDsThiSinhApi/{ma_truong?} (GET)
+     * API: /quantri/getDsThiSinhApi/{ma_truong?} (GET)
      */
     public function getDsThiSinhApi($ma_truong = null) {
         header('Content-Type: application/json');
@@ -437,8 +548,7 @@ class QuanTriController extends Controller {
     }
 
     /**
-     * API: CẬP NHẬT ĐIỂM THI (HỖ TRỢ BATCH)
-     * URL: /quantri/updateDiemApi (POST)
+     * API: /quantri/updateDiemApi (POST)
      */
     public function updateDiemApi() {
         header('Content-Type: application/json');
@@ -484,8 +594,7 @@ class QuanTriController extends Controller {
     }
     
     /**
-     * API: CHẠY LỌC ẢO VÀ XÉT TUYỂN
-     * URL: /quantri/runLocAoApi (POST)
+     * API: /quantri/runLocAoApi (POST)
      */
     public function runLocAoApi() {
         header('Content-Type: application/json');
@@ -500,8 +609,7 @@ class QuanTriController extends Controller {
     }
     
      /**
-     * API: LẤY KẾT QUẢ SAU KHI LỌC (cho mục Lọc Ảo)
-     * URL: /quantri/getKetQuaLocApi (GET)
+     * API: /quantri/getKetQuaLocApi (GET)
      */
     public function getKetQuaLocApi() {
         header('Content-Type: application/json');
@@ -516,8 +624,7 @@ class QuanTriController extends Controller {
     }
 
     /**
-     * API: LẤY DANH SÁCH THÍ SINH TRÚNG TUYỂN THEO TRƯỜNG (cho lọc ảo chi tiết)
-     * URL: /quantri/getThiSinhTrungTuyenTheoTruongApi/{ma_truong} (GET)
+     * API: /quantri/getThiSinhTrungTuyenTheoTruongApi/{ma_truong} (GET)
      */
     public function getThiSinhTrungTuyenTheoTruongApi($ma_truong = 0) {
         header('Content-Type: application/json');
@@ -532,8 +639,7 @@ class QuanTriController extends Controller {
     }
 
     /**
-     * API: CẬP NHẬT TRẠNG THÁI XÁC NHẬN BATCH
-     * URL: /quantri/capNhatXacNhanApi (POST)
+     * API: /quantri/capNhatXacNhanApi (POST)
      */
     public function capNhatXacNhanApi() {
         header('Content-Type: application/json');
@@ -557,8 +663,7 @@ class QuanTriController extends Controller {
     }
     
     /**
-     * API MỚI: CHỐT DANH SÁCH NHẬP HỌC VÀ CHUYỂN LỚP
-     * URL: /quantri/chotNhapHocApi (POST)
+     * API MỚI: /quantri/chotNhapHocApi (POST)
      */
     public function chotNhapHocApi() {
         header('Content-Type: application/json');

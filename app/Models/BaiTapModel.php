@@ -1,116 +1,71 @@
 <?php
 /**
- * BaiTapModel: Xử lý dữ liệu liên quan đến bài tập và bài nộp
+ * BaiTapModel: Xử lý logic bài tập từ phía HỌC SINH
+ * (Đã nâng cấp DATETIME, Đồng hồ đếm ngược, Tự chấm điểm)
+ * SỬA: Thêm getTrangThaiSauNop; Cải thiện JSON handling.
  */
 class BaiTapModel {
     private $db;
 
     public function __construct() {
-        // Kết nối CSDL (Sửa port/user/pass nếu cần)
         try {
             $dsn = 'mysql:host=127.0.0.1;port=3307;dbname=thpt_manager;charset=utf8mb4';
             $this->db = new PDO($dsn, 'root', '');
-            $this->db->exec("SET NAMES 'utf8mb4'"); // Ép kết nối UTF-8
             $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            error_log('DB Connection failed: ' . $e->getMessage());
             $this->db = null;
-            die("Không thể kết nối CSDL: " . $e->getMessage());
-        }
-    }
-
-     /**
-     * Public getter for DB connection (Dùng cho helper trong Controller)
-     */
-    public function getDb() {
-        return $this->db;
-    }
-
-
-    /**
-     * Lấy mã lớp của học sinh đang đăng nhập
-     */
-    private function getMaLopHocSinh($ma_hoc_sinh) {
-        if ($this->db === null || !$ma_hoc_sinh) return null;
-        try {
-            $stmt = $this->db->prepare("SELECT ma_lop FROM hoc_sinh WHERE ma_hoc_sinh = ?");
-            $stmt->execute([$ma_hoc_sinh]);
-            return $stmt->fetchColumn();
-        } catch (PDOException $e) {
-            error_log("Lỗi getMaLopHocSinh: " . $e->getMessage());
-            return null;
+            die("Không thể kết nối CSDL (BaiTapModel): " . $e->getMessage());
         }
     }
 
     /**
-     * Lấy danh sách bài tập cho học sinh
-     * --- SỬA LỖI MẤT BÀI TẬP (Xóa ma_phan_cong_giao) ---
+     * Lấy mã lớp của học sinh
+     */
+    private function getMaLop($ma_hoc_sinh) {
+        $stmt = $this->db->prepare("SELECT ma_lop FROM hoc_sinh WHERE ma_hoc_sinh = ?");
+        $stmt->execute([$ma_hoc_sinh]);
+        return $stmt->fetchColumn();
+    }
+
+    /**
+     * Lấy danh sách bài tập cho học sinh (ĐÃ NÂNG CẤP)
      */
     public function getDanhSachBaiTap($ma_hoc_sinh) {
-        if ($this->db === null || !$ma_hoc_sinh) return [];
+        if ($this->db === null) return [];
+        $ma_lop = $this->getMaLop($ma_hoc_sinh);
+        if (!$ma_lop) return [];
 
-        $ma_lop = $this->getMaLopHocSinh($ma_hoc_sinh);
-        if (!$ma_lop) {
-             error_log("Không tìm thấy mã lớp cho học sinh ID: " . $ma_hoc_sinh);
-             return [];
-        }
-
-         $sql = "SELECT
-                    bt.ma_bai_tap AS id,
-                    bt.ten_bai_tap AS name,
-                    -- SỬA: Xóa 'AND bt.ma_phan_cong_giao = bpc.ma_phan_cong'
-                    (SELECT mh_inner.ten_mon_hoc
-                     FROM mon_hoc mh_inner
-                     JOIN bang_phan_cong bpc ON mh_inner.ma_mon_hoc = bpc.ma_mon_hoc
-                     WHERE bpc.ma_lop = bt.ma_lop
-                     -- Giả sử bài tập Toán (dựa trên tên) sẽ lấy môn Toán
-                     AND bt.ten_bai_tap LIKE CONCAT('%', mh_inner.ten_mon_hoc, '%')
-                     LIMIT 1
-                    ) AS subject,
-                    bt.ngay_giao AS assignedDate,
-                    bt.han_nop AS dueDate,
-                    CASE
-                        WHEN bn.ma_bai_nop IS NOT NULL THEN
-                            CASE bn.trang_thai
-                                WHEN 'ChamDiem' THEN 'Chờ Chấm'
-                                WHEN 'HoanThanh' THEN IF(bn.ngay_nop > bt.han_nop, 'Hoàn Thành (Trễ)', 'Hoàn Thành')
-                                ELSE IF(bn.ngay_nop > bt.han_nop, 'Đã Nộp (Trễ)', 'Đã Nộp')
-                            END
-                        WHEN bt.han_nop < CURDATE() THEN 'Quá Hạn'
+        // Câu SQL này lấy TẤT CẢ bài tập của lớp
+        // và dùng LEFT JOIN + CASE để xác định trạng thái
+        $sql = "SELECT
+                    bt.ma_bai_tap,
+                    bt.ten_bai_tap,
+                    bt.mo_ta,
+                    bt.han_nop, -- Giờ là DATETIME
+                    bt.ngay_giao,
+                    bt.loai_bai_tap,
+                    bt.file_dinh_kem,
+                    mh.ten_mon_hoc,
+                    
+                    -- Logic trạng thái phức tạp
+                    (CASE
+                        WHEN bn.trang_thai = 'HoanThanh' THEN CONCAT('Hoàn Thành (', bn.diem_so, 'đ)')
+                        WHEN bn.trang_thai = 'DaNop' THEN 'Đã Nộp (Chờ chấm)'
+                        WHEN bt.han_nop < NOW() THEN 'Quá Hạn'
                         ELSE 'Chưa Làm'
-                    END AS status,
-                    CASE bt.loai_bai_tap
-                        WHEN 'TracNghiem' THEN 'multiple-choice'
-                        WHEN 'TuLuan' THEN 'essay'
-                        WHEN 'UploadFile' THEN 'upload-file'
-                        ELSE 'unknown'
-                    END as type,
-                    bt.mo_ta as content, -- Chỉ lấy mo_ta cho danh sách
-                    bt.file_dinh_kem as attachment
+                    END) AS trang_thai_final
+                    
                 FROM bai_tap bt
-                LEFT JOIN bai_nop bn ON bt.ma_bai_tap = bn.ma_bai_tap AND bn.ma_nguoi_dung = :ma_hoc_sinh
+                JOIN mon_hoc mh ON bt.ma_mon_hoc = mh.ma_mon_hoc
+                LEFT JOIN bai_nop bn ON bt.ma_bai_tap = bn.ma_bai_tap AND bn.ma_nguoi_dung = :ma_hs
                 WHERE bt.ma_lop = :ma_lop
-                GROUP BY bt.ma_bai_tap
-                ORDER BY bt.han_nop DESC, bt.ngay_giao DESC";
-
-
+                ORDER BY bt.han_nop DESC";
+        
         try {
             $stmt = $this->db->prepare($sql);
-            $stmt->bindParam(':ma_hoc_sinh', $ma_hoc_sinh, PDO::PARAM_INT);
-            $stmt->bindParam(':ma_lop', $ma_lop, PDO::PARAM_INT);
-            $stmt->execute();
-            $results = $stmt->fetchAll();
-
-             foreach ($results as &$row) {
-                 if ($row['dueDate']) {
-                     $row['dueDate'] = $row['dueDate'] . 'T23:59:59';
-                 }
-                 $row['questions'] = []; // Danh sách không cần câu hỏi
-             }
-             unset($row);
-
-            return $results;
+            $stmt->execute([':ma_hs' => $ma_hoc_sinh, ':ma_lop' => $ma_lop]);
+            return $stmt->fetchAll();
         } catch (PDOException $e) {
             error_log("Lỗi getDanhSachBaiTap: " . $e->getMessage());
             return [];
@@ -118,201 +73,78 @@ class BaiTapModel {
     }
 
     /**
-     * Lấy chi tiết một bài tập (bao gồm câu hỏi nếu là trắc nghiệm)
-     * --- SỬA LỖI MẤT BÀI TẬP (Xóa ma_phan_cong_giao) ---
+     * Lấy chi tiết bài tập (ĐÃ NÂNG CẤP)
+     * Lấy thêm thông tin giờ bắt đầu + thời gian làm bài (nếu là trắc nghiệm)
      */
     public function getChiTietBaiTap($ma_bai_tap, $ma_hoc_sinh) {
-         if ($this->db === null || !$ma_bai_tap || !$ma_hoc_sinh) return null;
+        if ($this->db === null) return null;
+        $ma_lop = $this->getMaLop($ma_hoc_sinh);
 
-         // SỬA SQL: Xóa 'AND bt.ma_phan_cong_giao = bpc.ma_phan_cong'
-         $sql = "SELECT bt.*,
-                    CASE bt.loai_bai_tap
-                        WHEN 'TracNghiem' THEN 'multiple-choice'
-                        WHEN 'TuLuan' THEN 'essay'
-                        WHEN 'UploadFile' THEN 'upload-file'
-                        ELSE 'unknown'
-                    END as type_js,
-                    bttl.de_bai_chi_tiet AS essay_content,
-                    bttn.danh_sach_cau_hoi AS mcq_content, -- Lấy trực tiếp JSON thô
-                    (SELECT mh_inner.ten_mon_hoc
-                     FROM mon_hoc mh_inner
-                     JOIN bang_phan_cong bpc ON mh_inner.ma_mon_hoc = bpc.ma_mon_hoc
-                     WHERE bpc.ma_lop = bt.ma_lop
-                     -- Giả sử bài tập Toán (dựa trên tên) sẽ lấy môn Toán
-                     AND bt.ten_bai_tap LIKE CONCAT('%', mh_inner.ten_mon_hoc, '%')
-                     LIMIT 1
-                    ) AS subject_name
-                 FROM bai_tap bt
-                 LEFT JOIN bai_tap_tu_luan bttl ON bt.ma_bai_tap = bttl.ma_bai_tap AND bt.loai_bai_tap = 'TuLuan'
-                 LEFT JOIN bai_tap_trac_nghiem bttn ON bt.ma_bai_tap = bttn.ma_bai_tap AND bt.loai_bai_tap = 'TracNghiem'
-                 WHERE bt.ma_bai_tap = ?";
+        $sql = "SELECT
+                    bt.ma_bai_tap, bt.ten_bai_tap, bt.mo_ta, bt.han_nop, bt.ngay_giao, bt.loai_bai_tap, bt.file_dinh_kem,
+                    mh.ten_mon_hoc,
+                    -- Lấy nội dung chi tiết từ bảng con
+                    bttn.danh_sach_cau_hoi, 
+                    bttn.thoi_gian_lam_bai,
+                    btl.de_bai_chi_tiet,
+                    -- Lấy thông tin bài nộp (nếu có)
+                    bn.ma_bai_nop,
+                    bn.gio_bat_dau_lam_bai -- (Cột mới cho đồng hồ)
+                FROM bai_tap bt
+                JOIN mon_hoc mh ON bt.ma_mon_hoc = mh.ma_mon_hoc
+                LEFT JOIN bai_tap_trac_nghiem bttn ON bt.ma_bai_tap = bttn.ma_bai_tap
+                LEFT JOIN bai_tap_tu_luan btl ON bt.ma_bai_tap = btl.ma_bai_tap
+                LEFT JOIN bai_nop bn ON bt.ma_bai_tap = bn.ma_bai_tap AND bn.ma_nguoi_dung = :ma_hs
+                WHERE bt.ma_bai_tap = :ma_bt AND bt.ma_lop = :ma_lop";
+        
         try {
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([$ma_bai_tap]);
-            $assignment = $stmt->fetch();
+            $stmt->execute([':ma_bt' => $ma_bai_tap, ':ma_hs' => $ma_hoc_sinh, ':ma_lop' => $ma_lop]);
+            $result = $stmt->fetch();
 
-            if($assignment) {
-                 $assignment['questions'] = []; // Khởi tạo, JS sẽ điền vào
-                 $content_to_use = $assignment['mo_ta']; // Mặc định là mô tả chung
+            if (!$result) return null; // Không tìm thấy
 
-                 // --- SỬA LOGIC PARSE JSON (vJavaScript Parse) ---
-                 // KHÔNG parse JSON ở đây nữa
-                 if ($assignment['type_js'] === 'multiple-choice' && !empty($assignment['mcq_content'])) {
-                     // Chỉ gán content thô. JS sẽ chịu trách nhiệm parse
-                     $content_to_use = $assignment['mcq_content'];
-                 } elseif ($assignment['type_js'] === 'essay' && !empty($assignment['essay_content'])) {
-                      $content_to_use = $assignment['essay_content'];
-                 }
-                 // --- HẾT SỬA LOGIC ---
-
-                 if ($assignment['han_nop']) { $assignment['dueDate'] = $assignment['han_nop'] . 'T23:59:59'; }
-                 $assignment['id'] = $assignment['ma_bai_tap'];
-                 $assignment['name'] = $assignment['ten_bai_tap'];
-                 $assignment['assignedDate'] = $assignment['ngay_giao'];
-                 $assignment['type'] = $assignment['type_js'];
-                 $assignment['subject'] = $assignment['subject_name'] ?? 'N/A';
-                 $assignment['attachment'] = $assignment['file_dinh_kem'];
-                 $assignment['content'] = $content_to_use; // Gán content (có thể là JSON thô)
-
-                 $assignment['status'] = $this->getTrangThaiBaiNopInternal($ma_bai_tap, $ma_hoc_sinh, $assignment['han_nop']);
-
-                 unset($assignment['ma_bai_tap'], $assignment['ten_bai_tap'], $assignment['ngay_giao'], $assignment['han_nop'], $assignment['loai_bai_tap'], $assignment['type_js'], $assignment['essay_content'], $assignment['mcq_content'], $assignment['subject_name'], $assignment['file_dinh_kem'], $assignment['mo_ta']);
-            }
-            return $assignment;
-
+            // Gộp mô tả/nội dung
+            $result['content'] = $result['de_bai_chi_tiet'] ?? $result['danh_sach_cau_hoi'] ?? $result['mo_ta'];
+            $result['da_nop'] = ($result['ma_bai_nop'] !== null);
+            
+            return $result;
         } catch (PDOException $e) {
-             error_log("Lỗi getChiTietBaiTap: " . $e->getMessage());
+            error_log("Lỗi getChiTietBaiTap: " . $e->getMessage());
             return null;
         }
     }
 
     /**
-     * Helper nội bộ để lấy trạng thái bài nộp
+     * HÀM MỚI: Bắt đầu làm bài (Khởi động đồng hồ)
+     * Tạo một bản nháp bài nộp với giờ bắt đầu
      */
-    private function getTrangThaiBaiNopInternal($ma_bai_tap, $ma_hoc_sinh, $han_nop_db) {
-        try {
-            $sql_status = "SELECT trang_thai, ngay_nop FROM bai_nop WHERE ma_bai_tap = ? AND ma_nguoi_dung = ?";
-            $stmt_status = $this->db->prepare($sql_status);
-            $stmt_status->execute([$ma_bai_tap, $ma_hoc_sinh]);
-            $submission_info = $stmt_status->fetch();
-
-            $status = 'Chưa Làm'; // Mặc định
-            $han_nop_ts = $han_nop_db ? strtotime($han_nop_db . ' 23:59:59') : null;
-
-            if ($submission_info) {
-                $trang_thai_nop = $submission_info['trang_thai'];
-                $ngay_nop = $submission_info['ngay_nop'];
-                $is_late = ($han_nop_ts !== null && strtotime($ngay_nop) > $han_nop_ts);
-
-                if ($trang_thai_nop == 'ChamDiem') $status = 'Chờ Chấm';
-                elseif ($trang_thai_nop == 'HoanThanh') $status = $is_late ? 'Hoàn Thành (Trễ)' : 'Hoàn Thành';
-                else $status = $is_late ? 'Đã Nộp (Trễ)' : 'Đã Nộp';
-
-            } elseif ($han_nop_ts !== null && time() > $han_nop_ts) {
-                 $status = 'Quá Hạn';
-            }
-            return $status;
-        } catch (PDOException $e) {
-            error_log("Lỗi getTrangThaiBaiNopInternal: " . $e->getMessage());
-            return 'Lỗi Status';
-        }
-    }
-
-
-    /**
-     * Lưu bài nộp dạng Trắc nghiệm
-     */
-    public function luuBaiNopTracNghiem($ma_bai_tap, $ma_hoc_sinh, $answersJson) {
-        if ($this->db === null) return false;
-        $noi_dung_tra_loi = $answersJson;
-        $ngay_nop = date('Y-m-d H:i:s');
-        $sql = "INSERT INTO bai_nop (ma_bai_tap, ma_nguoi_dung, ngay_nop, trang_thai, noi_dung_tra_loi, lan_nop)
-                VALUES (:ma_bai_tap, :ma_nguoi_dung, :ngay_nop, :trang_thai, :noi_dung, 1)
+    public function batDauLamBai($ma_bai_tap, $ma_hoc_sinh) {
+        $sql = "INSERT INTO bai_nop (ma_bai_tap, ma_nguoi_dung, trang_thai, gio_bat_dau_lam_bai)
+                VALUES (?, ?, 'DaNop', NOW())
                 ON DUPLICATE KEY UPDATE
-                ngay_nop = VALUES(ngay_nop),
-                trang_thai = VALUES(trang_thai),
-                noi_dung_tra_loi = VALUES(noi_dung_tra_loi),
-                lan_nop = lan_nop + 1";
+                    gio_bat_dau_lam_bai = IF(gio_bat_dau_lam_bai IS NULL, NOW(), gio_bat_dau_lam_bai)";
         try {
-            $trang_thai = 'DaNop';
-            $stmt = $this->db->prepare($sql);
-            $stmt->bindParam(':ma_bai_tap', $ma_bai_tap, PDO::PARAM_INT);
-            $stmt->bindParam(':ma_nguoi_dung', $ma_hoc_sinh, PDO::PARAM_INT);
-            $stmt->bindParam(':ngay_nop', $ngay_nop);
-            $stmt->bindParam(':trang_thai', $trang_thai);
-            $stmt->bindParam(':noi_dung', $noi_dung_tra_loi, PDO::PARAM_STR);
-            return $stmt->execute();
+            $this->db->prepare($sql)->execute([$ma_bai_tap, $ma_hoc_sinh]);
+            return true;
         } catch (PDOException $e) {
-            error_log("Lỗi luuBaiNopTracNghiem: " . $e->getMessage()); return false;
+            error_log("Lỗi batDauLamBai: " . $e->getMessage());
+            return false;
         }
     }
 
     /**
-     * Lưu bài nộp dạng Tự Luận
-     */
-    public function luuBaiNopTuLuan($ma_bai_tap, $ma_hoc_sinh, $noi_dung = null, $file_path = null) {
-        if ($this->db === null) return false;
-        $ngay_nop = date('Y-m-d H:i:s');
-        $sql = "INSERT INTO bai_nop (ma_bai_tap, ma_nguoi_dung, ngay_nop, trang_thai, noi_dung_tra_loi, file_dinh_kem, lan_nop)
-                VALUES (:ma_bai_tap, :ma_nguoi_dung, :ngay_nop, :trang_thai, :noi_dung, :file_kem, 1)
-                ON DUPLICATE KEY UPDATE
-                ngay_nop = VALUES(ngay_nop),
-                trang_thai = VALUES(trang_thai),
-                noi_dung_tra_loi = VALUES(noi_dung_tra_loi),
-                file_dinh_kem = VALUES(file_dinh_kem),
-                lan_nop = lan_nop + 1";
-        try {
-             $trang_thai = 'DaNop';
-             $stmt = $this->db->prepare($sql);
-             $stmt->bindParam(':ma_bai_tap', $ma_bai_tap, PDO::PARAM_INT);
-             $stmt->bindParam(':ma_nguoi_dung', $ma_hoc_sinh, PDO::PARAM_INT);
-             $stmt->bindParam(':ngay_nop', $ngay_nop);
-             $stmt->bindParam(':trang_thai', $trang_thai);
-             $noi_dung_param = $noi_dung === null ? null : $noi_dung;
-             $file_path_param = $file_path === null ? null : $file_path;
-             $stmt->bindParam(':noi_dung', $noi_dung_param, PDO::PARAM_STR);
-             $stmt->bindParam(':file_kem', $file_path_param, PDO::PARAM_STR);
-             return $stmt->execute();
-        } catch (PDOException $e) {
-             error_log("Lỗi luuBaiNopTuLuan: " . $e->getMessage()); return false;
-        }
-    }
-
-     /**
-     * Lấy trạng thái bài nộp (Public, có thể gọi từ Controller)
-     */
-    public function getTrangThaiBaiNopPublic($ma_bai_tap, $ma_hoc_sinh) {
-        try {
-            $stmt_han = $this->db->prepare("SELECT han_nop FROM bai_tap WHERE ma_bai_tap = ?");
-            $stmt_han->execute([$ma_bai_tap]);
-            $han_nop_db = $stmt_han->fetchColumn();
-            return $this->getTrangThaiBaiNopInternal($ma_bai_tap, $ma_hoc_sinh, $han_nop_db);
-        } catch (PDOException $e) {
-            error_log("Lỗi getTrangThaiBaiNopPublic: " . $e->getMessage());
-            return 'Lỗi Status';
-        }
-    }
-
-
-    // --- HÀM MỚI ĐỂ XEM LẠI BÀI NỘP ---
-
-    /**
-     * Lấy chi tiết bài ĐÃ NỘP của học sinh
+     * Lấy chi tiết bài ĐÃ NỘP (Dùng cho modal xem lại)
      */
     public function getBaiNopChiTiet($ma_bai_tap, $ma_hoc_sinh) {
-        if ($this->db === null) return null;
+        $sql = "SELECT 
+                    ma_bai_nop, ngay_nop, trang_thai, diem_so, file_dinh_kem, noi_dung_tra_loi, gio_bat_dau_lam_bai 
+                FROM bai_nop 
+                WHERE ma_bai_tap = ? AND ma_nguoi_dung = ?";
         try {
-            $sql = "SELECT 
-                        noi_dung_tra_loi, 
-                        file_dinh_kem, 
-                        ngay_nop, 
-                        diem_so, 
-                        trang_thai 
-                    FROM bai_nop 
-                    WHERE ma_bai_tap = ? AND ma_nguoi_dung = ?";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$ma_bai_tap, $ma_hoc_sinh]);
-            return $stmt->fetch(); // Trả về thông tin bài nộp
+            return $stmt->fetch();
         } catch (PDOException $e) {
             error_log("Lỗi getBaiNopChiTiet: " . $e->getMessage());
             return null;
@@ -320,94 +152,210 @@ class BaiTapModel {
     }
 
     /**
-     * Hủy/Xóa bài đã nộp của học sinh
+     * Hủy bài nộp (Xóa khỏi bảng bai_nop)
      */
     public function huyBaiNop($ma_bai_tap, $ma_hoc_sinh) {
-        if ($this->db === null) {
-             // Thêm return để dừng hàm nếu $db là null
-             error_log("Lỗi huyBaiNop: Kết nối CSDL bị null.");
-             return ['success' => false, 'message' => 'Lỗi kết nối CSDL khi hủy bài.'];
+        $sql = "DELETE FROM bai_nop 
+                WHERE ma_bai_tap = ? AND ma_nguoi_dung = ? AND trang_thai <> 'HoanThanh'";
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_bai_tap, $ma_hoc_sinh]);
+            return $stmt->rowCount() > 0;
+        } catch (PDOException $e) {
+            error_log("Lỗi huyBaiNop: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Lấy trạng thái công khai (dùng sau khi Hủy bài)
+     */
+    public function getTrangThaiBaiNopPublic($ma_bai_tap, $ma_hoc_sinh) {
+         // Phải lấy lại từ DB
+        $stmt_bt = $this->db->prepare("SELECT han_nop FROM bai_tap WHERE ma_bai_tap = ?");
+        $stmt_bt->execute([$ma_bai_tap]);
+        $han_nop = $stmt_bt->fetchColumn();
+        
+        if ($han_nop && (strtotime($han_nop) < time()) ) {
+            return "Quá Hạn";
+        }
+        return "Chưa Làm";
+    }
+
+    /**
+     * HÀM MỚI: Lấy trạng thái sau khi nộp bài (FIX LỖI CSDL)
+     */
+    public function getTrangThaiSauNop($ma_bai_tap, $ma_hoc_sinh) {
+        if ($this->db === null) return 'Lỗi CSDL';
+        $ma_lop = $this->getMaLop($ma_hoc_sinh);
+        if (!$ma_lop) return 'Lỗi lớp';
+
+        $sql = "SELECT
+                    (CASE
+                        WHEN bn.trang_thai = 'HoanThanh' THEN CONCAT('Hoàn Thành (', bn.diem_so, 'đ)')
+                        WHEN bn.trang_thai = 'DaNop' THEN 'Đã Nộp (Chờ chấm)'
+                        WHEN bt.han_nop < NOW() THEN 'Quá Hạn'
+                        ELSE 'Chưa Làm'
+                    END) AS trang_thai_final
+                FROM bai_tap bt
+                LEFT JOIN bai_nop bn ON bt.ma_bai_tap = bn.ma_bai_tap AND bn.ma_nguoi_dung = :ma_hs
+                WHERE bt.ma_bai_tap = :ma_bt AND bt.ma_lop = :ma_lop";
+        
+        try {
+            $stmt = $this->db->prepare($sql);
+            
+            // FIX: Thêm :ma_lop vào mảng execute
+            $stmt->execute([
+                ':ma_hs' => $ma_hoc_sinh, 
+                ':ma_bt' => $ma_bai_tap,
+                ':ma_lop' => $ma_lop // <-- ĐÃ THÊM DÒNG NÀY
+            ]);
+            
+            $result = $stmt->fetchColumn();
+            return $result ?: 'Chưa Làm';
+        } catch (PDOException $e) {
+            error_log("Lỗi getTrangThaiSauNop: " . $e->getMessage());
+            return 'Lỗi CSDL';
+        }
+    }
+
+    /**
+     * Lưu bài tự luận (gõ hoặc upload)
+     */
+    public function luuBaiNopTuLuan($ma_bai_tap, $ma_hoc_sinh, $noi_dung, $file_path) {
+        // Kiểm tra quá hạn (DATETIME)
+        $stmt_han = $this->db->prepare("SELECT han_nop FROM bai_tap WHERE ma_bai_tap = ?");
+        $stmt_han->execute([$ma_bai_tap]);
+        $han_nop = $stmt_han->fetchColumn();
+        if ($han_nop && (strtotime($han_nop) < time())) {
+            // Đã bị JS khóa, nhưng check lại cho chắc
+            return false; 
         }
 
-        // Bắt đầu transaction
-        $this->db->beginTransaction(); // <--- Dòng này hoặc dòng tương tự có thể là dòng 330 theo lỗi báo
-
+        $sql = "INSERT INTO bai_nop (ma_bai_tap, ma_nguoi_dung, noi_dung_tra_loi, file_dinh_kem, trang_thai, ngay_nop)
+                VALUES (?, ?, ?, ?, 'DaNop', NOW())
+                ON DUPLICATE KEY UPDATE
+                    noi_dung_tra_loi = VALUES(noi_dung_tra_loi),
+                    file_dinh_kem = VALUES(file_dinh_kem),
+                    trang_thai = 'DaNop',
+                    ngay_nop = NOW()";
         try {
-            // 1. Kiểm tra xem bài nộp có tồn tại và thuộc về HS này không + Trạng thái
-             $sql_check = "SELECT ma_bai_nop, trang_thai, file_dinh_kem FROM bai_nop WHERE ma_bai_tap = ? AND ma_nguoi_dung = ?";
-             $stmt_check = $this->db->prepare($sql_check); // Dùng $this->db
-             $stmt_check->execute([$ma_bai_tap, $ma_hoc_sinh]);
-             $bai_nop = $stmt_check->fetch();
+            $this->db->prepare($sql)->execute([$ma_bai_tap, $ma_hoc_sinh, $noi_dung, $file_path]);
+            return true;
+        } catch (PDOException $e) {
+            error_log("Lỗi luuBaiNopTuLuan: " . $e->getMessage());
+            return false;
+        }
+    }
 
+    /**
+     * HÀM MỚI: Tự động chấm điểm Trắc nghiệm (SỬA: Cải thiện JSON handling)
+     */
+    public function luuVaChamDiemTracNghiem($ma_bai_tap, $ma_hoc_sinh, $answersJson) {
+        if ($this->db === null) return ['success' => false, 'message' => 'Lỗi CSDL.'];
+        
+        try {
+            // 1. Lấy thông tin bài tập và giờ bắt đầu
+            $sql_info = "SELECT 
+                            bttn.thoi_gian_lam_bai, 
+                            bttn.danh_sach_cau_hoi,
+                            bn.gio_bat_dau_lam_bai
+                         FROM bai_tap bt
+                         JOIN bai_tap_trac_nghiem bttn ON bt.ma_bai_tap = bttn.ma_bai_tap
+                         LEFT JOIN bai_nop bn ON bt.ma_bai_tap = bn.ma_bai_tap AND bn.ma_nguoi_dung = ?
+                         WHERE bt.ma_bai_tap = ?";
+            
+            $stmt_info = $this->db->prepare($sql_info);
+            $stmt_info->execute([$ma_hoc_sinh, $ma_bai_tap]);
+            $info = $stmt_info->fetch();
 
-            if (!$bai_nop) {
-                $this->db->rollBack();
-                return ['success' => false, 'message' => 'Không tìm thấy bài nộp của bạn cho bài tập này.'];
+            if (!$info || !$info['gio_bat_dau_lam_bai']) {
+                return ['success' => false, 'message' => 'Lỗi: Không tìm thấy giờ bắt đầu làm bài.'];
             }
 
-            // 2. Kiểm tra xem bài đã bị chấm điểm hoặc đang chấm chưa
-            if ($bai_nop['trang_thai'] === 'HoanThanh') {
-                $this->db->rollBack();
-                return ['success' => false, 'message' => 'Bài tập đã được chấm điểm, không thể hủy.'];
-            }
-             if ($bai_nop['trang_thai'] === 'ChamDiem') {
-                 $this->db->rollBack();
-                 return ['success' => false, 'message' => 'Bài tập đang được chấm, không thể hủy.'];
-             }
+            // 2. Kiểm tra thời gian
+            $startTime = strtotime($info['gio_bat_dau_lam_bai']);
+            $durationSeconds = (int)$info['thoi_gian_lam_bai'] * 60;
+            $endTime = $startTime + $durationSeconds;
+            $submitTime = time();
 
-             $file_path = $bai_nop['file_dinh_kem']; // Lấy đường dẫn file từ kết quả check
+            // Cho phép trễ 5 giây (do mạng)
+            if ($submitTime > ($endTime + 5)) {
+                // Nộp quá giờ -> Vẫn lưu bài nhưng set 0 điểm
+                $diem_so = 0;
+                $trang_thai_nop = 'HoanThanh'; // Hoàn thành (với 0 điểm)
+                $message = "Bạn đã nộp bài quá giờ! Bài làm không được tính điểm.";
+            } else {
+                // 3. Nộp trong giờ -> Chấm điểm
+                $questionsData = null;
+                try {
+                    $questionsData = json_decode($info['danh_sach_cau_hoi'], true);
+                    if (!$questionsData || !isset($questionsData['questions']) || !is_array($questionsData['questions'])) {
+                        throw new Exception("Cấu trúc JSON không hợp lệ (thiếu 'questions').");
+                    }
+                } catch (Exception $e) {
+                    error_log("Lỗi JSON questions: " . $e->getMessage());
+                    return ['success' => false, 'message' => 'Lỗi: Không thể đọc câu hỏi gốc.'];
+                }
 
-            // 3. Xóa bài nộp trong CSDL
-            $sql_delete = "DELETE FROM bai_nop WHERE ma_bai_nop = ?";
-            $stmt_delete = $this->db->prepare($sql_delete); // Dùng $this->db
-            $deleted = $stmt_delete->execute([$bai_nop['ma_bai_nop']]);
+                $questions = $questionsData['questions'];
+                $userAnswers = json_decode($answersJson, true) ?: [];
+                
+                $totalQuestions = count($questions);
+                $correctCount = 0;
 
-            if ($deleted) {
-                // 4. Nếu xóa CSDL thành công VÀ có file_path, xóa file vật lý
-                if ($file_path) {
-                    $full_path = '../public/' . $file_path;
-                    if (file_exists($full_path)) {
-                        @unlink($full_path);
+                foreach ($questions as $q) {
+                    $questionId = "q" . $q['id'];
+                    $correctAnswer = $q['correct']; // "A", "B"...
+                    $userAnswer = $userAnswers[$questionId] ?? null; // "A", "B"...
+                    
+                    if ($userAnswer === $correctAnswer) {
+                        $correctCount++;
                     }
                 }
-
-                // 5. Lấy trạng thái mới (Chưa làm hay Quá hạn)
-                $sql_get_assignment = "SELECT han_nop FROM bai_tap WHERE ma_bai_tap = ?";
-                $stmt_get_assignment = $this->db->prepare($sql_get_assignment); // Dùng $this->db
-                $stmt_get_assignment->execute([$ma_bai_tap]);
-                $assignment = $stmt_get_assignment->fetch();
-                $newStatus = 'Chưa Làm';
-                // Sửa điều kiện kiểm tra DateTime
-                if ($assignment && $assignment['han_nop'] && (new DateTime()) > (new DateTime($assignment['han_nop'] . ' 23:59:59'))) {
-                    $newStatus = 'Quá Hạn';
-                }
-
-
-                $this->db->commit();
-                // Trả về mảng thay vì boolean đơn thuần
-                return [
-                    'success' => true,
-                    'message' => 'Đã hủy bài nộp thành công!', // Thêm message
-                    'newStatus' => $newStatus
-                ];
-            } else {
-                $this->db->rollBack();
-                 // Trả về mảng lỗi
-                 return ['success' => false, 'message' => 'Không thể xóa bài nộp khỏi CSDL.'];
+                
+                // Tính điểm (thang 10)
+                $diem_so = ($totalQuestions > 0) ? round(($correctCount / $totalQuestions) * 10, 2) : 0;
+                $trang_thai_nop = 'HoanThanh';
+                $message = "Chấm bài thành công!";
             }
+            
+            // 4. Cập nhật bảng bai_nop
+            $sql_update = "UPDATE bai_nop 
+                           SET noi_dung_tra_loi = ?, 
+                               diem_so = ?, 
+                               trang_thai = ?, 
+                               ngay_nop = NOW()
+                           WHERE ma_bai_tap = ? AND ma_nguoi_dung = ?";
+            
+            $this->db->prepare($sql_update)->execute([
+                $answersJson,
+                $diem_so,
+                $trang_thai_nop,
+                $ma_bai_tap,
+                $ma_hoc_sinh
+            ]);
 
+            return ['success' => true, 'message' => $message, 'diem_so' => $diem_so];
+            
         } catch (PDOException $e) {
-            $this->db->rollBack();
-            error_log("Lỗi PDO khi hủy bài nộp (Model): " . $e->getMessage());
-            // Trả về mảng lỗi
-            return ['success' => false, 'message' => 'Lỗi cơ sở dữ liệu khi hủy bài nộp.'];
+            error_log("Lỗi luuVaChamDiemTracNghiem: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Lỗi CSDL khi chấm bài.'];
         } catch (Exception $e) {
-             $this->db->rollBack();
-             error_log("Lỗi khác khi hủy bài nộp (Model): " . $e->getMessage());
-              // Trả về mảng lỗi
-             return ['success' => false, 'message' => 'Đã xảy ra lỗi không mong muốn.'];
+             error_log("Lỗi khác khi chấm bài: " . $e->getMessage());
+             return ['success' => false, 'message' => 'Lỗi định dạng dữ liệu khi chấm bài.'];
         }
+    }
+
+    /**
+     * Lưu bài trắc nghiệm (Hàm cũ - không dùng nữa)
+     */
+    public function luuBaiNopTracNghiem($ma_bai_tap, $ma_hoc_sinh, $answersJson) {
+        // Hàm này đã được thay thế bằng luuVaChamDiemTracNghiem
+        // Nhưng chúng ta vẫn giữ lại để tương thích với controller cũ (nếu có)
+        // và gọi hàm mới
+        $result = $this->luuVaChamDiemTracNghiem($ma_bai_tap, $ma_hoc_sinh, $answersJson);
+        return $result['success'];
     }
 }
 ?>
-
