@@ -55,7 +55,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h3 class="fw-bold text-success"><i class="bi bi-list-task me-2"></i> Danh Sách Tài Khoản</h3>
             <!-- Nút Cấp tài khoản đã bị vô hiệu hóa theo yêu cầu -->
-            <button class="btn btn-primary" disabled title="Chức năng đang phát triển">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createAccountModal">
                 <i class="bi bi-person-plus me-2"></i> Cấp Tài Khoản Mới
             </button>
         </div>
@@ -220,10 +220,58 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted">Chức năng này cần được xây dựng ở một flow riêng (Tạo `tai_khoan` -> Lấy `ma_tai_khoan` -> Tạo `nguoi_dung` -> Tạo vai trò chi tiết `hoc_sinh`/`giao_vien`...).</p>
+                    <form id="createForm">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="createFullName" class="form-label">Họ Tên <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="createFullName" required maxlength="100">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="createPhone" class="form-label">Số Điện Thoại <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="createPhone" required maxlength="15">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="createEmail" class="form-label">Email (Tên Đăng Nhập) <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="createEmail" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="createPassword" class="form-label">Mật khẩu (Tối thiểu 6 ký tự) <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="createPassword" required minlength="6">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="createRole" class="form-label">Vai Trò <span class="text-danger">*</span></label>
+                                <select class="form-select" id="createRole" required>
+                                    <option value="" selected disabled>-- Chọn vai trò --</option>
+                                    <option value="HocSinh">Học Sinh</option>
+                                    <option value="PhuHuynh">Phụ Huynh</option>
+                                    <option value="GiaoVien">Giáo Viên</option>
+                                    <option value="NhanVienSoGD">Nhân Viên Sở GD</option>
+                                    <option value="ThiSinh">Thí Sinh</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="createBirthday" class="form-label">Ngày Sinh</label>
+                                <input type="date" class="form-control" id="createBirthday">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Giới Tính</label>
+                                <select class="form-select" id="createGender">
+                                    <option value="Nam">Nam</option>
+                                    <option value="Nu">Nữ</option>
+                                    <option value="Khac">Khác</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label for="createAddress" class="form-label">Địa chỉ</label>
+                                <input type="text" class="form-control" id="createAddress" placeholder="Nhập địa chỉ...">
+                            </div>
+                        </div>
+                        <div id="createNotification" class="mt-3 text-danger"></div>
+                    </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-success" onclick="handleCreate()">Xác nhận Tạo</button>
                 </div>
             </div>
         </div>
@@ -232,12 +280,13 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Khởi tạo các đối tượng Modal của Bootstrap
-        let editModal, deleteModal;
+        let editModal, deleteModal, createModal; // <-- THÊM createModal
         const BASE_URL = "<?php echo BASE_URL ?? ''; ?>"; // Lấy BASE_URL từ PHP
 
         document.addEventListener('DOMContentLoaded', () => {
             editModal = new bootstrap.Modal(document.getElementById('editAccountModal'));
             deleteModal = new bootstrap.Modal(document.getElementById('deleteAccountModal'));
+            createModal = new bootstrap.Modal(document.getElementById('createAccountModal')); // <-- THÊM DÒNG NÀY
         });
 
         // --- HÀM VALIDATION (Client-side) ---
@@ -447,6 +496,55 @@
             setTimeout(() => {
                  if (el) el.style.display = 'none';
             }, 5000);
+        }
+
+
+        // HÀM MỚI: Xử lý Tạo (Gọi API)
+        async function handleCreate() {
+            const notificationEl = document.getElementById('createNotification');
+            notificationEl.textContent = ''; // Xóa lỗi cũ
+            
+            // Lấy dữ liệu từ form
+            const payload = {
+                ho_ten: document.getElementById('createFullName').value.trim(),
+                so_dien_thoai: document.getElementById('createPhone').value.trim(),
+                email: document.getElementById('createEmail').value.trim(),
+                password: document.getElementById('createPassword').value,
+                vai_tro: document.getElementById('createRole').value,
+                ngay_sinh: document.getElementById('createBirthday').value,
+                gioi_tinh: document.getElementById('createGender').value,
+                dia_chi: document.getElementById('createAddress').value.trim()
+            };
+
+            // Validate cơ bản
+            if (!payload.ho_ten || !payload.so_dien_thoai || !payload.email || !payload.password || !payload.vai_tro) {
+                notificationEl.textContent = 'Vui lòng điền đầy đủ các trường có dấu (*).';
+                return;
+            }
+            if (!validateInput('email', payload.email, 'createNotification')) return;
+            if (!validateInput('password', payload.password, 'createNotification')) return;
+
+            try {
+                const response = await fetch(`${BASE_URL}/quantri/addAccountApi`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    createModal.hide();
+                    showGlobalNotification(result.message, 'success');
+                    // Tải lại trang để thấy tài khoản mới
+                    setTimeout(() => window.location.reload(), 1500); 
+                } else {
+                    notificationEl.textContent = result.message || 'Lỗi không xác định.';
+                }
+            } catch (error) {
+                console.error("Lỗi fetch create:", error);
+                notificationEl.textContent = 'Lỗi kết nối máy chủ. Vui lòng thử lại.';
+            }
         }
 
     </script>

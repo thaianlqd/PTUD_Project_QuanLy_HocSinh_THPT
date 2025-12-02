@@ -10,12 +10,23 @@ class BaiTapController extends Controller {
     private $ma_hoc_sinh; // Lưu mã người dùng (học sinh) đang đăng nhập
 
     public function __construct() {
-        // Kiểm tra xem người dùng đã đăng nhập và có phải là Học Sinh không
-        if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] != 'HocSinh' || !isset($_SESSION['user_id'])) {
-            // Chưa đăng nhập hoặc sai vai trò -> về trang đăng nhập
-            $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'] ?? BASE_URL . '/baitap'; // Lưu lại trang đang truy cập
-            header('Location: ' . BASE_URL . '/auth/index');
-            exit;
+        // (Giả sử bạn đã thêm hàm is_ajax() vào file Controller.php cha)
+        $is_logged_in = isset($_SESSION['user_role']) && 
+                        $_SESSION['user_role'] == 'HocSinh' && 
+                        isset($_SESSION['user_id']);
+
+        if (!$is_logged_in) {
+            if ($this->is_ajax()) { 
+                // Nếu là AJAX, trả về lỗi JSON
+                http_response_code(401); // Unauthorized
+                echo json_encode(['success' => false, 'message' => 'Phiên đăng nhập đã hết hạn. Vui lòng tải lại trang và đăng nhập lại.']);
+                exit;
+            } else { 
+                // Nếu là truy cập web, chuyển hướng
+                $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'] ?? BASE_URL . '/baitap';
+                header('Location: ' . BASE_URL . '/auth/index');
+                exit;
+            }
         }
 
         // Lấy mã người dùng (học sinh) từ session
@@ -24,8 +35,7 @@ class BaiTapController extends Controller {
         // Load BaiTapModel
         $this->baiTapModel = $this->loadModel('BaiTapModel');
         if ($this->baiTapModel === null) {
-            // Có thể hiển thị trang lỗi thân thiện hơn
-            die("Lỗi: Không thể tải tài nguyên cần thiết (BaiTapModel). Vui lòng thử lại sau.");
+            die("Lỗi: Không thể tải tài nguyên cần thiết (BaiTapModel).");
         }
     }
 
@@ -72,6 +82,33 @@ class BaiTapController extends Controller {
              http_response_code(404); // Not Found
              echo json_encode(['success' => false, 'message' => 'Không tìm thấy bài tập hoặc bạn không có quyền truy cập.']);
          }
+    }
+
+    /**
+     * API MỚI: Bắt đầu làm bài trắc nghiệm (Khởi động timer)
+     * URL: /baitap/batDauLamBai/{id} (GET)
+     */
+    public function batDauLamBai($ma_bai_tap_str = '') {
+        header('Content-Type: application/json');
+
+        $ma_bai_tap = filter_var($ma_bai_tap_str, FILTER_VALIDATE_INT);
+
+        if (!$ma_bai_tap) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Mã bài tập không hợp lệ.']);
+            return;
+        }
+
+        $success = $this->baiTapModel->batDauLamBai($ma_bai_tap, $this->ma_hoc_sinh);
+
+        if ($success) {
+            // Lấy lại chi tiết để trả gio_bat_dau mới
+            $details = $this->baiTapModel->getChiTietBaiTap($ma_bai_tap, $this->ma_hoc_sinh);
+            echo json_encode(['success' => true, 'gio_bat_dau' => $details['gio_bat_dau_lam_bai'] ?? NOW()]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Lỗi khởi động bài làm.']);
+        }
     }
 
     // --- API MỚI ĐỂ XEM LẠI/HỦY BÀI NỘP ---
@@ -151,9 +188,8 @@ class BaiTapController extends Controller {
     }
     // --- HẾT API MỚI ---
 
-
     /**
-     * API: Xử lý nộp bài trắc nghiệm
+     * API: Xử lý nộp bài trắc nghiệm (SỬA: Dùng getTrangThaiSauNop)
      */
     public function nopBaiTracNghiem() {
         header('Content-Type: application/json');
@@ -173,19 +209,19 @@ class BaiTapController extends Controller {
             return;
         }
 
-        $success = $this->baiTapModel->luuBaiNopTracNghiem($ma_bai_tap, $this->ma_hoc_sinh, $answersJson);
-
-        if ($success) {
-             $newStatus = $this->baiTapModel->getTrangThaiBaiNopPublic($ma_bai_tap, $this->ma_hoc_sinh);
-            echo json_encode(['success' => true, 'message' => 'Nộp bài trắc nghiệm thành công!', 'newStatus' => $newStatus]);
+        // SỬA: Gọi hàm chấm điểm mới, trả diem_so
+        $result = $this->baiTapModel->luuVaChamDiemTracNghiem($ma_bai_tap, $this->ma_hoc_sinh, $answersJson);
+        if ($result['success']) {
+            $newStatus = $this->baiTapModel->getTrangThaiSauNop($ma_bai_tap, $this->ma_hoc_sinh);
+            echo json_encode(['success' => true, 'message' => $result['message'], 'newStatus' => $newStatus, 'diem_so' => $result['diem_so']]);
         } else {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Có lỗi xảy ra khi lưu bài nộp. Vui lòng thử lại.']);
+            echo json_encode(['success' => false, 'message' => $result['message'] ?? 'Có lỗi xảy ra khi lưu bài nộp. Vui lòng thử lại.']);
         }
     }
 
     /**
-     * API: Xử lý nộp bài tự luận (Gõ trực tiếp)
+     * API: Xử lý nộp bài tự luận (Gõ trực tiếp) (SỬA: Dùng getTrangThaiSauNop)
      */
     public function nopBaiGoTrucTiep() {
          header('Content-Type: application/json');
@@ -213,7 +249,7 @@ class BaiTapController extends Controller {
         $success = $this->baiTapModel->luuBaiNopTuLuan($ma_bai_tap, $this->ma_hoc_sinh, $noi_dung, null);
 
          if ($success) {
-            $newStatus = $this->baiTapModel->getTrangThaiBaiNopPublic($ma_bai_tap, $this->ma_hoc_sinh);
+            $newStatus = $this->baiTapModel->getTrangThaiSauNop($ma_bai_tap, $this->ma_hoc_sinh);
             echo json_encode(['success' => true, 'message' => 'Nộp bài thành công!', 'newStatus' => $newStatus]);
         } else {
             http_response_code(500);
@@ -222,7 +258,7 @@ class BaiTapController extends Controller {
     }
 
     /**
-     * API: Xử lý nộp bài tự luận (Upload file)
+     * API: Xử lý nộp bài tự luận (Upload file) (SỬA: Check quá hạn trước upload; Dùng getTrangThaiSauNop)
      */
     public function nopBaiUpload() {
          header('Content-Type: application/json');
@@ -237,6 +273,20 @@ class BaiTapController extends Controller {
         if (!$ma_bai_tap || !isset($_FILES['file_bai_lam']) || $_FILES['file_bai_lam']['error'] !== UPLOAD_ERR_OK) {
             http_response_code(400);
              echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ hoặc lỗi tải file. Mã lỗi: ' . ($_FILES['file_bai_lam']['error'] ?? 'N/A')]);
+            return;
+        }
+
+        // SỬA: Check quá hạn trước khi xử lý file
+        $assignmentDetails = $this->baiTapModel->getChiTietBaiTap($ma_bai_tap, $this->ma_hoc_sinh);
+        if (!$assignmentDetails) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy bài tập.']);
+            return;
+        }
+        $han_nop = $assignmentDetails['han_nop'];
+        if ($han_nop && strtotime($han_nop) < time()) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Đã quá hạn nộp bài.']);
             return;
         }
 
@@ -272,7 +322,7 @@ class BaiTapController extends Controller {
             $success = $this->baiTapModel->luuBaiNopTuLuan($ma_bai_tap, $this->ma_hoc_sinh, null, $relativePath);
 
              if ($success) {
-                 $newStatus = $this->baiTapModel->getTrangThaiBaiNopPublic($ma_bai_tap, $this->ma_hoc_sinh);
+                 $newStatus = $this->baiTapModel->getTrangThaiSauNop($ma_bai_tap, $this->ma_hoc_sinh);
                 echo json_encode(['success' => true, 'message' => 'Upload và nộp bài thành công!', 'newStatus' => $newStatus]);
             } else {
                  unlink($destination);
@@ -286,21 +336,11 @@ class BaiTapController extends Controller {
         }
     }
 
-     /**
-     * Helper: Lấy trạng thái bài nộp mới nhất sau khi nộp
-     * ĐÃ SỬA: Gọi hàm public trong Model
-     */
-     private function getTrangThaiBaiNop($ma_bai_tap, $ma_hoc_sinh) {
-         // Hàm này đã bị trùng lặp, nhưng ta sẽ gọi hàm public của Model
-         return $this->baiTapModel->getTrangThaiBaiNopPublic($ma_bai_tap, $this->ma_hoc_sinh);
-     }
-
-     // Helper kiểm tra hạn nộp (nếu cần)
-     private function isWithinDueDate($dueDate) {
+    // Helper kiểm tra hạn nộp (nếu cần)
+    private function isWithinDueDate($dueDate) {
          if (!$dueDate) return true; // Nếu không có hạn, luôn trong hạn
          return time() <= strtotime($dueDate); // dueDate đã có T23:59:59
-     }
+    }
 
 }
 ?>
-
