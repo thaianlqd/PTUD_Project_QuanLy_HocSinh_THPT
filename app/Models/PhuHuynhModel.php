@@ -42,9 +42,15 @@ class PhuHuynhModel {
      * (Hiện chưa có bảng 'phu_huynh_hoc_sinh' nên tạm giả định lấy HS có ID=2)
      */
     private function getMaHocSinhCuaPhuHuynh($ma_phu_huynh) {
-        $sql = "SELECT ma_hoc_sinh FROM hoc_sinh WHERE ma_hoc_sinh = 2 LIMIT 1";
+        // Câu lệnh SQL mới: Tìm trong bảng liên kết dựa theo ID phụ huynh đăng nhập
+        $sql = "SELECT ma_hoc_sinh 
+                FROM phu_huynh_hoc_sinh 
+                WHERE ma_phu_huynh = ? 
+                LIMIT 1"; // Tạm thời lấy 1 học sinh đầu tiên tìm thấy
+        
         $stmt = $this->db->prepare($sql);
-        $stmt->execute();
+        $stmt->execute([$ma_phu_huynh]); // Truyền ID thật (ví dụ 20) vào dấu ?
+        
         $this->ma_hoc_sinh_con = $stmt->fetchColumn();
         return $this->ma_hoc_sinh_con;
     }

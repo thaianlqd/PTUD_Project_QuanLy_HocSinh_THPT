@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3307
--- Generation Time: Dec 03, 2025 at 03:21 AM
+-- Generation Time: Dec 03, 2025 at 05:15 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -782,7 +782,8 @@ INSERT INTO `nguoi_dung` (`ma_nguoi_dung`, `ma_tai_khoan`, `ho_ten`, `email`, `s
 (49, 49, 'Phạm Văn D (TS)', 'phamvand@thi.ts', '0844444444', NULL, '2010-07-20', 'Nam'),
 (52, 52, 'thái an', 'ankudo1234@gmail.com', '0914835112', 'điện biên phủ', '2004-02-05', 'Nam'),
 (53, 53, 'nguyễn thái an', 'ankudo1234444@gmail.com', '0877132205', 'điện biên', '2004-02-05', 'Nam'),
-(54, 54, 'Nguyễn Văn Hiệu Trưởng', 'hieutruong@thpt.edu.vn', '0123456000', NULL, NULL, NULL);
+(54, 54, 'Nguyễn Văn Hiệu Trưởng', 'hieutruong@thpt.edu.vn', '0123456000', NULL, NULL, NULL),
+(100, 100, 'Phụ Huynh Test Mới', 'phtest@email.com', '0999999999', NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -971,7 +972,29 @@ CREATE TABLE `phu_huynh` (
 INSERT INTO `phu_huynh` (`ma_phu_huynh`, `nghe_nghiep`, `noi_cong_tac`) VALUES
 (20, 'Kỹ sư', NULL),
 (21, 'Bác sĩ', NULL),
-(22, 'Kinh doanh', NULL);
+(22, 'Kinh doanh', NULL),
+(100, 'Tester Hệ Thống', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `phu_huynh_hoc_sinh`
+--
+
+CREATE TABLE `phu_huynh_hoc_sinh` (
+  `ma_phu_huynh` int(11) NOT NULL,
+  `ma_hoc_sinh` int(11) NOT NULL,
+  `quan_he` varchar(50) DEFAULT 'Phụ huynh'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `phu_huynh_hoc_sinh`
+--
+
+INSERT INTO `phu_huynh_hoc_sinh` (`ma_phu_huynh`, `ma_hoc_sinh`, `quan_he`) VALUES
+(20, 2, 'Bố'),
+(21, 2, 'Mẹ'),
+(100, 17, 'Bố');
 
 -- --------------------------------------------------------
 
@@ -1041,7 +1064,8 @@ INSERT INTO `tai_khoan` (`ma_tai_khoan`, `username`, `password`, `vai_tro`, `tra
 (53, 'ankudo1234444@gmail.com', 'e10adc3949ba59abbe56e057f20f883e', 'HocSinh', 'HoatDong', '2025-11-09'),
 (54, 'bgh_hieutruong', '202cb962ac59075b964b07152d234b70', 'GiaoVien', 'HoatDong', '2025-11-09'),
 (55, 'gv_toan', '202cb962ac59075b964b07152d234b70', 'GiaoVien', 'HoatDong', '2025-11-09'),
-(59, 'hs_10a1_1', '202cb962ac59075b964b07152d234b70', 'HocSinh', 'HoatDong', '2025-11-09');
+(59, 'hs_10a1_1', '202cb962ac59075b964b07152d234b70', 'HocSinh', 'HoatDong', '2025-11-09'),
+(100, 'phuhuynh_test', '202cb962ac59075b964b07152d234b70', 'PhuHuynh', 'HoatDong', '2025-12-03');
 
 -- --------------------------------------------------------
 
@@ -1417,6 +1441,13 @@ ALTER TABLE `phu_huynh`
   ADD PRIMARY KEY (`ma_phu_huynh`);
 
 --
+-- Indexes for table `phu_huynh_hoc_sinh`
+--
+ALTER TABLE `phu_huynh_hoc_sinh`
+  ADD PRIMARY KEY (`ma_phu_huynh`,`ma_hoc_sinh`),
+  ADD KEY `fk_phhs_hocsinh` (`ma_hoc_sinh`);
+
+--
 -- Indexes for table `quan_tri_vien`
 --
 ALTER TABLE `quan_tri_vien`
@@ -1583,7 +1614,7 @@ ALTER TABLE `nam_hoc`
 -- AUTO_INCREMENT for table `nguoi_dung`
 --
 ALTER TABLE `nguoi_dung`
-  MODIFY `ma_nguoi_dung` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=66;
+  MODIFY `ma_nguoi_dung` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=101;
 
 --
 -- AUTO_INCREMENT for table `nguyen_vong`
@@ -1625,7 +1656,7 @@ ALTER TABLE `phong_hoc`
 -- AUTO_INCREMENT for table `tai_khoan`
 --
 ALTER TABLE `tai_khoan`
-  MODIFY `ma_tai_khoan` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=67;
+  MODIFY `ma_tai_khoan` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=101;
 
 --
 -- AUTO_INCREMENT for table `tai_lieu`
@@ -1846,6 +1877,13 @@ ALTER TABLE `phieu_yeu_cau_chinh_sua_diem`
 --
 ALTER TABLE `phu_huynh`
   ADD CONSTRAINT `phu_huynh_ibfk_1` FOREIGN KEY (`ma_phu_huynh`) REFERENCES `nguoi_dung` (`ma_nguoi_dung`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `phu_huynh_hoc_sinh`
+--
+ALTER TABLE `phu_huynh_hoc_sinh`
+  ADD CONSTRAINT `fk_phhs_hocsinh` FOREIGN KEY (`ma_hoc_sinh`) REFERENCES `hoc_sinh` (`ma_hoc_sinh`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_phhs_phuhuynh` FOREIGN KEY (`ma_phu_huynh`) REFERENCES `phu_huynh` (`ma_phu_huynh`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `quan_tri_vien`
