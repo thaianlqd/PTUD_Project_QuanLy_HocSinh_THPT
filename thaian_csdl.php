@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3307
--- Generation Time: Nov 16, 2025 at 06:14 PM
+-- Generation Time: Dec 03, 2025 at 03:21 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -330,7 +330,11 @@ CREATE TABLE `bien_nhan_thanh_toan` (
 INSERT INTO `bien_nhan_thanh_toan` (`ma_bien_nhan`, `ma_hoa_don`, `ngay_lap_bien_nhan`, `noi_dung_thanh_toan`, `trang_thai`) VALUES
 (1, 1, '2025-11-13', 'Thanh toán học phí qua VNPAY. Mã GD: VNP_1763050335', 'DaThanhToan'),
 (2, 4, '2025-11-16', 'Thanh toán học phí qua VNPAY. Mã GD: 15264005', 'DaThanhToan'),
-(3, 3, '2025-11-16', 'Thanh toán học phí qua VNPAY. Mã GD: 15264007', 'DaThanhToan');
+(3, 3, '2025-11-16', 'Thanh toán học phí qua VNPAY. Mã GD: 15264007', 'DaThanhToan'),
+(4, 8, '2025-11-17', 'Thanh toán học phí qua VNPAY. Mã GD: 15265914', 'DaThanhToan'),
+(5, 12, '2025-11-17', 'Thanh toán học phí qua Sepay QR. Mã GD: FT25321903440800', 'DaThanhToan'),
+(6, 19, '2025-12-02', 'Thanh toán học phí qua VNPAY. Mã GD: 15314501', 'DaThanhToan'),
+(7, 15, '2025-12-02', 'Thanh toán học phí qua Sepay QR. Mã GD: FT25336103026453', 'DaThanhToan');
 
 -- --------------------------------------------------------
 
@@ -467,7 +471,7 @@ CREATE TABLE `hoa_don` (
   `so_luong` int(11) DEFAULT NULL,
   `don_gia` decimal(18,2) DEFAULT NULL,
   `thanh_tien` decimal(18,2) GENERATED ALWAYS AS (`so_luong` * `don_gia`) STORED,
-  `hinh_thuc_thanh_toan` enum('TienMat','ChuyenKhoan','TheNganHang') DEFAULT NULL,
+  `hinh_thuc_thanh_toan` enum('TienMat','ChuyenKhoan','TheNganHang','SepayQR') DEFAULT NULL,
   `trang_thai_hoa_don` enum('DaThanhToan','ChuaThanhToan','Huy') DEFAULT 'ChuaThanhToan',
   `ma_giao_dich_ben_thu_3` varchar(100) DEFAULT NULL,
   `ngay_thanh_toan` datetime DEFAULT NULL,
@@ -488,8 +492,18 @@ INSERT INTO `hoa_don` (`ma_hoa_don`, `ma_nguoi_dung`, `ngay_lap_hoa_don`, `so_lu
 (5, 21, '2025-11-16', 1, 2500000.00, NULL, 'ChuaThanhToan', NULL, NULL, 'Học phí Học kỳ 1 (2025-2026)', '2025-12-16', 'ChuaThanhToan'),
 (6, 21, '2025-11-16', 1, 300000.00, NULL, 'ChuaThanhToan', NULL, NULL, 'Tiền quỹ lớp và đồng phục', '2025-12-16', 'ChuaThanhToan'),
 (7, 22, '2025-11-16', 1, 2500000.00, NULL, 'ChuaThanhToan', NULL, NULL, 'Học phí Học kỳ 1 (2025-2026)', '2025-12-16', 'ChuaThanhToan'),
-(8, 20, '2025-11-16', 1, 150000.00, NULL, 'ChuaThanhToan', NULL, NULL, 'Thu tiền học ngoại khóa tháng 11', '2025-11-30', 'ChuaThanhToan'),
-(9, 20, '2025-10-15', 1, 50000.00, NULL, 'ChuaThanhToan', NULL, NULL, 'Thu tiền sổ liên lạc điện tử (Quá hạn)', '2025-11-15', 'ChuaThanhToan');
+(8, 20, '2025-11-16', 1, 150000.00, '', 'DaThanhToan', '15265914', '2025-11-17 12:23:57', 'Thu tiền học ngoại khóa tháng 11', '2025-11-30', NULL),
+(9, 20, '2025-10-15', 1, 50000.00, NULL, 'ChuaThanhToan', NULL, NULL, 'Thu tiền sổ liên lạc điện tử (Quá hạn)', '2025-11-15', 'ChuaThanhToan'),
+(10, 20, '2025-11-17', 1, 5000.00, NULL, 'ChuaThanhToan', NULL, NULL, 'Phí Test QR - Hoá đơn 1', '2025-11-24', ''),
+(11, 20, '2025-11-17', 1, 5000.00, NULL, 'ChuaThanhToan', NULL, NULL, 'Phí Test QR - Hoá đơn 2', '2025-11-24', ''),
+(12, 20, '2025-11-17', 1, 5000.00, 'SepayQR', 'DaThanhToan', 'FT25321903440800', '2025-11-17 16:50:36', 'Phí Test QR - Hoá đơn 3', '2025-11-24', NULL),
+(13, 20, '2025-11-17', 1, 5000.00, NULL, 'ChuaThanhToan', NULL, NULL, 'Phí Test QR - Hoá đơn 4', '2025-11-24', 'ChuaThanhToan'),
+(14, 20, '2025-11-17', 1, 5000.00, NULL, 'ChuaThanhToan', NULL, NULL, 'Phí Test QR - Hoá đơn 5', '2025-11-24', 'ChuaThanhToan'),
+(15, 20, '2025-12-02', 1, 5000.00, 'SepayQR', 'DaThanhToan', 'FT25336103026453', '2025-12-02 12:13:33', 'Phí Test QR - Hóa đơn 1 (Mới)', '2026-01-01', NULL),
+(16, 20, '2025-12-02', 1, 5000.00, NULL, 'ChuaThanhToan', NULL, NULL, 'Phí Test QR - Hóa đơn 2 (Mới)', '2026-01-01', 'ChuaThanhToan'),
+(17, 20, '2025-12-02', 1, 5000.00, NULL, 'ChuaThanhToan', NULL, NULL, 'Phí Test QR - Hóa đơn 3 (Mới)', '2026-01-01', 'ChuaThanhToan'),
+(18, 20, '2025-12-02', 1, 5000.00, NULL, 'ChuaThanhToan', NULL, NULL, 'Phí Test QR - Hóa đơn 4 (Mới)', '2026-01-01', 'ChuaThanhToan'),
+(19, 20, '2025-12-02', 1, 200000.00, '', 'DaThanhToan', '15314501', '2025-12-02 12:11:30', 'Học phí bổ sung (Test 200k)', '2026-01-01', NULL);
 
 -- --------------------------------------------------------
 
@@ -1122,9 +1136,9 @@ CREATE TABLE `tkb_chi_tiet` (
 --
 
 INSERT INTO `tkb_chi_tiet` (`ma_tkb_chi_tiet`, `ma_lop`, `ma_hoc_ky`, `ma_phan_cong`, `thu`, `tiet`, `ma_phong_hoc`, `ngay_tao`) VALUES
-(37, 1, 1, 6, 2, 3, 1, '2025-11-14 02:28:44'),
-(38, 1, 1, 6, 2, 4, 1, '2025-11-14 02:28:50'),
-(39, 1, 1, 5, 3, 1, 1, '2025-11-14 02:28:53');
+(40, 1, 1, 6, 2, 3, 1, '2025-11-17 05:25:51'),
+(41, 1, 1, 6, 2, 4, 1, '2025-11-17 05:25:56'),
+(42, 1, 1, 5, 3, 1, 1, '2025-11-17 05:26:11');
 
 -- --------------------------------------------------------
 
@@ -1503,7 +1517,7 @@ ALTER TABLE `bang_phan_cong`
 -- AUTO_INCREMENT for table `bien_nhan_thanh_toan`
 --
 ALTER TABLE `bien_nhan_thanh_toan`
-  MODIFY `ma_bien_nhan` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `ma_bien_nhan` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `chi_tiet_diem_danh`
@@ -1527,7 +1541,7 @@ ALTER TABLE `diem_thi_tuyen_sinh`
 -- AUTO_INCREMENT for table `hoa_don`
 --
 ALTER TABLE `hoa_don`
-  MODIFY `ma_hoa_don` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `ma_hoa_don` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
 
 --
 -- AUTO_INCREMENT for table `hoc_ky`
@@ -1635,7 +1649,7 @@ ALTER TABLE `tiet_hoc`
 -- AUTO_INCREMENT for table `tkb_chi_tiet`
 --
 ALTER TABLE `tkb_chi_tiet`
-  MODIFY `ma_tkb_chi_tiet` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
+  MODIFY `ma_tkb_chi_tiet` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
 
 --
 -- AUTO_INCREMENT for table `to_hop_mon`
