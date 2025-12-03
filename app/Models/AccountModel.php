@@ -1,6 +1,6 @@
 <?php
 /**
- * AccountModel: Xử lý logic CSDL cho CRUD tài khoản
+ * AccountModel: Xử lý logic CSDL cho CRUD tài khoảnn
  */
 class AccountModel {
     private $db;
