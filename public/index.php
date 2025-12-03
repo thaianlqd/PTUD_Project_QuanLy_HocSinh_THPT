@@ -1,9 +1,19 @@
 <?php
 session_start();
 
-// ĐỊNH NGHĨA BASE URL (Sửa GD_Full_ChucNang nếu tên thư mục của bạn khác)
-// define('BASE_URL', 'http://localhost:88/GD_Full_ChucNang/public'); // <--- SỬA DÒNG NÀY
-define('BASE_URL', 'https://unentwined-johanne-biasedly.ngrok-free.dev/GD_Full_ChucNang/public');
+// --- CẤU HÌNH TỰ ĐỘNG (AUTO CONFIG) ---
+// 1. Tự động lấy giao thức (http hoặc https)
+$protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https://" : "http://";
+
+// 2. Tự động lấy domain (localhost:88 hoặc ...ngrok-free.app)
+$host = $_SERVER['HTTP_HOST'];
+
+// 3. Đường dẫn thư mục gốc (ĐÃ SỬA CHUẨN)
+// Phải bao gồm cả 2 cấp thư mục thì link mới chạy đúng
+$rootFolder = '/PTUD_Project_QLHS_THPT/PTUD_Project_QuanLy_HocSinh_THPT/public';
+
+// 4. Định nghĩa BASE_URL
+define('BASE_URL', $protocol . $host . $rootFolder);
 
 // Tải các file lõi của ứng dụng
 require_once '../app/Core/App.php';
