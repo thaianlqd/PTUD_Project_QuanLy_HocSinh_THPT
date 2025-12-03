@@ -6,13 +6,33 @@ class DiemDanhHSModel {
     private $db;
 
     public function __construct() {
-        try {
-            $dsn = 'mysql:host=127.0.0.1;port=3307;dbname=thpt_manager;charset=utf8mb4';
-            $this->db = new PDO($dsn, 'root', '');
-            $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            $this->db = null;
+        // Danh sách các port cần thử (Ưu tiên 3307 trước, nếu lỗi thì thử 3306)
+        $ports = [3307, 3306]; 
+        $connected = false;
+
+        foreach ($ports as $port) {
+            try {
+                $dsn = "mysql:host=127.0.0.1;port=$port;dbname=thpt_manager;charset=utf8mb4";
+                $this->db = new PDO($dsn, 'root', '');
+                
+                // Cấu hình PDO chuẩn
+                $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+                
+                // QUAN TRỌNG: Để true để dùng lại được tham số (ví dụ :username dùng 3 lần)
+                $this->db->setAttribute(PDO::ATTR_EMULATE_PREPARES, true); 
+                
+                $this->db->exec("SET NAMES 'utf8mb4'");
+                
+                $connected = true;
+                break; 
+            } catch (PDOException $e) {
+                continue;
+            }
+        }
+
+        if (!$connected) {
+            die("Lỗi: Không thể kết nối CSDL (Port 3306/3307). Kiểm tra XAMPP.");
         }
     }
 
