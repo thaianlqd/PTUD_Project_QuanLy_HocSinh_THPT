@@ -219,5 +219,155 @@ class GiaoVienBaiTapModel {
             return 0;
         }
     }
+
+    // --- THÊM VÀO CUỐI FILE GiaoVienBaiTapModel.php ---
+
+    /**
+     * Lấy dữ liệu biểu đồ Cột: Số lượng bài nộp theo từng lớp
+     */
+    public function getChartNopBai($gv_id) {
+        if ($this->db === null) return [];
+        
+        // Logic: Lấy các lớp GV dạy -> Đếm tổng bài đã nộp của HS lớp đó
+        $sql = "SELECT l.ten_lop, COUNT(bn.ma_bai_nop) as so_luong_nop
+                FROM bang_phan_cong bpc
+                JOIN lop_hoc l ON bpc.ma_lop = l.ma_lop
+                -- Join để lấy bài tập do chính GV này giao
+                LEFT JOIN bai_tap bt ON bpc.ma_lop = bt.ma_lop AND bt.ma_giao_vien = bpc.ma_giao_vien
+                LEFT JOIN bai_nop bn ON bt.ma_bai_tap = bn.ma_bai_tap
+                WHERE bpc.ma_giao_vien = ?
+                GROUP BY l.ten_lop";
+                
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$gv_id]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Lấy dữ liệu biểu đồ Tròn: Tỉ lệ điểm danh
+     */
+    
+    
+    // Đếm tổng số phiên đã tạo
+    public function getPhienDiemDanhCount($gv_id) {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM phien_diem_danh WHERE ma_giao_vien = ?");
+        $stmt->execute([$gv_id]);
+        return $stmt->fetchColumn() ?? 0;
+    }
+
+    /**
+     * Tính tỷ lệ nộp bài trung bình của tất cả các lớp
+     * Công thức: (Tổng số bài đã nộp / Tổng số bài phải nộp) * 100
+     */
+    public function getTyLeNopBaiTB($gv_id) {
+        if ($this->db === null) return 0;
+
+        // 1. Đếm tổng số bài ĐÃ NỘP (Actual)
+        $sqlActual = "SELECT COUNT(*) FROM bai_nop bn 
+                      JOIN bai_tap bt ON bn.ma_bai_tap = bt.ma_bai_tap 
+                      WHERE bt.ma_giao_vien = ?";
+        $stmt1 = $this->db->prepare($sqlActual);
+        $stmt1->execute([$gv_id]);
+        $actual = $stmt1->fetchColumn() ?? 0;
+
+        // 2. Đếm tổng số bài PHẢI NỘP (Expected)
+        // (Tổng sĩ số của các lớp được giao bài)
+        $sqlExpected = "SELECT SUM(lh.si_so) 
+                        FROM bai_tap bt 
+                        JOIN lop_hoc lh ON bt.ma_lop = lh.ma_lop 
+                        WHERE bt.ma_giao_vien = ?";
+        $stmt2 = $this->db->prepare($sqlExpected);
+        $stmt2->execute([$gv_id]);
+        $expected = $stmt2->fetchColumn() ?? 0;
+
+        // 3. Tính phần trăm
+        if ($expected > 0) {
+            return round(($actual / $expected) * 100, 1); // Làm tròn 1 chữ số thập phân
+        }
+        return 0; // Chưa giao bài nào thì là 0%
+    }
+
+    // --- BỔ SUNG CÁC HÀM HIỂN THỊ DASHBOARD ---
+
+    /**
+     * 1. Lấy tên môn học mà giáo viên đang dạy (để hiện ở Profile)
+     */
+    public function getMonGiangDay($user_id) {
+        if ($this->db === null) return "Chưa phân công";
+        
+        // Lấy tên môn từ bảng phân công. LIMIT 1 để lấy 1 môn đại diện nếu dạy nhiều môn
+        $sql = "SELECT mh.ten_mon_hoc 
+                FROM bang_phan_cong bpc 
+                JOIN mon_hoc mh ON bpc.ma_mon_hoc = mh.ma_mon_hoc 
+                WHERE bpc.ma_giao_vien = ? 
+                LIMIT 1";
+                
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$user_id]);
+        $result = $stmt->fetch();
+        
+        return $result['ten_mon_hoc'] ?? 'Giáo Viên Bộ Môn';
+    }
+
+    /**
+     * 2. Lấy danh sách tên các lớp đang phụ trách (để hiện badge 10A1, 10A2...)
+     */
+    public function getDanhSachLop($user_id) {
+        if ($this->db === null) return [];
+
+        $sql = "SELECT DISTINCT lh.ten_lop
+                FROM bang_phan_cong bpc
+                JOIN lop_hoc lh ON bpc.ma_lop = lh.ma_lop
+                WHERE bpc.ma_giao_vien = ?
+                ORDER BY lh.ten_lop ASC";
+                
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$user_id]);
+        
+        // PDO::FETCH_COLUMN giúp trả về mảng 1 chiều: ['10A1', '10A2', ...] thay vì mảng kết hợp
+        return $stmt->fetchAll(PDO::FETCH_COLUMN); 
+    }
+
+    /**
+     * 3. SỬA LẠI HÀM getChartDiemDanh (Lưu ý tên cột)
+     * Trong CSDL thường cột trạng thái là `trang_thai` chứ không phải `trang_thai_diem_danh`
+     * Bạn kiểm tra lại CSDL nhé, dưới đây mình để là `trang_thai` cho chuẩn.
+     */
+    /**
+     * 3. SỬA LẠI HÀM getChartDiemDanh (Fix lỗi Column not found)
+     */
+    public function getChartDiemDanh($gv_id) {
+        if ($this->db === null) return ['CoMat' => 0, 'Vang' => 0];
+
+        // SỬA: Đổi 'trang_thai' thành 'trang_thai_diem_danh'
+        $sql = "SELECT ct.trang_thai_diem_danh, COUNT(*) as so_luong
+                FROM phien_diem_danh p
+                JOIN chi_tiet_diem_danh ct ON p.ma_phien = ct.ma_phien
+                WHERE p.ma_giao_vien = ?
+                GROUP BY ct.trang_thai_diem_danh";
+                
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$gv_id]);
+        
+        $data = ['CoMat' => 0, 'Vang' => 0];
+        foreach ($stmt->fetchAll() as $row) {
+            // SỬA: Lấy đúng key từ kết quả trả về
+            $status = strtolower($row['trang_thai_diem_danh']);
+            
+            // Logic kiểm tra (Lưu ý: check kỹ xem trong DB lưu là 'co_mat' hay 'CoMat')
+            if ($status == 'co_mat' || $status == 'comat' || $status == 'có mặt') {
+                $data['CoMat'] += $row['so_luong'];
+            } else {
+                // Gom tất cả các trạng thái khác (vắng có phép, không phép...) vào nhóm Vắng
+                $data['Vang'] += $row['so_luong'];
+            }
+        }
+        return $data;
+    }
+
+
+    
+
+
 }
 ?>

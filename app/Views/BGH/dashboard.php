@@ -3,189 +3,321 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - BGH | THPT Manager</title>
+    <title>Dashboard Tổng Hợp | THPT Manager</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: 'Roboto', sans-serif; background-color: #F0F8FF; }
-        .sidebar { width: 300px; min-width: 300px; transition: transform 0.3s ease; position: fixed; height: 100vh; overflow-y: auto; z-index: 1000; background: white; box-shadow: 2px 0 10px rgba(0,0,0,0.1); }
-        .main-content { margin-left: 300px; transition: margin-left 0.3s ease; min-height: 100vh; padding: 1rem; }
-        .profile-section { height: 200px; padding: 1rem; border-bottom: 1px solid #dee2e6; text-align: center; }
-        .nav-link { border-radius: 8px; margin-bottom: 0.25rem; transition: background 0.3s; color: #17a2b8; }
-        .nav-link:hover { background-color: #D1ECF1; }
-        .card { border: none; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); height: 100%; display: flex; flex-direction: column; }
-        .card-body { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; padding: 1.5rem; }
-        .row { --bs-gutter-x: 1rem; }
-        .chart-container { position: relative; height: 300px; width: 100%; }
-        .table { font-size: 0.9rem; }
-        .table th, .table td { padding: 0.75rem 0.5rem; vertical-align: middle; }
-        .card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
-        .diem-cu { text-decoration: line-through; color: #dc3545; }
-        .diem-moi { color: #198754; font-weight: bold; font-size: 1.1em; }
-        /* (... các style khác của bạn ...) */
+        body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: #f0f2f5; }
+        
+        /* Sidebar */
+        .sidebar { width: 280px; position: fixed; height: 100vh; background: #fff; z-index: 1000; box-shadow: 2px 0 10px rgba(0,0,0,0.05); }
+        .main-content { margin-left: 280px; padding: 25px; transition: 0.3s; }
+        
+        /* Profile Section Multi-Color */
+        .profile-section { padding: 25px; text-align: center; border-bottom: 1px dashed #eee; }
+        /* Nếu là BGH thì nền xanh dương */
+        .role-bgh { background: linear-gradient(180deg, #e3f2fd 0%, #fff 100%); }
+        /* Nếu chỉ là GVCN thì nền xanh lá */
+        .role-gvcn { background: linear-gradient(180deg, #d1e7dd 0%, #fff 100%); }
+        /* Nếu chỉ là GV bộ môn thì nền vàng */
+        .role-gv { background: linear-gradient(180deg, #fff3cd 0%, #fff 100%); }
+
+        .nav-link { color: #555; padding: 12px 20px; font-weight: 500; border-radius: 8px; margin: 5px 10px; transition: 0.2s; }
+        .nav-link:hover, .nav-link.active { background-color: #f8f9fa; color: #000; font-weight: bold; }
+        
+        /* Tabs Styling */
+        .nav-tabs .nav-link { border: none; font-weight: 600; color: #6c757d; padding: 12px 25px; }
+        .nav-tabs .nav-link.active { background-color: #fff; border-bottom: 3px solid #0d6efd; color: #0d6efd; }
+        .tab-content { background: #fff; padding: 25px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); min-height: 500px; }
+        
+        /* Stats Card */
+        .stat-card { border: none; border-radius: 12px; padding: 20px; height: 100%; box-shadow: 0 2px 4px rgba(0,0,0,0.03); transition: 0.2s; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+        
+        @media (max-width: 991px) { .sidebar { transform: translateX(-100%); } .sidebar.show { transform: translateX(0); } .main-content { margin-left: 0; } }
     </style>
 </head>
 <body>
+
+    <?php
+        // Xác định class màu nền cho profile
+        $profileClass = 'role-gv'; // Mặc định vàng
+        if ($data['is_bgh']) $profileClass = 'role-bgh'; // Xanh dương
+        elseif ($data['is_gvcn']) $profileClass = 'role-gvcn'; // Xanh lá
+    ?>
     <div class="sidebar" id="sidebar">
-        <div class="profile-section">
-            <img src="https://via.placeholder.com/80x80?text=BG" alt="Profile" class="rounded-circle mb-2" style="width: 80px; height: 80px; border: 3px solid #17a2b8;">
-            <h5 class="fw-bold text-info mb-1"><?php echo htmlspecialchars($_SESSION['user_name']); ?></h5>
-            <p class="text-muted mb-0 small">Mã: <?php echo htmlspecialchars($_SESSION['user_id']); ?></p>
-            <p class="text-muted small">Vai Trò: Ban Giám Hiệu</p>
+        <div class="profile-section <?php echo $profileClass; ?>">
+            <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" class="rounded-circle mb-2 border border-3 border-white shadow-sm" width="80">
+            <h6 class="fw-bold mb-1 text-dark"><?php echo htmlspecialchars($data['user_name']); ?></h6>
             
-            <div class="row g-1 mt-2 text-center">
-                <div class="col-4"><small class="text-muted">Yêu Cầu</small><br><strong class="text-info fs-6"><?php echo $data['yeu_cau_count'] ?? 0; ?></strong></div>
-                <div class="col-4"><small class="text-muted">Điểm TB</small><br><strong class="text-success fs-6"><?php echo $data['diem_tb_truong'] ?? 0; ?></strong></div>
-                <div class="col-4"><small class="text-muted">Vắng</small><br><strong class="text-warning fs-6"><?php echo $data['ti_le_vang'] ?? 0; ?>%</strong></div>
+            <div class="d-flex flex-column gap-1 align-items-center mt-2">
+                <?php if($data['is_bgh']): ?>
+                    <span class="badge bg-primary w-100">Ban Giám Hiệu</span>
+                <?php endif; ?>
+                <?php if($data['is_gvcn']): ?>
+                    <span class="badge bg-success w-100">CN Lớp <?php echo $data['cn_info']['ten_lop']; ?></span>
+                <?php endif; ?>
+                <span class="badge bg-warning text-dark border w-100">GV: <?php echo htmlspecialchars($data['gd_mon']); ?></span>
             </div>
         </div>
-        <ul class="nav flex-column px-2">
-            <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-speedometer2 me-2"></i>Tổng Quan</a></li>
-            <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/bgh/duyetdiem"><i class="bi bi-clipboard-check me-2"></i>Xử Lý Yêu Cầu Điểm</a></li>
-            <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-calendar-check me-2"></i>Xem Thời Khóa Biểu</a></li>
-            <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-graph-up me-2"></i>Thống Kê Số Liệu</a></li>
-            <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-printer me-2"></i>In/Tải Tài Liệu</a></li>
-            <li class="nav-item mt-auto p-3 border-top"><a class="nav-link text-danger" href="<?php echo BASE_URL; ?>/auth/logout"><i class="bi bi-box-arrow-right me-2"></i>Đăng Xuất</a></li>
-        </ul>
+        <nav class="nav flex-column mt-3">
+            <a class="nav-link active" href="#"><i class="bi bi-grid-fill me-2"></i> Tổng Quan</a>
+            
+            <?php if($data['is_bgh']): ?>
+                <a class="nav-link text-primary" href="<?php echo BASE_URL; ?>/bgh/duyetdiem"><i class="bi bi-pencil-square me-2"></i> Duyệt Điểm (BGH)</a>
+            <?php endif; ?>
+            
+            <a class="nav-link" href="#lich-day"><i class="bi bi-calendar-check me-2"></i> Lịch Giảng Dạy</a>
+            <a class="nav-link" href="<?php echo BASE_URL; ?>/giaovien/diemdanh"><i class="bi bi-person-check me-2"></i> Điểm Danh</a>
+            <a class="nav-link" href="<?php echo BASE_URL; ?>/giaovien/baitap"><i class="bi bi-file-earmark-text me-2"></i> Bài Tập & Điểm</a>
+            
+            <div class="mt-auto border-top pt-3">
+                <a class="nav-link text-danger" href="<?php echo BASE_URL; ?>/auth/logout"><i class="bi bi-box-arrow-right me-2"></i> Đăng Xuất</a>
+            </div>
+        </nav>
     </div>
 
     <div class="main-content">
-        <nav class="navbar navbar-expand-lg bg-white shadow-sm mb-4 rounded-3 p-2">
-            <div class="container-fluid">
-                <button class="btn btn-outline-info d-lg-none me-2 rounded-pill" id="toggleSidebar">
-                    <i class="bi bi-list"></i> Menu
-                </button>
-                <a class="navbar-brand fw-bold text-info" href="#">THPT Manager - BGH</a>
-                <ul class="navbar-nav ms-auto align-items-center">
-                    <li class="nav-item dropdown">
-                        <a class="dropdown-toggle nav-link p-2" href="#" role="button" data-bs-toggle="dropdown">
-                            <img src="https://via.placeholder.com/32x32?text=BG" alt="Profile" class="rounded-circle me-2" style="width: 32px; height: 32px;">
-                            <span><?php echo htmlspecialchars($_SESSION['user_name']); ?></span>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Cài Đặt</a></li>
-                            <li><a class="dropdown-item text-danger" href="<?php echo BASE_URL; ?>/auth/logout"><i class="bi bi-box-arrow-right me-2"></i>Đăng Xuất</a></li>
-                        </ul>
-                    </li>
-                </ul>
+        <div class="d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded-3 shadow-sm">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-light d-lg-none me-3" id="toggleSidebar"><i class="bi bi-list"></i></button>
+                <span class="fw-bold text-uppercase text-secondary fs-5">
+                    <i class="bi bi-buildings-fill me-2"></i>
+                    <?php echo isset($_SESSION['school_name']) ? $_SESSION['school_name'] : 'THPT MANAGER'; ?>
+                </span>
             </div>
-        </nav>
+            <span class="badge bg-light text-dark border">HK1 - 2025</span>
+        </div>
 
-        <section id="overview" class="mb-5">
-            <h2 class="fw-bold text-info mb-4">Tổng Quan Trường</h2>
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <div class="card h-100">
-                        <div class="card-body d-flex flex-column align-items-center text-center p-4">
-                            <i class="bi bi-clipboard-check fs-1 text-info mb-3"></i>
-                            <h5 class="card-title fw-bold text-info">Yêu Cầu Chỉnh Điểm</h5>
-                            <h3 class="fw-bold text-info mb-1"><?php echo $data['yeu_cau_count'] ?? 0; ?></h3>
-                            <small class="text-muted">Chờ duyệt</small>
+        <ul class="nav nav-tabs" id="dashboardTab" role="tablist">
+            <?php if($data['is_bgh']): ?>
+            <li class="nav-item">
+                <button class="nav-link active" id="bgh-tab" data-bs-toggle="tab" data-bs-target="#tab-bgh" type="button"><i class="bi bi-bank me-2"></i>Quản Lý Trường</button>
+            </li>
+            <?php endif; ?>
+
+            <?php if($data['is_gvcn']): ?>
+            <li class="nav-item">
+                <button class="nav-link <?php echo (!$data['is_bgh']) ? 'active' : ''; ?>" id="cn-tab" data-bs-toggle="tab" data-bs-target="#tab-cn" type="button"><i class="bi bi-star-fill me-2"></i>Lớp Chủ Nhiệm</button>
+            </li>
+            <?php endif; ?>
+
+            <li class="nav-item">
+                <button class="nav-link <?php echo (!$data['is_bgh'] && !$data['is_gvcn']) ? 'active' : ''; ?>" id="gd-tab" data-bs-toggle="tab" data-bs-target="#tab-gd" type="button"><i class="bi bi-book-half me-2"></i>Công Tác Giảng Dạy</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="dashboardTabContent">
+            
+            <?php if($data['is_bgh']): ?>
+            <div class="tab-pane fade show active" id="tab-bgh">
+                <div class="alert alert-primary border-0 d-flex align-items-center p-3 mb-3 rounded-3">
+                    <i class="bi bi-info-circle-fill me-2 fs-4"></i>
+                    <div>Chào mừng Ban Giám Hiệu. Dưới đây là thống kê toàn trường.</div>
+                </div>
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="stat-card border-start border-4 border-warning bg-light">
+                            <h6 class="text-muted small fw-bold">Yêu Cầu Chờ Duyệt</h6>
+                            <h2 class="fw-bold text-dark mb-0"><?php echo $data['bgh_yeu_cau_count']; ?></h2>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card border-start border-4 border-success bg-light">
+                            <h6 class="text-muted small fw-bold">Điểm TB Trường</h6>
+                            <h2 class="fw-bold text-dark mb-0"><?php echo number_format($data['bgh_diem_tb'], 2); ?></h2>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="card h-100">
-                        <div class="card-body d-flex flex-column align-items-center text-center p-4">
-                            <i class="bi bi-graph-up fs-1 text-success mb-3"></i>
-                            <h5 class="card-title fw-bold text-success">Điểm TB Toàn Trường</h5>
-                            <h3 class="fw-bold text-success mb-1"><?php echo $data['diem_tb_truong'] ?? 0; ?></h3>
-                            <small class="text-muted">Học kỳ 1</small>
+                <div class="row g-4">
+                    <div class="col-lg-8">
+                        <div class="stat-card">
+                            <h6 class="fw-bold text-primary mb-3">Biểu Đồ Điểm TB Các Lớp</h6>
+                            <div style="height: 300px;"><canvas id="chartBghBar"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="stat-card">
+                            <h6 class="fw-bold text-primary mb-3">Trạng Thái Yêu Cầu</h6>
+                            <div style="height: 300px; display:flex; justify-content:center;"><canvas id="chartBghPie"></canvas></div>
                         </div>
                     </div>
                 </div>
             </div>
-        </section>
+            <?php endif; ?>
 
-        <section class="mb-5"> ... </section>
-
-        <section class="mb-5">
-            <h3 class="fw-bold text-info mb-4">
-                Danh Sách Yêu Cầu Mới Nhất
-                <a href="<?php echo BASE_URL; ?>/bgh/duyetdiem" class="btn btn-sm btn-outline-info float-end">
-                    Xem tất cả <i class="bi bi-arrow-right-short"></i>
-                </a>
-            </h3>
-            <div class="card">
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover mb-0">
-                            <thead class="table-info">
-                                <tr>
-                                    <th>Học Sinh</th>
-                                    <th>Môn Học</th>
-                                    <th>Điểm Cũ/Mới</th>
-                                    <th>Lý Do</th>
-                                    <th>Trạng Thái</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($data['phieu_moi_nhat'])): ?>
-                                    <tr>
-                                        <td colspan="5" class="text-center p-3 text-muted">Không có phiếu nào chờ duyệt.</td>
-                                    </tr>
-                                <?php else: ?>
-                                    <?php foreach ($data['phieu_moi_nhat'] as $phieu): ?>
+            <?php if($data['is_gvcn']): ?>
+            <div class="tab-pane fade <?php echo (!$data['is_bgh']) ? 'show active' : ''; ?>" id="tab-cn">
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="stat-card border-start border-4 border-success bg-light">
+                            <h6 class="text-muted small fw-bold">Lớp Chủ Nhiệm</h6>
+                            <h2 class="fw-bold text-dark mb-0"><?php echo $data['cn_info']['ten_lop']; ?></h2>
+                            <small>Sĩ số: <?php echo $data['cn_info']['si_so_thuc']; ?></small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card border-start border-4 border-warning bg-light">
+                            <h6 class="text-muted small fw-bold">Tổng Vắng</h6>
+                            <?php 
+                                $tongVang = 0;
+                                foreach($data['cn_hs_list'] as $hs) $tongVang += $hs['so_buoi_vang'];
+                            ?>
+                            <h2 class="fw-bold text-dark mb-0"><?php echo $tongVang; ?></h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-lg-8">
+                        <div class="stat-card">
+                            <h6 class="fw-bold text-success mb-3">Danh Sách Học Sinh Lớp <?php echo $data['cn_info']['ten_lop']; ?></h6>
+                            <div class="table-responsive" style="max-height: 300px;">
+                                <table class="table table-hover table-sm align-middle">
+                                    <thead class="table-light sticky-top"><tr><th>Họ Tên</th><th class="text-center">Vắng</th><th class="text-center">Điểm TB</th><th>Hạnh Kiểm</th></tr></thead>
+                                    <tbody>
+                                        <?php foreach($data['cn_hs_list'] as $hs): ?>
                                         <tr>
-                                            <td><?php echo htmlspecialchars($phieu['ten_hoc_sinh']); ?></td>
-                                            <td><?php echo htmlspecialchars($phieu['ten_mon_hoc']); ?></td>
-                                            <td>
-                                                <span class="diem-cu"><?php echo $phieu['diem_cu']; ?></span>
-                                                <i class="bi bi-arrow-right-short"></i>
-                                                <span class="diem-moi"><?php echo $phieu['diem_de_nghi']; ?></span>
-                                            </td>
-                                            <td><?php echo htmlspecialchars($phieu['ly_do_chinh_sua']); ?></td>
-                                            <td><span class="badge bg-warning">Chờ Duyệt</span></td>
+                                            <td><?php echo htmlspecialchars($hs['ho_ten']); ?></td>
+                                            <td class="text-center"><span class="badge bg-danger"><?php echo $hs['so_buoi_vang'] ?: '-'; ?></span></td>
+                                            <td class="text-center fw-bold text-primary"><?php echo $hs['diem_tb_hoc_ky'] ?? '--'; ?></td>
+                                            <td><?php echo $hs['xep_loai_hanh_kiem'] ?: 'Chưa xếp'; ?></td>
                                         </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </section>
-
-        <section>
-            <h3 class="fw-bold text-info mb-4">Chức Năng BGH</h3>
-            <div class="row g-3">
-                <div class="col-md-3">
-                    <div class="card h-100">
-                        <div class="card-body d-flex flex-column align-items-center text-center p-4">
-                            <i class="bi bi-clipboard-check fs-2 text-info mb-3"></i>
-                            <h5 class="card-title fw-bold">Xử Lý Yêu Cầu Điểm</h5>
-                            <p class="card-text text-muted small">Duyệt/từ chối phiếu.</p>
-                            <a href="<?php echo BASE_URL; ?>/bgh/duyetdiem" class="btn btn-outline-info mt-auto">Duyệt</a>
+                    <div class="col-lg-4">
+                        <div class="stat-card">
+                            <h6 class="fw-bold text-success mb-3">Tỷ Lệ Hạnh Kiểm</h6>
+                            <div style="height: 300px; display:flex; justify-content:center;"><canvas id="chartCnHk"></canvas></div>
                         </div>
                     </div>
                 </div>
+            </div>
+            <?php endif; ?>
+
+            <div class="tab-pane fade <?php echo (!$data['is_bgh'] && !$data['is_gvcn']) ? 'show active' : ''; ?>" id="tab-gd">
+                
+                <div class="d-flex justify-content-end mb-3">
+                    <a href="<?php echo BASE_URL; ?>/giaovien/baitap" class="btn btn-primary shadow-sm">
+                        <i class="bi bi-plus-circle me-2"></i>Giao Bài Tập Mới
+                    </a>
                 </div>
-        </section>
+
+                <div class="row g-4 mb-4">
+                    <div class="col-md-4">
+                        <div class="stat-card border-start border-4 border-primary bg-light">
+                            <h6 class="text-muted small fw-bold">Lớp Đang Dạy</h6>
+                            <h2 class="fw-bold text-dark mb-0"><?php echo $data['gd_lop_count']; ?></h2>
+                            <div class="mt-2">
+                                <?php if(!empty($data['gd_lop_list'])) foreach($data['gd_lop_list'] as $lop): ?>
+                                    <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 me-1"><?php echo $lop; ?></span>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card border-start border-4 border-warning bg-light">
+                            <h6 class="text-muted small fw-bold">Tỷ Lệ Nộp Bài TB</h6>
+                            <h2 class="fw-bold text-dark mb-0"><?php echo $data['gd_nopbai_pct']; ?>%</h2>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card border-start border-4 border-info bg-light">
+                            <h6 class="text-muted small fw-bold">Phiên Điểm Danh</h6>
+                            <h2 class="fw-bold text-dark mb-0"><?php echo $data['gd_dd_count']; ?></h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-lg-8">
+                        <div class="stat-card">
+                            <h6 class="fw-bold text-primary mb-3">Thống Kê Nộp Bài Theo Lớp</h6>
+                            <div style="height: 300px;"><canvas id="chartGdBar"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="stat-card">
+                            <h6 class="fw-bold text-primary mb-3">Tình Hình Điểm Danh</h6>
+                            <div style="height: 300px; display:flex; justify-content:center;"><canvas id="chartGdPie"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
         </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // SỬA: Xóa các dòng JS hardcode
-        // document.getElementById('topRoleName').textContent = 'Ban Giám Hiệu';
-        
-        // (Phần code của Charts giữ nguyên)
-        new Chart(document.getElementById('pieChart'), {
-            type: 'pie',
-            data: { labels: ['Đã Duyệt', 'Từ Chối', 'Chờ'], datasets: [{ data: [60, 20, 20], backgroundColor: ['#4CAF50', '#F44336', '#FF9800'] }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        document.getElementById('toggleSidebar').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.toggle('show');
         });
-        new Chart(document.getElementById('barChart'), {
+
+        // === CHART LOGIC (Chỉ vẽ nếu có dữ liệu) ===
+
+        // 1. Chart BGH
+        <?php if($data['is_bgh']): ?>
+            // Pie Chart Yêu Cầu
+            <?php 
+                $pieBghData = $data['bgh_chart_tron'] ?? [];
+                $pieBghValues = [$pieBghData['DaDuyet']??0, $pieBghData['TuChoi']??0, $pieBghData['ChoDuyet']??0];
+            ?>
+            new Chart(document.getElementById('chartBghPie'), {
+                type: 'doughnut',
+                data: { labels: ['Đã Duyệt', 'Từ Chối', 'Chờ'], datasets: [{ data: <?php echo json_encode($pieBghValues); ?>, backgroundColor: ['#198754', '#dc3545', '#ffc107'] }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom' } } }
+            });
+
+            // Bar Chart Điểm TB
+            <?php 
+                $barBghData = $data['bgh_chart_cot'] ?? [];
+                $lblBgh = []; $valBgh = [];
+                foreach($barBghData as $i) { $lblBgh[] = $i['ten_lop']; $valBgh[] = $i['diem_tb']; }
+            ?>
+            new Chart(document.getElementById('chartBghBar'), {
+                type: 'bar',
+                data: { labels: <?php echo json_encode($lblBgh); ?>, datasets: [{ label: 'Điểm TB', data: <?php echo json_encode($valBgh); ?>, backgroundColor: '#0d6efd', borderRadius: 5 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 10 } } }
+            });
+        <?php endif; ?>
+
+        // 2. Chart Chủ Nhiệm
+        <?php if($data['is_gvcn']): ?>
+            <?php 
+                $hkData = $data['cn_chart_hk'] ?? [];
+                $hkLabels = array_keys($hkData);
+                $hkValues = array_values($hkData);
+            ?>
+            new Chart(document.getElementById('chartCnHk'), {
+                type: 'doughnut',
+                data: { labels: <?php echo json_encode($hkLabels); ?>, datasets: [{ data: <?php echo json_encode($hkValues); ?>, backgroundColor: ['#198754', '#0dcaf0', '#ffc107', '#dc3545', '#6c757d'] }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom' } } }
+            });
+        <?php endif; ?>
+
+        // 3. Chart Giảng Dạy (Luôn có)
+        <?php 
+            $nopLabels = []; $nopValues = [];
+            foreach($data['gd_chart_nop'] as $i) { $nopLabels[] = $i['ten_lop']; $nopValues[] = $i['so_luong_nop']; }
+            
+            $ddData = $data['gd_chart_dd'] ?? ['CoMat'=>0, 'Vang'=>0];
+        ?>
+        new Chart(document.getElementById('chartGdBar'), {
             type: 'bar',
-            data: { labels: ['Lớp 10A1', '10A2', '11B1', '12C1'], datasets: [{ label: 'Điểm TB', data: [8.5, 7.8, 8.2, 8.0], backgroundColor: '#17a2b8' }] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 10 } } }
+            data: { labels: <?php echo json_encode($nopLabels); ?>, datasets: [{ label: 'Bài nộp', data: <?php echo json_encode($nopValues); ?>, backgroundColor: '#ffc107', borderRadius: 5 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
         });
-        
-        // (Code Toggle Sidebar và Modal giữ nguyên)
-        document.getElementById('toggleSidebar').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('show'));
-        document.getElementById('modalAction').onclick = () => alert('Chức năng này đang được liên kết...');
+
+        new Chart(document.getElementById('chartGdPie'), {
+            type: 'doughnut',
+            data: { labels: ['Có Mặt', 'Vắng'], datasets: [{ data: [<?php echo $ddData['CoMat']; ?>, <?php echo $ddData['Vang']; ?>], backgroundColor: ['#198754', '#dc3545'] }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom' } } }
+        });
     </script>
 </body>
 </html>

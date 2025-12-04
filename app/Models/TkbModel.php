@@ -41,11 +41,12 @@ class TkbModel {
     /**
      * Lấy danh sách lớp học để hiển thị ở bước 1 (Giữ nguyên)
      */
-    public function getDanhSachLop() {
+    /**
+     * Lấy danh sách lớp học (ĐÃ SỬA: Lọc theo trường)
+     */
+    public function getDanhSachLop($school_id = null) {
         if ($this->db === null) return [];
 
-        // Query này đếm tổng số tiết đã xếp (cả 2 học kỳ) để
-        // hiển thị tổng quan trên trang danh sách lớp
         $sql = "SELECT
                     l.ma_lop,
                     l.ten_lop,
@@ -57,12 +58,22 @@ class TkbModel {
                               WHERE bpc_inner.ma_lop = l.ma_lop), 0) AS tong_tiet_ke_hoach
                 FROM lop_hoc l
                 LEFT JOIN phong_hoc p ON l.ma_phong_hoc_chinh = p.ma_phong
-                WHERE l.ma_nam_hoc = ? AND l.trang_thai_lop = 'HoatDong'
-                ORDER BY l.khoi, l.ten_lop";
+                WHERE l.ma_nam_hoc = ? AND l.trang_thai_lop = 'HoatDong'";
+
+        // --- THÊM ĐIỀU KIỆN LỌC TRƯỜNG ---
+        $params = [$this->nam_hoc_hien_tai];
+        
+        if ($school_id) {
+            $sql .= " AND l.ma_truong = ?";
+            $params[] = $school_id;
+        }
+        // ----------------------------------
+
+        $sql .= " ORDER BY l.khoi, l.ten_lop";
 
         try {
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([$this->nam_hoc_hien_tai]);
+            $stmt->execute($params);
             return $stmt->fetchAll();
         } catch (PDOException $e) {
             error_log("Lỗi getDanhSachLop: " . $e->getMessage());

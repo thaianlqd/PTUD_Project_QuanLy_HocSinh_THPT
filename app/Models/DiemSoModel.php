@@ -6,7 +6,7 @@ class DiemSoModel {
     private $db;
 
     public function __construct() {
-        // Danh sách các port cần thử (Ưu tiên 3307 trước, nếu lỗi thì thử 3306)
+        // Kết nối CSDL (Hỗ trợ cả port 3307 và 3306)
         $ports = [3307, 3306]; 
         $connected = false;
 
@@ -18,8 +18,6 @@ class DiemSoModel {
                 // Cấu hình PDO chuẩn
                 $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-                
-                // QUAN TRỌNG: Để true để dùng lại được tham số (ví dụ :username dùng 3 lần)
                 $this->db->setAttribute(PDO::ATTR_EMULATE_PREPARES, true); 
                 
                 $this->db->exec("SET NAMES 'utf8mb4'");
@@ -38,13 +36,10 @@ class DiemSoModel {
 
     /**
      * Lấy danh sách phiếu yêu cầu (ĐÃ NÂNG CẤP CÓ LỌC)
-     * $trang_thai: 'ChoDuyet', 'DaDuyet', 'TuChoi', hoặc 'TatCa'
-     * $limit: Giới hạn số lượng (dùng cho dashboard)
      */
     public function getDanhSachPhieu($trang_thai = 'ChoDuyet', $limit = null) {
         if ($this->db === null) return [];
         
-        // Câu SQL gốc (đã xóa WHERE và ORDER BY)
         $sql = "SELECT 
                     p.ma_phieu,
                     p.tieu_de,
@@ -53,7 +48,8 @@ class DiemSoModel {
                     p.diem_de_nghi,
                     p.ly_do_chinh_sua,
                     p.trang_thai_phieu,
-                    gv_nd.ho_ten AS ten_giao_vien_yeu_cau,
+                    gv_nd.ho_ten AS ten_giao_vien_yeu_cau, -- Alias đúng chuẩn
+                    gv_nd.ho_ten AS ten_giao_vien,         -- Alias dự phòng cho Dashboard
                     hs_nd.ho_ten AS ten_hoc_sinh,
                     mh.ten_mon_hoc,
                     ds.loai_diem
@@ -68,13 +64,12 @@ class DiemSoModel {
         
         $params = [];
 
-        // Thêm WHERE động dựa trên bộ lọc
         if ($trang_thai != 'TatCa') {
-            $sql .= " WHERE p.trang_thai_phieu = ?"; // Thêm điều kiện
+            $sql .= " WHERE p.trang_thai_phieu = ?"; 
             $params[] = $trang_thai;
         }
 
-        $sql .= " ORDER BY p.ngay_lap_phieu DESC"; // Sắp xếp
+        $sql .= " ORDER BY p.ngay_lap_phieu DESC"; 
 
         if ($limit !== null) {
             $sql .= " LIMIT " . (int)$limit;
@@ -82,7 +77,7 @@ class DiemSoModel {
         
         try {
             $stmt = $this->db->prepare($sql);
-            $stmt->execute($params); // Truyền mảng params vào
+            $stmt->execute($params); 
             return $stmt->fetchAll();
         } catch (PDOException $e) {
             error_log("Lỗi getDanhSachPhieu: " . $e->getMessage());
@@ -98,7 +93,7 @@ class DiemSoModel {
 
         $this->db->beginTransaction();
         try {
-            // 1. Lấy thông tin điểm đề nghị và mã điểm từ phiếu
+            // 1. Lấy thông tin
             $stmt_get = $this->db->prepare("SELECT ma_diem, diem_de_nghi FROM phieu_yeu_cau_chinh_sua_diem WHERE ma_phieu = ? AND trang_thai_phieu = 'ChoDuyet'");
             $stmt_get->execute([$ma_phieu]);
             $phieu = $stmt_get->fetch();
@@ -108,13 +103,10 @@ class DiemSoModel {
                 return ['success' => false, 'message' => 'Phiếu không tồn tại hoặc đã được duyệt.'];
             }
             
-            $ma_diem = $phieu['ma_diem'];
-            $diem_moi = $phieu['diem_de_nghi'];
-
-            // 2. Cập nhật điểm số trong bảng diem_so
+            // 2. Cập nhật điểm
             $sql_update_diem = "UPDATE diem_so SET diem_so = ? WHERE ma_diem = ?";
             $stmt_update_diem = $this->db->prepare($sql_update_diem);
-            $stmt_update_diem->execute([$diem_moi, $ma_diem]);
+            $stmt_update_diem->execute([$phieu['diem_de_nghi'], $phieu['ma_diem']]);
 
             // 3. Cập nhật trạng thái phiếu
             $sql_update_phieu = "UPDATE phieu_yeu_cau_chinh_sua_diem SET
@@ -127,11 +119,9 @@ class DiemSoModel {
 
             // 4. Commit
             $this->db->commit();
-            
             return ['success' => true, 'message' => 'Đã duyệt và cập nhật điểm thành công.'];
 
         } catch (PDOException $e) {
-            // --- SỬA LỖI 2: Viết liền lại ---
             $this->db->rollBack();
             error_log("Lỗi duyetPhieu: " . $e->getMessage());
             return ['success' => false, 'message' => 'Lỗi hệ thống khi cập nhật CSDL.'];
@@ -166,45 +156,75 @@ class DiemSoModel {
             }
 
         } catch (PDOException $e) {
-            // --- SỬA LỖI 3: Viết liền lại ---
             error_log("Lỗi tuChoiPhieu: " . $e->getMessage());
             return ['success' => false, 'message' => 'Lỗi hệ thống khi cập nhật CSDL.'];
         }
     }
 
+    // --- CÁC HÀM CHO DASHBOARD BGH (Đã bổ sung đầy đủ) ---
 
-    // ... (Thêm vào cuối file DiemSoModel.php)
-
-    /**
-     * Lấy số phiếu đang chờ duyệt (cho Dashboard BGH)
-     */
     public function getPhieuChoDuyetCount() {
         if ($this->db === null) return 0;
         try {
-            $stmt = $this->db->prepare("SELECT COUNT(*) FROM phieu_yeu_cau_chinh_sua_diem WHERE trang_thai_phieu = 'ChoDuyet'");
-            $stmt->execute();
+            $stmt = $this->db->query("SELECT COUNT(*) FROM phieu_yeu_cau_chinh_sua_diem WHERE trang_thai_phieu = 'ChoDuyet'");
             return $stmt->fetchColumn() ?? 0;
         } catch (PDOException $e) {
-            error_log("Lỗi getPhieuChoDuyetCount: " . $e->getMessage());
             return 0;
         }
     }
 
-    /**
-     * Lấy điểm TB toàn trường (cho Dashboard BGH)
-     */
     public function getDiemTBToanTruong() {
         if ($this->db === null) return 0.0;
         try {
-            // (Đây là logic giả định, bạn có thể sửa lại)
-            $stmt = $this->db->prepare("SELECT AVG(diem_so) FROM diem_so WHERE loai_diem = 'DiemHocKy'");
-            $stmt->execute();
-            $avg = $stmt->fetchColumn() ?? 0.0;
-            return round($avg, 1); // Làm tròn 1 chữ số
+            // Lấy trung bình cộng tất cả các đầu điểm (hoặc sửa thành DiemHocKy nếu muốn)
+            $stmt = $this->db->query("SELECT AVG(diem_so) FROM diem_so"); 
+            return round($stmt->fetchColumn() ?? 0, 2);
         } catch (PDOException $e) {
-            error_log("Lỗi getDiemTBToanTruong: " . $e->getMessage());
             return 0.0;
         }
+    }
+
+    /**
+     * [MỚI] Dữ liệu cho Biểu đồ Tròn: Tỉ lệ trạng thái phiếu
+     */
+    public function getChartYeuCau() {
+        if ($this->db === null) return ['ChoDuyet' => 0, 'DaDuyet' => 0, 'TuChoi' => 0];
+        
+        $sql = "SELECT trang_thai_phieu, COUNT(*) as so_luong 
+                FROM phieu_yeu_cau_chinh_sua_diem 
+                GROUP BY trang_thai_phieu";
+        $stmt = $this->db->query($sql);
+        
+        $data = ['ChoDuyet' => 0, 'DaDuyet' => 0, 'TuChoi' => 0];
+        foreach ($stmt->fetchAll() as $row) {
+            $data[$row['trang_thai_phieu']] = $row['so_luong'];
+        }
+        return $data;
+    }
+
+    /**
+     * [MỚI] Dữ liệu cho Biểu đồ Cột: Top 5 lớp có điểm TB cao nhất
+     */
+    public function getChartDiemLop($school_id = null) {
+        if ($this->db === null) return [];
+
+        $sql = "SELECT l.ten_lop, AVG(ds.diem_so) as diem_tb
+                FROM diem_so ds
+                JOIN ket_qua_hoc_tap kq ON ds.ma_ket_qua_hoc_tap = kq.ma_ket_qua_hoc_tap
+                JOIN hoc_sinh hs ON kq.ma_nguoi_dung = hs.ma_hoc_sinh
+                JOIN lop_hoc l ON hs.ma_lop = l.ma_lop
+                WHERE l.trang_thai_lop = 'HoatDong' ";
+
+        if ($school_id) {
+            $sql .= " AND l.ma_truong = " . (int)$school_id;
+        }
+
+        $sql .= " GROUP BY l.ten_lop 
+                  ORDER BY diem_tb DESC 
+                  LIMIT 5"; 
+
+        $stmt = $this->db->query($sql);
+        return $stmt->fetchAll();
     }
 }
 ?>

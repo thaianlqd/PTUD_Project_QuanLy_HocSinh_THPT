@@ -3,7 +3,6 @@ class UserModel {
     private $db; // PDO connection
 
     public function __construct() {
-        // Danh sách các port cần thử (Ưu tiên 3307 trước, nếu lỗi thì thử 3306)
         $ports = [3307, 3306]; 
         $connected = false;
 
@@ -11,16 +10,10 @@ class UserModel {
             try {
                 $dsn = "mysql:host=127.0.0.1;port=$port;dbname=thpt_manager;charset=utf8mb4";
                 $this->db = new PDO($dsn, 'root', '');
-                
-                // Cấu hình PDO chuẩn
                 $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
                 $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-                
-                // QUAN TRỌNG: Để true để dùng lại được tham số (ví dụ :username dùng 3 lần)
                 $this->db->setAttribute(PDO::ATTR_EMULATE_PREPARES, true); 
-                
                 $this->db->exec("SET NAMES 'utf8mb4'");
-                
                 $connected = true;
                 break; 
             } catch (PDOException $e) {
@@ -35,54 +28,72 @@ class UserModel {
 
     public function checkLogin($username, $password) {
         if ($this->db === null) return false;
-
         $hashed_password = md5($password);
 
+        // SQL SUPER VIP: Tự động dò tìm tên trường cho mọi loại tài khoản
         $sql = "SELECT 
-                    tk.ma_tai_khoan, 
-                    tk.vai_tro, 
-                    nd.ho_ten,
-                    nd.ma_nguoi_dung,
-
-                    -- Lấy chức vụ từ giáo viên hoặc quản trị viên
+                    tk.ma_tai_khoan, tk.vai_tro, nd.ho_ten, nd.ma_nguoi_dung,
+                    
+                    -- Lấy chức vụ
                     COALESCE(gv.chuc_vu, qtv.chuc_vu) AS chuc_vu,
+                    hs.ma_lop,
+                    
+                    -- 1. Tên trường cho Admin (qua quan_tri_vien)
+                    t_admin.ten_truong AS ten_truong_admin,
+                    
+                    -- 2. Tên trường cho Học Sinh (qua lop_hoc)
+                    t_hs.ten_truong AS ten_truong_hs,
+                    
+                    -- 3. Tên trường cho Giáo Viên (qua bang_phan_cong -> lop_hoc -> truong)
+                    (SELECT t.ten_truong 
+                     FROM bang_phan_cong bpc 
+                     JOIN lop_hoc l ON bpc.ma_lop = l.ma_lop 
+                     JOIN truong_thpt t ON l.ma_truong = t.ma_truong
+                     WHERE bpc.ma_giao_vien = nd.ma_nguoi_dung 
+                     LIMIT 1) AS ten_truong_gv
 
-                    -- Lấy mã lớp của học sinh
-                    hs.ma_lop
-                FROM 
-                    tai_khoan AS tk
-                JOIN 
-                    nguoi_dung AS nd ON tk.ma_tai_khoan = nd.ma_tai_khoan
+                FROM tai_khoan AS tk
+                JOIN nguoi_dung AS nd ON tk.ma_tai_khoan = nd.ma_tai_khoan
+                
+                -- Join các bảng phụ
+                LEFT JOIN quan_tri_vien AS qtv ON nd.ma_nguoi_dung = qtv.ma_qtv
+                LEFT JOIN truong_thpt AS t_admin ON qtv.ma_truong = t_admin.ma_truong
+                
+                LEFT JOIN hoc_sinh AS hs ON nd.ma_nguoi_dung = hs.ma_hoc_sinh
+                LEFT JOIN lop_hoc AS lh ON hs.ma_lop = lh.ma_lop
+                LEFT JOIN truong_thpt AS t_hs ON lh.ma_truong = t_hs.ma_truong
+                
+                LEFT JOIN giao_vien AS gv ON nd.ma_nguoi_dung = gv.ma_giao_vien
 
-                -- Join bảng giáo viên
-                LEFT JOIN 
-                    giao_vien AS gv ON nd.ma_nguoi_dung = gv.ma_giao_vien
-
-                -- Join bảng quản trị viên
-                LEFT JOIN 
-                    quan_tri_vien AS qtv ON nd.ma_nguoi_dung = qtv.ma_qtv
-
-                -- Join bảng học sinh
-                LEFT JOIN
-                    hoc_sinh AS hs ON nd.ma_nguoi_dung = hs.ma_hoc_sinh
-
-                WHERE 
-                    (tk.username = :username 
-                    OR nd.email = :username 
-                    OR nd.so_dien_thoai = :username)
-                    AND tk.password = :password
-                    AND tk.trang_thai = 'HoatDong'";
+                WHERE (tk.username = :username OR nd.email = :username OR nd.so_dien_thoai = :username)
+                  AND tk.password = :password AND tk.trang_thai = 'HoatDong'";
 
         $stmt = $this->db->prepare($sql);
-
-        $stmt->execute([
-            ':username' => $username,
-            ':password' => $hashed_password
-        ]);
-
+        $stmt->execute([':username' => $username, ':password' => $hashed_password]);
         $user = $stmt->fetch();
 
         if ($user) {
+            $schoolName = 'THPT MANAGER'; // Mặc định
+
+            // LOGIC ƯU TIÊN
+            if (!empty($user['ten_truong_admin'])) {
+                $schoolName = $user['ten_truong_admin']; // Admin trường
+            } elseif (!empty($user['ten_truong_hs'])) {
+                $schoolName = $user['ten_truong_hs'];    // Học sinh
+            } elseif (!empty($user['ten_truong_gv'])) {
+                $schoolName = $user['ten_truong_gv'];    // Giáo viên (Lấy từ lớp dạy)
+            } elseif ($user['vai_tro'] == 'QuanTriVien') {
+                $schoolName = 'QUẢN TRỊ VIÊN HỆ THỐNG';  // Super Admin
+            } 
+            // Fallback: Nếu là Hiệu trưởng chưa có lịch dạy, check chức vụ
+            elseif (strpos($user['chuc_vu'], 'THPT') !== false) {
+                 $schoolName = substr($user['chuc_vu'], strpos($user['chuc_vu'], 'THPT'));
+            }
+
+            // Lưu Session
+            if (session_status() === PHP_SESSION_NONE) session_start();
+            $_SESSION['school_name'] = $schoolName;
+
             return [
                 'id' => $user['ma_nguoi_dung'],
                 'ma_tai_khoan' => $user['ma_tai_khoan'],
@@ -92,73 +103,87 @@ class UserModel {
                 'ma_lop' => $user['ma_lop']
             ];
         }
-
         return false;
     }
 
-    
+    // --- LOGIC PHÂN QUYỀN TRƯỜNG HỌC ---
+
     /**
-     * Lấy thông tin cơ bản của Học Sinh (cho dashboard)
+     * Lấy ID trường của Admin đang đăng nhập
+     * @return int|null (NULL = Super Admin, Int = Admin Trường)
      */
-    public function getStudentInfo($ma_hoc_sinh) {
-         if ($this->db === null) return null;
-         $sql = "SELECT 
-                    hs.ma_hoc_sinh, 
-                    nd.ho_ten, 
-                    l.ten_lop 
-                FROM hoc_sinh hs
-                JOIN nguoi_dung nd ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
-                LEFT JOIN lop_hoc l ON hs.ma_lop = l.ma_lop
-                WHERE hs.ma_hoc_sinh = ?";
-        try {
+    public function getAdminSchoolId($user_id) {
+        if ($this->db === null) return null;
+        $sql = "SELECT ma_truong FROM quan_tri_vien WHERE ma_qtv = :uid";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':uid' => $user_id]);
+        $result = $stmt->fetch();
+        return $result['ma_truong'] ?? null;
+    }
+
+    // 1. Đếm Tổng User (Có lọc theo trường)
+    public function getTotalUsers($school_id = null) {
+        if ($this->db === null) return 0;
+        
+        if ($school_id) {
+            // Nếu là Admin Trường: Đếm HS trường đó + GV có dạy trường đó + Admin trường đó
+            // (Query đơn giản hóa: Đếm HS + GV chủ nhiệm tại trường)
+            $sql = "SELECT 
+                        (SELECT COUNT(*) FROM hoc_sinh hs JOIN lop_hoc lh ON hs.ma_lop = lh.ma_lop WHERE lh.ma_truong = :sid) 
+                        + 
+                        (SELECT COUNT(*) FROM giao_vien gv JOIN bang_phan_cong bpc ON gv.ma_giao_vien = bpc.ma_giao_vien JOIN lop_hoc lh ON bpc.ma_lop = lh.ma_lop WHERE lh.ma_truong = :sid)
+                    as total";
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([$ma_hoc_sinh]);
-            return $stmt->fetch();
-        } catch (PDOException $e) {
-            error_log("Lỗi getStudentInfo: " . $e->getMessage());
-            return null;
+            $stmt->execute([':sid' => $school_id]);
+        } else {
+            // Super Admin: Đếm tất cả tài khoản
+            $sql = "SELECT COUNT(*) as total FROM tai_khoan WHERE trang_thai = 'HoatDong'";
+            $stmt = $this->db->query($sql);
         }
+        return $stmt->fetch()['total'] ?? 0;
     }
 
-    // Các hàm này giả lập dữ liệu, cần được thay thế bằng query CSDL thật
-    public function getHocSinhData($ma_nguoi_dung) {
+    // 2. Đếm Tổng Lớp (Có lọc)
+    public function getTotalLop($school_id = null) {
+        if ($this->db === null) return 0;
+        
+        if ($school_id) {
+            $sql = "SELECT COUNT(*) as total FROM lop_hoc WHERE trang_thai_lop = 'HoatDong' AND ma_truong = :sid";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':sid' => $school_id]);
+        } else {
+            $sql = "SELECT COUNT(*) as total FROM lop_hoc WHERE trang_thai_lop = 'HoatDong'";
+            $stmt = $this->db->query($sql);
+        }
+        return $stmt->fetch()['total'] ?? 0;
+    }
+
+    // 3. Đếm Tổng Học Sinh (Có lọc)
+    public function getTotalHs($school_id = null) {
+        if ($this->db === null) return 0;
+        
+        if ($school_id) {
+            $sql = "SELECT COUNT(*) as total 
+                    FROM hoc_sinh hs 
+                    JOIN lop_hoc lh ON hs.ma_lop = lh.ma_lop 
+                    WHERE hs.trang_thai = 'DangHoc' AND lh.ma_truong = :sid";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':sid' => $school_id]);
+        } else {
+            $sql = "SELECT COUNT(*) as total FROM hoc_sinh WHERE trang_thai = 'DangHoc'";
+            $stmt = $this->db->query($sql);
+        }
+        return $stmt->fetch()['total'] ?? 0;
+    }
+
+    // 4. Biểu đồ tròn: Tài khoản theo vai trò (Có lọc sơ bộ)
+    public function getTkByRole($school_id = null) {
         if ($this->db === null) return [];
-        // TODO: Viết query CSDL thật cho các hàm này
-        $diem_tb = 8.5; 
-        $bai_chua_nop = 2; 
-        $lich_tuan = 5; 
-        $diem_mon = ['Toán' => 8.0, 'Văn' => 7.5]; 
-        return [
-            'diem_tb' => $diem_tb,
-            'bai_chua_nop' => $bai_chua_nop,
-            'lich_tuan' => $lich_tuan,
-            'diem_mon' => $diem_mon
-        ];
-    }
-    
-    // --- CÁC HÀM CHO DASHBOARD QUẢN TRỊ (ĐÃ SỬA) ---
-
-    public function getTotalUsers() {
-        if ($this->db === null) return 0;
-        $stmt = $this->db->query("SELECT COUNT(*) as total FROM tai_khoan WHERE trang_thai = 'HoatDong'");
-        return $stmt->fetch()['total'] ?? 0;
-    }
-
-    public function getTotalLop() {
-        if ($this->db === null) return 0;
-        $stmt = $this->db->query("SELECT COUNT(*) as total FROM lop_hoc WHERE trang_thai_lop = 'HoatDong'");
-        return $stmt->fetch()['total'] ?? 0;
-    }
-
-    public function getTotalHs() {
-        if ($this->db === null) return 0;
-        $stmt = $this->db->query("SELECT COUNT(*) as total FROM hoc_sinh WHERE trang_thai = 'DangHoc'");
-        return $stmt->fetch()['total'] ?? 0;
-    }
-
-    public function getTkByRole() {
-        if ($this->db === null) return [];
+        
+        // Lưu ý: Lọc vai trò theo trường khá phức tạp, ở đây tạm thời giữ nguyên logic toàn hệ thống
+        // Nếu muốn kỹ tính hơn, cần query phức tạp hơn. Với mức độ đồ án, để toàn hệ thống cho biểu đồ này vẫn chấp nhận được.
         $stmt = $this->db->query("SELECT vai_tro, COUNT(*) as count FROM tai_khoan GROUP BY vai_tro");
+        
         $result = [];
         foreach ($stmt->fetchAll() as $row) {
             $result[$row['vai_tro']] = $row['count'];
@@ -166,67 +191,57 @@ class UserModel {
         return $result;
     }
 
-    public function getSiSoKhoi() {
+    // 5. Biểu đồ cột: Sĩ số khối (Có lọc)
+    public function getSiSoKhoi($school_id = null) {
         if ($this->db === null) return [];
-        // Sửa: Thêm WHERE trang_thai_lop
-        $stmt = $this->db->query("SELECT khoi, SUM(si_so) as si_so FROM lop_hoc WHERE trang_thai_lop = 'HoatDong' GROUP BY khoi");
+        
+        if ($school_id) {
+            $sql = "SELECT khoi, SUM(si_so) as si_so FROM lop_hoc WHERE trang_thai_lop = 'HoatDong' AND ma_truong = :sid GROUP BY khoi";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':sid' => $school_id]);
+        } else {
+            $sql = "SELECT khoi, SUM(si_so) as si_so FROM lop_hoc WHERE trang_thai_lop = 'HoatDong' GROUP BY khoi";
+            $stmt = $this->db->query($sql);
+        }
+
         $result = [];
         foreach ($stmt->fetchAll() as $row) {
-            $khoi = 'Khối ' . $row['khoi'];
-            $result[$khoi] = $row['si_so'];
+            $result['Khối ' . $row['khoi']] = $row['si_so'];
         }
         return $result;
     }
 
-
-    /**
-     * === PHẦN SỬA LỖI (QUAN TRỌNG) ===
-     * Sửa câu query để trả về đúng các key mà View (dashboard.php) cần
-     */
-    public function getAllUsers($limit = 10) {
+    // 6. Danh sách User mới nhất (Có lọc)
+    public function getAllUsers($limit = 10, $school_id = null) {
         if ($this->db === null) return [];
-        
-        $limit_int = (int)$limit; // Đảm bảo $limit là số nguyên
+        $limit_int = (int)$limit;
 
-        // Sửa câu SQL:
-        // 1. SELECT nd.ho_ten (View cần 'ho_ten')
-        // 2. SELECT nd.so_dien_thoai (View cần 'so_dien_thoai')
-        // 3. SELECT tk.vai_tro (View cần 'vai_tro')
-        // 4. SELECT tk.trang_thai (View cần 'trang_thai')
-        // 5. SELECT tk.ngay_tao_tai_khoan (View cần 'ngay_tao_tai_khoan')
-        $sql = "
-            SELECT 
-                tk.username, 
-                tk.vai_tro, 
-                tk.trang_thai, 
-                tk.ngay_tao_tai_khoan, 
-                nd.ho_ten,
-                nd.so_dien_thoai,
-                nd.ma_nguoi_dung AS id 
-            FROM tai_khoan tk
-            JOIN nguoi_dung nd ON tk.ma_tai_khoan = nd.ma_tai_khoan
-            ORDER BY tk.ngay_tao_tai_khoan DESC 
-            LIMIT :limit_val
-        ";
-        
-        try {
+        if ($school_id) {
+            // Lọc User thuộc trường (Logic tương đối: Lọc HS và GV có liên quan đến trường)
+            // Query này lấy HS thuộc trường + GV dạy trường
+            $sql = "SELECT DISTINCT tk.username, tk.vai_tro, tk.trang_thai, tk.ngay_tao_tai_khoan, nd.ho_ten, nd.so_dien_thoai
+                    FROM tai_khoan tk
+                    JOIN nguoi_dung nd ON tk.ma_tai_khoan = nd.ma_tai_khoan
+                    LEFT JOIN hoc_sinh hs ON nd.ma_nguoi_dung = hs.ma_hoc_sinh
+                    LEFT JOIN lop_hoc lh_hs ON hs.ma_lop = lh_hs.ma_lop
+                    WHERE (lh_hs.ma_truong = :sid OR tk.vai_tro NOT IN ('HocSinh')) 
+                    ORDER BY tk.ngay_tao_tai_khoan DESC LIMIT :limit_val";
+             // Note: Logic lọc user chung hơi khó, ở đây lọc ưu tiên HS trường mình
+             // Để đơn giản cho Admin Trường -> Chỉ hiện HS trường mình, các role khác hiện hết
+             $stmt = $this->db->prepare($sql);
+             $stmt->bindParam(':sid', $school_id, PDO::PARAM_INT);
+             $stmt->bindParam(':limit_val', $limit_int, PDO::PARAM_INT);
+             $stmt->execute();
+        } else {
+            $sql = "SELECT tk.username, tk.vai_tro, tk.trang_thai, tk.ngay_tao_tai_khoan, nd.ho_ten, nd.so_dien_thoai
+                    FROM tai_khoan tk
+                    JOIN nguoi_dung nd ON tk.ma_tai_khoan = nd.ma_tai_khoan
+                    ORDER BY tk.ngay_tao_tai_khoan DESC LIMIT :limit_val";
             $stmt = $this->db->prepare($sql);
             $stmt->bindParam(':limit_val', $limit_int, PDO::PARAM_INT);
             $stmt->execute();
-            return $stmt->fetchAll(PDO::FETCH_ASSOC); // Đảm bảo trả về mảng kết hợp
-        } catch (PDOException $e) {
-            error_log("Lỗi getAllUsers: " . $e->getMessage());
-            return []; // Trả về mảng rỗng nếu có lỗi
         }
+        return $stmt->fetchAll();
     }
-    // --- (Kết thúc phần sửa) ---
-
-
-    // --- CÁC HÀM KHÁC (STUBS - Cần được phát triển) ---
-    public function getPhuHuynhData($user_id) { return []; }
-    public function getThiSinhData($user_id) { return []; }
-    public function getGiaoVienData($user_id) { return []; }
-    public function getNhanVienSoGDData($user_id) { return []; }
 }
 ?>
-

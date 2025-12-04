@@ -601,7 +601,12 @@
                     <button class="btn btn-outline-primary d-lg-none" id="toggleSidebar">
                         <i class="bi bi-list"></i> Menu
                     </button>
-                    <a class="navbar-brand" href="#">THPT Manager</a>
+                    <a class="navbar-brand" href="#">
+                        <?php 
+                            // Nếu có tên trường trong session thì hiện, không thì hiện mặc định
+                            echo isset($_SESSION['school_name']) ? strtoupper($_SESSION['school_name']) : 'THPT MANAGER'; 
+                        ?>
+                    </a>
                     <div class="flex-grow-1 mx-3">
                         <form class="d-flex" style="max-width: 400px;">
                             <input class="form-control search-bar me-2" type="search" placeholder="Tìm tài khoản/lớp..." aria-label="Search">

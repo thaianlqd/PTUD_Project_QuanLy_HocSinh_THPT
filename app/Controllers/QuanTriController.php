@@ -46,16 +46,57 @@ class QuanTriController extends Controller {
     /**
      * URL: /quantri/xeptkb
      */
+    // public function xeptkb() {
+    //     $danhSachLop = $this->tkbModel->getDanhSachLop();
+    //     $data = [
+    //         'user_name' => $_SESSION['user_name'] ?? 'Admin',
+    //         'lop_hoc' => $danhSachLop
+    //     ];
+    //     if (isset($_SESSION['flash_message'])) {
+    //         $data['flash_message'] = $_SESSION['flash_message'];
+    //         unset($_SESSION['flash_message']);
+    //     }
+    //     $content = $this->loadView('QuanTri/danh_sach_lop_tkb', $data);
+    //     echo $content;
+    // }
+    /**
+     * URL: /quantri/xeptkb
+     * Hiển thị danh sách lớp để chọn xếp lịch
+     */
     public function xeptkb() {
-        $danhSachLop = $this->tkbModel->getDanhSachLop();
+        // 1. Lấy ID trường từ Session hoặc CSDL
+        // (Biến này giúp phân biệt Admin Trường vs Super Admin)
+        $school_id = $_SESSION['admin_school_id'] ?? null;
+
+        if (!$school_id && isset($_SESSION['user_id'])) {
+            // Nếu Session chưa có, gọi Model để lấy lại cho chắc
+            if (!$this->userModel) { 
+                $this->userModel = $this->loadModel('UserModel'); 
+            }
+            $school_id = $this->userModel->getAdminSchoolId($_SESSION['user_id']);
+            
+            // Lưu lại vào session để dùng cho lần sau đỡ phải query lại
+            $_SESSION['admin_school_id'] = $school_id;
+        }
+
+        // 2. Gọi Model lấy danh sách lớp (Có truyền school_id để lọc)
+        // Nếu school_id là NULL -> Lấy hết (Super Admin)
+        // Nếu school_id là 1 -> Chỉ lấy lớp trường Minh Khai
+        $danhSachLop = $this->tkbModel->getDanhSachLop($school_id);
+
+        // 3. Chuẩn bị dữ liệu gửi sang View
         $data = [
             'user_name' => $_SESSION['user_name'] ?? 'Admin',
             'lop_hoc' => $danhSachLop
         ];
+
+        // Xử lý thông báo (Flash Message) nếu có
         if (isset($_SESSION['flash_message'])) {
             $data['flash_message'] = $_SESSION['flash_message'];
             unset($_SESSION['flash_message']);
         }
+
+        // 4. Load View
         $content = $this->loadView('QuanTri/danh_sach_lop_tkb', $data);
         echo $content;
     }
