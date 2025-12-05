@@ -18,7 +18,7 @@
         .timetable-container { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
         @media (min-width: 1200px) { .timetable-container { grid-template-columns: 1fr var(--sidebar-width); } }
         .timetable-main { overflow-x: auto; background-color: #fff; border: 1px solid var(--fc-border-color); border-radius: 0.375rem; }
-        .timetable-grid { display: grid; grid-template-columns: 80px repeat(6, minmax(120px, 1fr)); grid-template-rows: auto auto repeat(4, minmax(var(--slot-min-height), auto)) auto repeat(3, minmax(var(--slot-min-height), auto)); }
+        .timetable-grid { display: grid; grid-template-columns: 80px repeat(7, minmax(120px, 1fr)); grid-template-rows: auto auto repeat(4, minmax(var(--slot-min-height), auto)) auto repeat(3, minmax(var(--slot-min-height), auto)); }
 
         .timetable-header, .timetable-slot, .timetable-period-label {
             padding: 0.5rem;
@@ -27,9 +27,9 @@
             border-right: 1px solid var(--fc-border-color);
             font-size: 0.9rem;
         }
-        .timetable-grid > div:nth-child(7n) { border-right: none; }
-        .timetable-period-label, .timetable-grid > div:nth-child(7n+1) { border-left: 1px solid var(--fc-border-color); }
-        .timetable-grid > div:nth-last-child(-n+7) { border-bottom: none; }
+        .timetable-grid > div:nth-child(8n) { border-right: none; }
+        .timetable-period-label, .timetable-grid > div:nth-child(8n+1) { border-left: 1px solid var(--fc-border-color); }
+        .timetable-grid > div:nth-last-child(-n+8) { border-bottom: none; }
 
         .timetable-header { font-weight: 600; background-color: #f1f3f5; position: sticky; top: 0; z-index: 10; }
         .timetable-period-label { font-weight: bold; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa; position: sticky; left: 0; z-index: 5; writing-mode: vertical-rl; transform: rotate(180deg); }
@@ -174,6 +174,7 @@
                         <div class="timetable-header">Thứ 5<br><small class="fw-normal"><?php echo $data['week_dates'][3]; ?></small></div>
                         <div class="timetable-header">Thứ 6<br><small class="fw-normal"><?php echo $data['week_dates'][4]; ?></small></div>
                         <div class="timetable-header">Thứ 7<br><small class="fw-normal"><?php echo $data['week_dates'][5]; ?></small></div>
+                        <div class="timetable-header" style="background-color: #fff3cd;">Chủ Nhật<br><small class="fw-normal"><?php echo $data['week_dates'][6] ?? 'N/A'; ?></small></div>
 
                         <div class="timetable-session-label session-morning"><i class="bi bi-brightness-high-fill me-2"></i> SÁNG</div>
                         <?php $tkb = $data['tkb_data'] ?? []; $rang_buoc_mon = $data['rang_buoc']['mon_hoc'] ?? []; ?>
@@ -189,7 +190,7 @@
                         ?>
                         <?php for ($tiet = 1; $tiet <= 4; $tiet++): ?>
                             <div class="timetable-period-label">Tiết <?php echo $tiet; ?></div>
-                            <?php for ($thu = 2; $thu <= 7; $thu++): ?>
+                            <?php for ($thu = 2; $thu <= 8; $thu++): ?>
                                 <?php
                                     $slot = $tkb[$thu][$tiet] ?? null; $is_fixed = false; $fixed_data = null; $current_ma_phong = null;
                                     if ($thu == 2 && $tiet == 1) { // Chào cờ
@@ -216,7 +217,7 @@
                         <div class="timetable-session-label session-afternoon"><i class="bi bi-cloud-sun-fill me-2"></i> CHIỀU</div>
                         <?php for ($tiet = 5; $tiet <= 7; $tiet++): ?>
                             <div class="timetable-period-label">Tiết <?php echo $tiet; ?></div>
-                            <?php for ($thu = 2; $thu <= 7; $thu++): ?>
+                            <?php for ($thu = 2; $thu <= 8; $thu++): ?>
                                 <?php
                                     $slot = $tkb[$thu][$tiet] ?? null; $is_fixed = false; $fixed_data = null; $current_ma_phong = null;
                                     if ($slot) {
@@ -291,7 +292,7 @@
                                ?>
                             <?php foreach ($rang_buoc_mon_sorted as $ten_mon => $details): ?>
                                 <?php
-                                    if ($ten_mon == 'Chào cờ' || $ten_mon == 'Sinh hoạt') continue;
+                                    if ($ten_mon == 'Chào cờ' || $ten_mon == 'Sinh hoạt' || $ten_mon == 'Sinh hoạt lớp') continue;
                                     $da_xep = (int)$details['da_xep']; $ke_hoach = (int)$details['ke_hoach']; $count_str = "$da_xep / $ke_hoach";
                                     $bg_badge = 'bg-warning text-dark'; // Đang làm
                                     $icon_warning = '';
@@ -412,7 +413,19 @@
                 const apiUrl = `${BASE_URL}/quantri/getDanhSachMonHocGV/${maLop}/${thu}/${tiet}`;
                 const response = await fetch(apiUrl);
                 if (!response.ok) throw new Error(`Lỗi HTTP ${response.status}: ${apiUrl}`);
-                const dataApi = await response.json();
+                const raw = await response.text();
+                let dataApi;
+                try {
+                    dataApi = JSON.parse(raw);
+                } catch (e) {
+                    console.error('Raw response (first 2000 chars):', raw.slice(0, 2000));
+                    // Show a helpful error to the user with a snippet
+                    const snippet = raw.replace(/\s+/g, ' ').trim().slice(0, 800);
+                    modalError.textContent = `Lỗi: Server không trả về JSON. Nội dung trả về (snippet): ${snippet}`;
+                    modalError.style.display = 'block';
+                    saveButton.disabled = true;
+                    throw new Error('Server returned non-JSON response');
+                }
                 if (dataApi.error) throw new Error(dataApi.error);
 
                 // Populate Mon Hoc/GV Select

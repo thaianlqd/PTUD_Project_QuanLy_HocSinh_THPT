@@ -338,6 +338,23 @@ class TkbModel {
     }
 
     /**
+     * Trả về `ma_truong` của 1 lớp, hoặc null nếu không tìm thấy
+     */
+    public function getMaTruongByLop($ma_lop) {
+        if ($this->db === null) return null;
+        try {
+            $stmt = $this->db->prepare("SELECT ma_truong FROM lop_hoc WHERE ma_lop = ? LIMIT 1");
+            $stmt->execute([$ma_lop]);
+            $res = $stmt->fetchColumn();
+            if ($res === false || $res === null) return null;
+            return $res;
+        } catch (PDOException $e) {
+            error_log("Lỗi getMaTruongByLop: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Tự động xác định phòng học cho một tiết (Giữ nguyên)
      */
     private function xacDinhPhongHoc($ma_phan_cong, $ma_lop) {

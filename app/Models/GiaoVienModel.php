@@ -37,9 +37,9 @@ class GiaoVienModel {
     }
 
     /**
-     * Lấy tất cả giáo viên (JOIN 3 bảng)
+     * Lấy tất cả giáo viên (JOIN 3 bảng) - Có lọc theo trường
      */
-    public function getDanhSachGiaoVien() {
+    public function getDanhSachGiaoVien($school_id = null) {
         if ($this->db === null) return [];
         
         $sql = "SELECT 
@@ -58,11 +58,21 @@ class GiaoVienModel {
                     gv.ngay_vao_truong
                 FROM giao_vien gv
                 JOIN nguoi_dung nd ON gv.ma_giao_vien = nd.ma_nguoi_dung
-                JOIN tai_khoan tk ON nd.ma_tai_khoan = tk.ma_tai_khoan
-                ORDER BY nd.ho_ten";
+                JOIN tai_khoan tk ON nd.ma_tai_khoan = tk.ma_tai_khoan";
+        
+        $params = [];
+        if ($school_id) {
+            $sql .= " JOIN bang_phan_cong bpc ON gv.ma_giao_vien = bpc.ma_giao_vien
+                      JOIN lop_hoc lh ON bpc.ma_lop = lh.ma_lop
+                      WHERE lh.ma_truong = ?";
+            $params[] = $school_id;
+        }
+        
+        $sql .= " GROUP BY gv.ma_giao_vien ORDER BY nd.ho_ten";
+        
         try {
             $stmt = $this->db->prepare($sql);
-            $stmt->execute();
+            $stmt->execute($params);
             return $stmt->fetchAll();
         } catch (PDOException $e) {
             error_log("Lỗi getDanhSachGiaoVien: " . $e->getMessage());

@@ -480,6 +480,26 @@
                 <h1 class="h3 mb-0 fw-bold">Xếp Thời Khóa Biểu</h1>
                 <p class="mb-0 text-white-50">Năm học 2025-2026 (Chọn lớp để bắt đầu)</p>
             </div>
+            
+            <!-- Filter Buttons -->
+            <div class="card-body border-bottom bg-light">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <span class="fw-bold text-dark">Lọc theo khối:</span>
+                    <button class="btn btn-outline-primary filter-btn" data-khoi="all">
+                        <i class="bi bi-funnel me-1"></i>Tất Cả
+                    </button>
+                    <button class="btn btn-outline-primary filter-btn" data-khoi="10">
+                        <i class="bi bi-1-circle me-1"></i>Khối 10
+                    </button>
+                    <button class="btn btn-outline-primary filter-btn" data-khoi="11">
+                        <i class="bi bi-2-circle me-1"></i>Khối 11
+                    </button>
+                    <button class="btn btn-outline-primary filter-btn" data-khoi="12">
+                        <i class="bi bi-3-circle me-1"></i>Khối 12
+                    </button>
+                </div>
+            </div>
+
             <div class="card-body p-0">
                  <div class="table-responsive">
                     <table class="table table-hover table-striped mb-0 align-middle">
@@ -540,7 +560,7 @@
                                         $text_color = (strpos($bg_progress, 'text-dark') !== false || $bg_progress == 'bg-secondary') ? 'text-dark' : 'text-white';
 
                                     ?>
-                                    <tr>
+                                    <tr class="lop-row" data-khoi="<?php echo htmlspecialchars(substr($lop['ten_lop'], 0, 2)); ?>">
                                         <td class="ps-3 fw-bold"><?php echo htmlspecialchars($lop['ten_lop']); ?></td>
                                         <td class="text-center"><?php echo htmlspecialchars($lop['si_so']); ?></td>
                                         <td>
@@ -586,5 +606,67 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Filter khối 10, 11, 12
+        document.querySelectorAll('.filter-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const selectedKhoi = this.dataset.khoi;
+                
+                // Đổi active class
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                this.classList.add('active');
+                
+                // Filter rows
+                const rows = document.querySelectorAll('.lop-row');
+                let visibleCount = 0;
+                
+                rows.forEach(row => {
+                    const rowKhoi = row.dataset.khoi;
+                    
+                    if (selectedKhoi === 'all' || rowKhoi === selectedKhoi) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+                
+                // Hiển thị thông báo nếu không có kết quả
+                if (visibleCount === 0) {
+                    const tbody = document.querySelector('tbody');
+                    if (!document.getElementById('no-result-message')) {
+                        const noResultRow = document.createElement('tr');
+                        noResultRow.id = 'no-result-message';
+                        noResultRow.innerHTML = '<td colspan="5" class="text-center p-5"><h5 class="text-danger"><i class="bi bi-search me-2"></i>Không tìm thấy lớp nào trong khối này.</h5></td>';
+                        tbody.appendChild(noResultRow);
+                    }
+                }
+            });
+        });
+        
+        // Set "Tất Cả" là active mặc định
+        document.querySelector('[data-khoi="all"]').classList.add('active');
+    </script>
+
+    <!-- CSS cho active button -->
+    <style>
+        .filter-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .filter-btn.active {
+            background-color: #2563eb !important;
+            color: white !important;
+            border-color: #2563eb !important;
+        }
+        
+        .filter-btn:not(.active):hover {
+            border-color: #2563eb;
+            color: #2563eb;
+        }
+    </style>
 </body>
 </html>

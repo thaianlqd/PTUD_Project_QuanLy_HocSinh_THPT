@@ -176,13 +176,47 @@ class UserModel {
         return $stmt->fetch()['total'] ?? 0;
     }
 
-    // 4. Biểu đồ tròn: Tài khoản theo vai trò (Có lọc sơ bộ)
+    // 4. Biểu đồ tròn: Tài khoản theo vai trò (Có lọc theo trường)
     public function getTkByRole($school_id = null) {
         if ($this->db === null) return [];
         
-        // Lưu ý: Lọc vai trò theo trường khá phức tạp, ở đây tạm thời giữ nguyên logic toàn hệ thống
-        // Nếu muốn kỹ tính hơn, cần query phức tạp hơn. Với mức độ đồ án, để toàn hệ thống cho biểu đồ này vẫn chấp nhận được.
-        $stmt = $this->db->query("SELECT vai_tro, COUNT(*) as count FROM tai_khoan GROUP BY vai_tro");
+        if ($school_id) {
+            // Filter theo trường: Đếm HS trường + GV dạy trường + Admin trường + Phụ huynh
+            $sql = "
+                SELECT 'HocSinh' as vai_tro, COUNT(*) as count
+                FROM hoc_sinh hs 
+                JOIN lop_hoc lh ON hs.ma_lop = lh.ma_lop
+                WHERE lh.ma_truong = :sid AND hs.trang_thai = 'DangHoc'
+                
+                UNION ALL
+                
+                SELECT 'GiaoVien' as vai_tro, COUNT(DISTINCT gv.ma_giao_vien) as count
+                FROM giao_vien gv
+                JOIN bang_phan_cong bpc ON gv.ma_giao_vien = bpc.ma_giao_vien
+                JOIN lop_hoc lh ON bpc.ma_lop = lh.ma_lop
+                WHERE lh.ma_truong = :sid
+                
+                UNION ALL
+                
+                SELECT 'PhuHuynh' as vai_tro, COUNT(DISTINCT phhs.ma_phu_huynh) as count
+                FROM phu_huynh_hoc_sinh phhs
+                JOIN hoc_sinh hs ON phhs.ma_hoc_sinh = hs.ma_hoc_sinh
+                JOIN lop_hoc lh ON hs.ma_lop = lh.ma_lop
+                WHERE lh.ma_truong = :sid
+                
+                UNION ALL
+                
+                SELECT 'QuanTriVien' as vai_tro, COUNT(*) as count
+                FROM quan_tri_vien
+                WHERE ma_truong = :sid
+            ";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':sid' => $school_id]);
+        } else {
+            // Super Admin: Query tất cả
+            $sql = "SELECT vai_tro, COUNT(*) as count FROM tai_khoan WHERE trang_thai = 'HoatDong' GROUP BY vai_tro";
+            $stmt = $this->db->query($sql);
+        }
         
         $result = [];
         foreach ($stmt->fetchAll() as $row) {
@@ -217,21 +251,24 @@ class UserModel {
         $limit_int = (int)$limit;
 
         if ($school_id) {
-            // Lọc User thuộc trường (Logic tương đối: Lọc HS và GV có liên quan đến trường)
-            // Query này lấy HS thuộc trường + GV dạy trường
+            // Lọc User thuộc trường: HS của trường, GV có phân công dạy tại trường,
+            // Phụ huynh có con ở trường, và QTV thuộc trường.
             $sql = "SELECT DISTINCT tk.username, tk.vai_tro, tk.trang_thai, tk.ngay_tao_tai_khoan, nd.ho_ten, nd.so_dien_thoai
-                    FROM tai_khoan tk
-                    JOIN nguoi_dung nd ON tk.ma_tai_khoan = nd.ma_tai_khoan
-                    LEFT JOIN hoc_sinh hs ON nd.ma_nguoi_dung = hs.ma_hoc_sinh
-                    LEFT JOIN lop_hoc lh_hs ON hs.ma_lop = lh_hs.ma_lop
-                    WHERE (lh_hs.ma_truong = :sid OR tk.vai_tro NOT IN ('HocSinh')) 
-                    ORDER BY tk.ngay_tao_tai_khoan DESC LIMIT :limit_val";
-             // Note: Logic lọc user chung hơi khó, ở đây lọc ưu tiên HS trường mình
-             // Để đơn giản cho Admin Trường -> Chỉ hiện HS trường mình, các role khác hiện hết
-             $stmt = $this->db->prepare($sql);
-             $stmt->bindParam(':sid', $school_id, PDO::PARAM_INT);
-             $stmt->bindParam(':limit_val', $limit_int, PDO::PARAM_INT);
-             $stmt->execute();
+                FROM tai_khoan tk
+                JOIN nguoi_dung nd ON tk.ma_tai_khoan = nd.ma_tai_khoan
+                LEFT JOIN hoc_sinh hs ON nd.ma_nguoi_dung = hs.ma_hoc_sinh
+                LEFT JOIN lop_hoc lh_hs ON hs.ma_lop = lh_hs.ma_lop
+                LEFT JOIN phu_huynh_hoc_sinh phhs ON phhs.ma_hoc_sinh = hs.ma_hoc_sinh
+                LEFT JOIN bang_phan_cong bpc ON bpc.ma_giao_vien = nd.ma_nguoi_dung
+                LEFT JOIN lop_hoc lh_bpc ON bpc.ma_lop = lh_bpc.ma_lop
+                LEFT JOIN quan_tri_vien qtv ON nd.ma_nguoi_dung = qtv.ma_qtv
+                WHERE (lh_hs.ma_truong = :sid OR lh_bpc.ma_truong = :sid OR qtv.ma_truong = :sid OR phhs.ma_phu_huynh IS NOT NULL AND lh_hs.ma_truong = :sid)
+                ORDER BY tk.ngay_tao_tai_khoan DESC LIMIT :limit_val";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindParam(':sid', $school_id, PDO::PARAM_INT);
+            $stmt->bindParam(':limit_val', $limit_int, PDO::PARAM_INT);
+            $stmt->execute();
         } else {
             $sql = "SELECT tk.username, tk.vai_tro, tk.trang_thai, tk.ngay_tao_tai_khoan, nd.ho_ten, nd.so_dien_thoai
                     FROM tai_khoan tk

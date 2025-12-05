@@ -4,6 +4,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Include TkbController
+require_once __DIR__ . '/TkbController.php';
+
 class QuanTriController extends Controller {
 
     private $userModel;
@@ -41,288 +44,57 @@ class QuanTriController extends Controller {
         exit;
     }
 
-    // --- CÁC HÀM XẾP THỜI KHÓA BIỂU (ĐÃ CẬP NHẬT) ---
-
+    // --- CÁC HÀM XẾP THỜI KHÓA BIỂU ĐÃ CHUYỂN SANG TkbController ---
+    
     /**
-     * URL: /quantri/xeptkb
-     */
-    // public function xeptkb() {
-    //     $danhSachLop = $this->tkbModel->getDanhSachLop();
-    //     $data = [
-    //         'user_name' => $_SESSION['user_name'] ?? 'Admin',
-    //         'lop_hoc' => $danhSachLop
-    //     ];
-    //     if (isset($_SESSION['flash_message'])) {
-    //         $data['flash_message'] = $_SESSION['flash_message'];
-    //         unset($_SESSION['flash_message']);
-    //     }
-    //     $content = $this->loadView('QuanTri/danh_sach_lop_tkb', $data);
-    //     echo $content;
-    // }
-    /**
-     * URL: /quantri/xeptkb
-     * Hiển thị danh sách lớp để chọn xếp lịch
+     * Redirect sang TkbController (route cũ vẫn hoạt động)
      */
     public function xeptkb() {
-        // 1. Lấy ID trường từ Session hoặc CSDL
-        // (Biến này giúp phân biệt Admin Trường vs Super Admin)
-        $school_id = $_SESSION['admin_school_id'] ?? null;
-
-        if (!$school_id && isset($_SESSION['user_id'])) {
-            // Nếu Session chưa có, gọi Model để lấy lại cho chắc
-            if (!$this->userModel) { 
-                $this->userModel = $this->loadModel('UserModel'); 
-            }
-            $school_id = $this->userModel->getAdminSchoolId($_SESSION['user_id']);
-            
-            // Lưu lại vào session để dùng cho lần sau đỡ phải query lại
-            $_SESSION['admin_school_id'] = $school_id;
-        }
-
-        // 2. Gọi Model lấy danh sách lớp (Có truyền school_id để lọc)
-        // Nếu school_id là NULL -> Lấy hết (Super Admin)
-        // Nếu school_id là 1 -> Chỉ lấy lớp trường Minh Khai
-        $danhSachLop = $this->tkbModel->getDanhSachLop($school_id);
-
-        // 3. Chuẩn bị dữ liệu gửi sang View
-        $data = [
-            'user_name' => $_SESSION['user_name'] ?? 'Admin',
-            'lop_hoc' => $danhSachLop
-        ];
-
-        // Xử lý thông báo (Flash Message) nếu có
-        if (isset($_SESSION['flash_message'])) {
-            $data['flash_message'] = $_SESSION['flash_message'];
-            unset($_SESSION['flash_message']);
-        }
-
-        // 4. Load View
-        $content = $this->loadView('QuanTri/danh_sach_lop_tkb', $data);
-        echo $content;
+        $tkbController = new TkbController();
+        $tkbController->xeptkb();
     }
 
-    /**
-     * URL: /quantri/chiTietTkb/1
-     * HOẶC: /quantri/chiTietTkb/1?date=2025-11-20
-     * <-- ĐÃ CẬP NHẬT HOÀN TOÀN VỚI LOGIC HỌC KỲ -->
-     */
     public function chiTietTkb($ma_lop = 0) {
-        $ma_lop = (int)$ma_lop;
-        if ($ma_lop <= 0) {
-            header('Location: ' . BASE_URL . '/quantri/xeptkb');
-            exit;
-        }
-
-        // --- Logic Xử lý Ngày (Đã có) ---
-        $selected_date_str = $_GET['date'] ?? date('Y-m-d');
-        try {
-            $selected_date = new DateTime($selected_date_str);
-        } catch (Exception $e) {
-            $selected_date = new DateTime();
-        }
-
-        $day_of_week = (int)$selected_date->format('N'); // 1 = T2, ..., 7 = CN
-        $start_of_week = clone $selected_date;
-        $start_of_week->modify('-' . ($day_of_week - 1) . ' days'); // Lùi về Thứ 2
-        
-        $week_dates = [];
-        $week_dates_sql = []; // Mảng ngày để query SQL
-        $current_day_iterator = clone $start_of_week;
-        
-        for ($i = 0; $i < 6; $i++) {
-            $week_dates[] = $current_day_iterator->format('d/m/Y');
-            $week_dates_sql[] = $current_day_iterator->format('Y-m-d'); 
-            $current_day_iterator->modify('+1 day');
-        }
-
-        $prev_week_date = (clone $start_of_week)->modify('-7 days')->format('Y-m-d');
-        $next_week_date = (clone $start_of_week)->modify('+7 days')->format('Y-m-d');
-        $base_url_tkb = BASE_URL . '/quantri/chiTietTkb/' . $ma_lop;
-        $current_date_param = '?date=' . $selected_date->format('Y-m-d');
-        
-        // Lưu lại date param để dùng cho form POST (lưu/xóa)
-        $_SESSION['last_date_param'] = $current_date_param;
-
-        
-        // --- LOGIC MỚI: TÌM HỌC KỲ ---
-        $start_date_sql = $week_dates_sql[0]; // Ngày Thứ 2 của tuần
-        $hoc_ky = $this->tkbModel->getHocKyTuNgay($start_date_sql);
-        
-        $ma_hoc_ky = null;
-        $ten_hoc_ky = "Nghỉ (Ngoài thời gian học kỳ)"; // Mặc định là nghỉ
-
-        if ($hoc_ky) {
-            $ma_hoc_ky = $hoc_ky['ma_hoc_ky'];
-            $ten_hoc_ky = $hoc_ky['ten_hoc_ky'];
-        }
-        // --- KẾT THÚC LOGIC MỚI ---
-
-        // --- Cập nhật các lệnh gọi Model ---
-        $tkbData = [];
-        $rangBuoc = [];
-        // Luôn lấy tên lớp, kể cả khi nghỉ hè
-        $tenLop = $this->tkbModel->getTenLop($ma_lop); 
-
-        if ($tenLop === 'N/A') { // Kiểm tra nếu lớp không tồn tại
-             $_SESSION['flash_message'] = ['type' => 'danger', 'message' => "Không tìm thấy thông tin lớp học (ID: $ma_lop)."];
-             header('Location: ' . BASE_URL . '/quantri/xeptkb');
-             exit;
-        }
-        
-        // Chỉ tải TKB nếu chúng ta đang trong 1 học kỳ
-        if ($ma_hoc_ky !== null) {
-            $rangBuoc = $this->tkbModel->getRangBuocLop($ma_lop, $ma_hoc_ky);
-            $tkbData = $this->tkbModel->getChiTietTkbLop($ma_lop, $ma_hoc_ky);
-        } else {
-            // Nếu là nghỉ hè, tự tạo dữ liệu rỗng để View không bị lỗi
-            $rangBuoc = [
-                'ten_lop' => $tenLop,
-                'phong_chinh' => 'N/A', 'gvcn' => 'N/A',
-                'tong_tiet_da_xep' => 0, 'tong_tiet_ke_hoach' => 0,
-                'mon_hoc' => []
-            ];
-        }
-
-        $phongHocChinhID = $this->tkbModel->getPhongHocChinhID($ma_lop);
-        $danhSachTatCaLop = $this->tkbModel->getDanhSachLop(); 
-
-        $data = [
-            'user_name' => $_SESSION['user_name'] ?? 'Admin',
-            'ma_lop' => $ma_lop,
-            'nam_hoc' => '2025-2026', // Nên lấy động
-            'rang_buoc' => $rangBuoc,
-            'tkb_data' => $tkbData,
-            'phong_hoc_chinh_id' => $phongHocChinhID,
-            'danh_sach_lop' => $danhSachTatCaLop,
-            
-            // Dữ liệu ngày tháng
-            'selected_date' => $selected_date->format('Y-m-d'),
-            'week_dates' => $week_dates,
-            'prev_week_link' => $base_url_tkb . '?date=' . $prev_week_date,
-            'next_week_link' => $base_url_tkb . '?date=' . $next_week_date,
-            'current_date_param' => $current_date_param,
-
-            // --- DỮ LIỆU MỚI ---
-            'ma_hoc_ky' => $ma_hoc_ky, // (sẽ là null nếu nghỉ hè)
-            'ten_hoc_ky' => $ten_hoc_ky
-        ];
-        
-        if (isset($_SESSION['flash_message'])) {
-            $data['flash_message'] = $_SESSION['flash_message'];
-            unset($_SESSION['flash_message']);
-        }
-
-        $content = $this->loadView('QuanTri/chi_tiet_tkb', $data);
-        echo $content;
+        $tkbController = new TkbController();
+        $tkbController->chiTietTkb($ma_lop);
     }
 
-
-    /**
-     * URL: /quantri/luuTietHoc (POST)
-     * <-- ĐÃ CẬP NHẬT HOÀN TOÀN VỚI LOGIC HỌC KỲ -->
-     */
     public function luuTietHoc() {
-        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $ma_lop = filter_input(INPUT_POST, 'ma_lop', FILTER_VALIDATE_INT);
-            $thu = filter_input(INPUT_POST, 'thu', FILTER_VALIDATE_INT);
-            $tiet = filter_input(INPUT_POST, 'tiet', FILTER_VALIDATE_INT);
-            // --- DÒNG MỚI ---
-            $ma_hoc_ky = filter_input(INPUT_POST, 'ma_hoc_ky', FILTER_VALIDATE_INT);
-
-            // Tạo link redirect có chứa ngày (lấy từ session đã lưu)
-            $date_param = $_SESSION['last_date_param'] ?? ''; 
-            $redirect_url = BASE_URL . '/quantri/chiTietTkb/' . ($ma_lop ?? '') . $date_param;
-
-
-            if (!$ma_lop || !$thu || !$tiet || !$ma_hoc_ky) { // <-- Thêm check !$ma_hoc_ky
-                $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Dữ liệu không hợp lệ (lớp, học kỳ, thứ, tiết).'];
-                header('Location: ' . $redirect_url);
-                exit;
-            }
-
-            if (isset($_POST['delete']) && $_POST['delete'] == '1') {
-                // --- CẬP NHẬT HÀM ---
-                $success = $this->tkbModel->xoaTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet);
-                $_SESSION['flash_message'] = $success ? ['type' => 'success', 'message' => 'Đã xóa tiết học.'] : ['type' => 'danger', 'message' => 'Xóa thất bại.'];
-                header('Location: ' . $redirect_url);
-                exit;
-            }
-
-            if (isset($_POST['save']) && $_POST['save'] == '1') {
-                $ma_phan_cong = filter_input(INPUT_POST, 'ma_phan_cong', FILTER_VALIDATE_INT);
-                if (!$ma_phan_cong) {
-                    $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Vui lòng chọn Môn học.'];
-                    header('Location: ' . $redirect_url);
-                    exit;
-                }
-                
-                // --- CẬP NHẬT HÀM ---
-                $kiemTra = $this->tkbModel->kiemTraRangBuoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong);
-                
-                if ($kiemTra !== true) {
-                    $_SESSION['flash_message'] = ['type' => 'danger', 'message' => "Không thể lưu: " . $kiemTra];
-                    header('Location: ' . $redirect_url);
-                    exit;
-                }
-
-                // --- CẬP NHẬT HÀM ---
-                $success = $this->tkbModel->luuTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong);
-                $_SESSION['flash_message'] = $success ? ['type' => 'success', 'message' => 'Đã lưu tiết học.'] : ['type' => 'danger', 'message' => 'Lưu thất bại.'];
-                header('Location: ' . $redirect_url);
-                exit;
-            }
-        }
-        // Redirect về trang danh sách lớp nếu có lỗi gì đó
-        header('Location: ' . BASE_URL . '/quantri/xeptkb');
-        exit;
+        $tkbController = new TkbController();
+        $tkbController->luuTietHoc();
     }
 
-
-    /**
-     * API: /quantri/getDanhSachMonHocGV/1/2/3 (lop/thu/tiet)
-     * (Hàm này giữ nguyên, không cần thay đổi)
-     */
     public function getDanhSachMonHocGV($ma_lop = 0, $thu = 0, $tiet = 0) {
-        header('Content-Type: application/json');
-        $ma_lop = (int)$ma_lop; $thu = (int)$thu; $tiet = (int)$tiet;
-        if ($ma_lop <= 0 || $thu < 2 || $thu > 7 || $tiet < 1 || $tiet > 7) {
-            echo json_encode(['error' => 'Thiếu thông tin (lớp, thứ, tiết).']);
-            return;
+        // Instantiate TkbController WITHOUT running its constructor to avoid headers/redirects/output
+        if (!class_exists('TkbController')) {
+            require_once __DIR__ . '/TkbController.php';
+        }
+        $ref = new ReflectionClass('TkbController');
+        $tkbController = $ref->newInstanceWithoutConstructor();
+
+        // Inject required models into private properties via Reflection
+        try {
+            $userModel = $this->loadModel('UserModel');
+            $tkbModel = $this->loadModel('TkbModel');
+
+            $pUser = $ref->getProperty('userModel');
+            $pUser->setAccessible(true);
+            $pUser->setValue($tkbController, $userModel);
+
+            $pTkb = $ref->getProperty('tkbModel');
+            $pTkb->setAccessible(true);
+            $pTkb->setValue($tkbController, $tkbModel);
+        } catch (ReflectionException $e) {
+            error_log('Reflection error injecting models into TkbController: ' . $e->getMessage());
+            // Fallback: try to call directly (may trigger constructor)
+            $tkbController = new TkbController();
         }
 
-        $ds_mon_gv_phan_cong = $this->tkbModel->getDanhSachMonHocGV($ma_lop);
-        $phong_hoc_chinh_id = $this->tkbModel->getPhongHocChinhID($ma_lop);
-        $result = ['mon_hoc_gv' => []];
-
-        foreach ($ds_mon_gv_phan_cong as $item) {
-            $ma_giao_vien = $item['ma_giao_vien'];
-            $ma_phan_cong = $item['ma_phan_cong'];
-            $ma_phong_du_kien = $item['ma_phong_dac_biet'] ?? $phong_hoc_chinh_id;
-            
-            // Kiểm tra GV bận (check TẤT CẢ các học kỳ để cảnh báo)
-            $gv_ban_lich = $this->tkbModel->getGVBan($ma_giao_vien);
-            $is_gv_ban = isset($gv_ban_lich[$thu][$tiet]);
-            
-            $is_phong_ban = false;
-            if ($ma_phong_du_kien !== null) {
-                // Kiểm tra Phòng bận (check TẤT CẢ các học kỳ để cảnh báo)
-                 $phong_ban_lich = $this->tkbModel->getPhongBan($ma_phong_du_kien);
-                 $is_phong_ban = isset($phong_ban_lich[$thu][$tiet]);
-            }
-
-            $is_option_ban = $is_gv_ban || $is_phong_ban;
-            $ly_do_ban = $is_gv_ban ? '(GV bận)' : ($is_phong_ban ? '(Phòng bận)' : '');
-            
-            $result['mon_hoc_gv'][] = [
-                'ma_phan_cong' => $ma_phan_cong,
-                'ten_hien_thi' => $item['ten_mon_hoc'] . ' - (GV: ' . $item['ten_giao_vien'] . ')',
-                'is_ban' => $is_option_ban,
-                'ly_do' => $ly_do_ban
-            ];
-        }
-        echo json_encode($result);
+        // Call the API method
+        $tkbController->getDanhSachMonHocGV($ma_lop, $thu, $tiet);
     }
-    
+
+
     // --- CÁC HÀM QUẢN LÝ TÀI KHOẢN (GIỮ NGUYÊN) ---
 
     /**
@@ -330,7 +102,20 @@ class QuanTriController extends Controller {
      */
     public function quanlytaikhoan() {
         if (!$this->accountModel) { die("Lỗi: AccountModel chưa được load."); }
-        $accounts = $this->accountModel->getAllAccounts();
+        // Lọc theo trường nếu admin đang ở cấp trường
+        $school_id = $_SESSION['admin_school_id'] ?? null;
+        if (!$school_id && isset($_SESSION['user_id'])) {
+            // Lấy lại từ UserModel nếu chưa có trong session
+            if (!$this->userModel) { $this->userModel = $this->loadModel('UserModel'); }
+            $school_id = $this->userModel->getAdminSchoolId($_SESSION['user_id']);
+            if ($school_id) $_SESSION['admin_school_id'] = $school_id;
+        }
+
+        if ($school_id) {
+            $accounts = $this->accountModel->getAccountsBySchool($school_id);
+        } else {
+            $accounts = $this->accountModel->getAllAccounts();
+        }
         $data = [
             'user_name' => $_SESSION['user_name'] ?? 'Admin',
             'accounts' => $accounts
@@ -387,7 +172,15 @@ class QuanTriController extends Controller {
      * URL: /quantri/quanlygiaovien
      */
     public function quanlygiaovien() {
-        $danhSachGiaoVien = $this->giaoVienModel->getDanhSachGiaoVien();
+        // Lọc giáo viên theo trường nếu admin ở cấp trường
+        $school_id = $_SESSION['admin_school_id'] ?? null;
+        if (!$school_id && isset($_SESSION['user_id'])) {
+            if (!$this->userModel) { $this->userModel = $this->loadModel('UserModel'); }
+            $school_id = $this->userModel->getAdminSchoolId($_SESSION['user_id']);
+            if ($school_id) $_SESSION['admin_school_id'] = $school_id;
+        }
+        
+        $danhSachGiaoVien = $this->giaoVienModel->getDanhSachGiaoVien($school_id);
         $data = [
             'user_name' => $_SESSION['user_name'] ?? 'Admin',
             'giao_vien' => $danhSachGiaoVien

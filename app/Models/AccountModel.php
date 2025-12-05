@@ -68,6 +68,45 @@ class AccountModel {
     }
 
     /**
+     * Lấy tài khoản nhưng chỉ thuộc về 1 trường cụ thể (lọc theo ma_truong)
+     * Hiển thị HS của trường, GV có phân công dạy tại trường, và QTV của trường.
+     */
+    public function getAccountsBySchool($school_id) {
+        if ($this->db === null) return [];
+        $sql = "SELECT DISTINCT
+                    tk.ma_tai_khoan,
+                    tk.username,
+                    tk.vai_tro,
+                    tk.trang_thai,
+                    nd.ho_ten,
+                    nd.so_dien_thoai,
+                    nd.email,
+                    nd.dia_chi,
+                    nd.ngay_sinh,
+                    nd.gioi_tinh
+                FROM tai_khoan tk
+                JOIN nguoi_dung nd ON tk.ma_tai_khoan = nd.ma_tai_khoan
+                -- Liên kết HS -> Lớp -> Trường
+                LEFT JOIN hoc_sinh hs ON nd.ma_nguoi_dung = hs.ma_hoc_sinh
+                LEFT JOIN lop_hoc lh_hs ON hs.ma_lop = lh_hs.ma_lop
+                -- Liên kết GV qua bảng phân công -> Lớp -> Trường
+                LEFT JOIN bang_phan_cong bpc ON bpc.ma_giao_vien = nd.ma_nguoi_dung
+                LEFT JOIN lop_hoc lh_bpc ON bpc.ma_lop = lh_bpc.ma_lop
+                -- Liên kết QTV
+                LEFT JOIN quan_tri_vien qtv ON nd.ma_nguoi_dung = qtv.ma_qtv
+                                WHERE (lh_hs.ma_truong = :sid OR lh_bpc.ma_truong = :sid OR qtv.ma_truong = :sid)
+                ORDER BY nd.ho_ten";
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':sid' => $school_id]);
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("Lỗi getAccountsBySchool: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
      * Cập nhật thông tin tài khoản (cả 2 bảng)
      */
     public function updateAccount($data) {
