@@ -3,6 +3,7 @@ class GiaoVienChuNhiemModel {
     private $db;
 
     public function __construct() {
+        // Kết nối CSDL
         $ports = [3307, 3306]; 
         foreach ($ports as $port) {
             try {
@@ -16,17 +17,20 @@ class GiaoVienChuNhiemModel {
     }
 
     /**
-     * Tìm lớp mà GV này đang chủ nhiệm
-     * (Dựa vào phân công môn Sinh hoạt lớp - ID 19 hoặc Chào cờ - ID 18)
+     * SỬA LẠI: Tìm lớp dựa trên cột 'ma_gvcn' trong bảng 'lop_hoc'
+     * (Cách này chuẩn xác nhất với Database của bạn)
      */
     public function getLopChuNhiem($ma_giao_vien) {
         if ($this->db === null) return null;
+        
+        // Query đơn giản và trực tiếp hơn
+        // Tìm xem giáo viên này (ID = ?) có tên trong cột ma_gvcn của lớp nào không
         $sql = "SELECT l.*, 
                        (SELECT COUNT(*) FROM hoc_sinh hs WHERE hs.ma_lop = l.ma_lop) as si_so_thuc
-                FROM bang_phan_cong bpc
-                JOIN lop_hoc l ON bpc.ma_lop = l.ma_lop
-                WHERE bpc.ma_giao_vien = ? AND bpc.ma_mon_hoc IN (18, 19) 
+                FROM lop_hoc l
+                WHERE l.ma_gvcn = ? 
                 LIMIT 1";
+                
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$ma_giao_vien]);
         return $stmt->fetch();
@@ -57,7 +61,7 @@ class GiaoVienChuNhiemModel {
     }
 
     /**
-     * Thống kê Hạnh kiểm cho biểu đồ
+     * Thống kê Hạnh kiểm
      */
     public function getChartHanhKiem($ma_lop) {
         $sql = "SELECT kq.xep_loai_hanh_kiem, COUNT(*) as so_luong

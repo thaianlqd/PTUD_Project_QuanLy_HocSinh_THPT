@@ -41,7 +41,7 @@ class PhuHuynhModel {
      * Tìm xem phụ huynh này là cha mẹ của HS nào.
      * (Hiện chưa có bảng 'phu_huynh_hoc_sinh' nên tạm giả định lấy HS có ID=2)
      */
-    private function getMaHocSinhCuaPhuHuynh($ma_phu_huynh) {
+    public function getMaHocSinhCuaPhuHuynh($ma_phu_huynh) {
         // Câu lệnh SQL mới: Tìm trong bảng liên kết dựa theo ID phụ huynh đăng nhập
         $sql = "SELECT ma_hoc_sinh 
                 FROM phu_huynh_hoc_sinh 
@@ -163,5 +163,33 @@ class PhuHuynhModel {
 
         return $bang_diem;
     }
+
+    public function getTenTruongCuaCon($ma_phu_huynh) {
+        $ma_hs = $this->getMaHocSinhCuaPhuHuynh($ma_phu_huynh);
+        if (!$ma_hs) {
+            return 'THPT Manager';
+        }
+
+        $sql = "
+            SELECT tt.ten_truong 
+            FROM hoc_sinh hs
+            JOIN lop_hoc l ON hs.ma_lop = l.ma_lop
+            JOIN truong_thpt tt ON l.ma_truong = tt.ma_truong
+            WHERE hs.ma_hoc_sinh = ?
+            LIMIT 1
+        ";
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_hs]);
+            $ten_truong = $stmt->fetchColumn();
+            
+            return $ten_truong ?: 'THPT Manager';
+        } catch (Exception $e) {
+            return 'THPT Manager'; // nếu có lỗi gì thì vẫn không crash
+        }
+    }
+
+    
 }
 ?>
