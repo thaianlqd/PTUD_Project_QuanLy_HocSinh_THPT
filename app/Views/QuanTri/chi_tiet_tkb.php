@@ -79,7 +79,7 @@
             <div class="collapse navbar-collapse" id="navbarContent">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link" href="<?php echo BASE_URL ?? ''; ?>/quantri/xeptkb">
+                        <a class="nav-link" href="<?php echo BASE_URL ?? ''; ?>/tkb/xeptkb">
                             <i class="bi bi-chevron-left"></i> Quay về Danh sách Lớp
                         </a>
                     </li>
@@ -321,7 +321,7 @@
     <div class="modal fade" id="scheduleModal" tabindex="-1" aria-hidden="true">
          <div class="modal-dialog">
             <div class="modal-content">
-                <form id="tkbForm" method="POST" action="<?php echo BASE_URL . '/quantri/luuTietHoc'; ?>">
+                <form id="tkbForm" method="POST" action="<?php echo BASE_URL . '/tkb/luuTietHoc'; ?>">
                     <div class="modal-header bg-light">
                         <h5 class="modal-title fw-bold" id="modalTitle">Quản lý Tiết học</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -410,7 +410,7 @@
             // Fetch dynamic data
             try {
                 // API không cần ma_hoc_ky vì ràng buộc GV/Phòng là real-time
-                const apiUrl = `${BASE_URL}/quantri/getDanhSachMonHocGV/${maLop}/${thu}/${tiet}`;
+                const apiUrl = `${BASE_URL}/tkb/getDanhSachMonHocGV/${maLop}/${thu}/${tiet}`;
                 const response = await fetch(apiUrl);
                 if (!response.ok) throw new Error(`Lỗi HTTP ${response.status}: ${apiUrl}`);
                 const raw = await response.text();
@@ -492,7 +492,7 @@
             if (selectedDate) {
                 document.body.style.opacity = '0.5'; 
                 document.body.style.cursor = 'wait';
-                window.location.href = `${BASE_URL}/quantri/chiTietTkb/${maLop}?date=${selectedDate}`;
+                window.location.href = `${BASE_URL}/tkb/chiTietTkb/${maLop}?date=${selectedDate}`;
             }
         }
 
@@ -501,7 +501,7 @@
             if (ma_lop) {
                 document.body.style.opacity = '0.5'; 
                 document.body.style.cursor = 'wait';
-                window.location.href = `${BASE_URL}/quantri/chiTietTkb/${ma_lop}${CURRENT_DATE_PARAM}`;
+                window.location.href = `${BASE_URL}/tkb/chiTietTkb/${ma_lop}${CURRENT_DATE_PARAM}`;
             }
         }
     </script>

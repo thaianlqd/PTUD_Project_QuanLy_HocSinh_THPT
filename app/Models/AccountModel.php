@@ -107,8 +107,122 @@ class AccountModel {
     }
 
     /**
-     * Cập nhật thông tin tài khoản (cả 2 bảng)
+     * Đếm tổng số tài khoản (không phân trang)
      */
+    public function countAllAccounts() {
+        if ($this->db === null) return 0;
+        $sql = "SELECT COUNT(*) FROM tai_khoan WHERE vai_tro <> 'QuanTriVien'";
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute();
+            return (int)$stmt->fetchColumn();
+        } catch (PDOException $e) {
+            error_log("Lỗi countAllAccounts: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Đếm tổng số tài khoản theo trường
+     */
+    public function countAccountsBySchool($school_id) {
+        if ($this->db === null) return 0;
+        $sql = "SELECT COUNT(DISTINCT tk.ma_tai_khoan)
+                FROM tai_khoan tk
+                JOIN nguoi_dung nd ON tk.ma_tai_khoan = nd.ma_tai_khoan
+                LEFT JOIN hoc_sinh hs ON nd.ma_nguoi_dung = hs.ma_hoc_sinh
+                LEFT JOIN lop_hoc lh_hs ON hs.ma_lop = lh_hs.ma_lop
+                LEFT JOIN bang_phan_cong bpc ON bpc.ma_giao_vien = nd.ma_nguoi_dung
+                LEFT JOIN lop_hoc lh_bpc ON bpc.ma_lop = lh_bpc.ma_lop
+                LEFT JOIN quan_tri_vien qtv ON nd.ma_nguoi_dung = qtv.ma_qtv
+                WHERE (lh_hs.ma_truong = :sid OR lh_bpc.ma_truong = :sid OR qtv.ma_truong = :sid)";
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':sid' => $school_id]);
+            return (int)$stmt->fetchColumn();
+        } catch (PDOException $e) {
+            error_log("Lỗi countAccountsBySchool: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Lấy tất cả tài khoản với phân trang (mới nhất trước)
+     */
+    public function getAllAccountsPaginated($page = 1, $limit = 10) {
+        if ($this->db === null) return [];
+        $offset = ($page - 1) * $limit;
+        
+        $sql = "SELECT 
+                    tk.ma_tai_khoan,
+                    tk.username,
+                    tk.vai_tro,
+                    tk.trang_thai,
+                    nd.ho_ten,
+                    nd.so_dien_thoai,
+                    nd.email,
+                    nd.dia_chi,
+                    nd.ngay_sinh,
+                    nd.gioi_tinh
+                FROM tai_khoan tk
+                JOIN nguoi_dung nd ON tk.ma_tai_khoan = nd.ma_tai_khoan
+                WHERE tk.vai_tro <> 'QuanTriVien'
+                ORDER BY tk.ma_tai_khoan DESC
+                LIMIT :limit OFFSET :offset";
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("Lỗi getAllAccountsPaginated: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Lấy tài khoản theo trường với phân trang (mới nhất trước)
+     */
+    public function getAccountsBySchoolPaginated($school_id, $page = 1, $limit = 10) {
+        if ($this->db === null) return [];
+        $offset = ($page - 1) * $limit;
+        
+        $sql = "SELECT DISTINCT
+                    tk.ma_tai_khoan,
+                    tk.username,
+                    tk.vai_tro,
+                    tk.trang_thai,
+                    nd.ho_ten,
+                    nd.so_dien_thoai,
+                    nd.email,
+                    nd.dia_chi,
+                    nd.ngay_sinh,
+                    nd.gioi_tinh
+                FROM tai_khoan tk
+                JOIN nguoi_dung nd ON tk.ma_tai_khoan = nd.ma_tai_khoan
+                LEFT JOIN hoc_sinh hs ON nd.ma_nguoi_dung = hs.ma_hoc_sinh
+                LEFT JOIN lop_hoc lh_hs ON hs.ma_lop = lh_hs.ma_lop
+                LEFT JOIN bang_phan_cong bpc ON bpc.ma_giao_vien = nd.ma_nguoi_dung
+                LEFT JOIN lop_hoc lh_bpc ON bpc.ma_lop = lh_bpc.ma_lop
+                LEFT JOIN quan_tri_vien qtv ON nd.ma_nguoi_dung = qtv.ma_qtv
+                WHERE (lh_hs.ma_truong = :sid OR lh_bpc.ma_truong = :sid OR qtv.ma_truong = :sid)
+                ORDER BY tk.ma_tai_khoan DESC
+                LIMIT :limit OFFSET :offset";
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindParam(':sid', $school_id, PDO::PARAM_INT);
+            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("Lỗi getAccountsBySchoolPaginated: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
     public function updateAccount($data) {
         if ($this->db === null) return false;
         
@@ -216,8 +330,9 @@ class AccountModel {
 
     /**
      * HÀM MỚI: Cấp tài khoản mới (Sử dụng Transaction)
+     * $school_id: Nếu có, sẽ ghi ma_truong vào bảng role
      */
-    public function createAccount($data) {
+    public function createAccount($data, $school_id = null) {
         if ($this->db === null) return "Lỗi kết nối CSDL.";
 
         // 1. Kiểm tra trùng lặp trước
@@ -255,13 +370,21 @@ class AccountModel {
             $ma_nguoi_dung = $this->db->lastInsertId();
 
             // 
-            // Bảng 3: Tạo vai trò cụ thể
+            // Bảng 3: Tạo vai trò cụ thể (và ghi ma_truong nếu có)
             $sql_role = "";
+            $params_role = [$ma_nguoi_dung];
             switch ($data['vai_tro']) {
                 case 'GiaoVien':
-                    $sql_role = "INSERT INTO giao_vien (ma_giao_vien) VALUES (?)";
+                    if ($school_id) {
+                        $sql_role = "INSERT INTO giao_vien (ma_giao_vien, ma_truong) VALUES (?, ?)";
+                        $params_role[] = $school_id;
+                    } else {
+                        $sql_role = "INSERT INTO giao_vien (ma_giao_vien) VALUES (?)";
+                    }
                     break;
                 case 'HocSinh':
+                    // HocSinh không có ma_truong trực tiếp, nhưng qua ma_lop → ma_truong
+                    // Không ghi ở đây, để sau khi tạo admin sẽ gán học sinh vào lớp
                     $sql_role = "INSERT INTO hoc_sinh (ma_hoc_sinh) VALUES (?)";
                     break;
                 case 'PhuHuynh':
@@ -273,11 +396,19 @@ class AccountModel {
                 case 'ThiSinh':
                     $sql_role = "INSERT INTO thi_sinh (ma_nguoi_dung) VALUES (?)";
                     break;
+                case 'BanGiamHieu':
+                    if ($school_id) {
+                        $sql_role = "INSERT INTO ban_giam_hieu (ma_bgd, ma_truong) VALUES (?, ?)";
+                        $params_role[] = $school_id;
+                    } else {
+                        $sql_role = "INSERT INTO ban_giam_hieu (ma_bgd) VALUES (?)";
+                    }
+                    break;
             }
 
             if (!empty($sql_role)) {
                 $stmt_role = $this->db->prepare($sql_role);
-                $stmt_role->execute([$ma_nguoi_dung]);
+                $stmt_role->execute($params_role);
             }
 
             $this->db->commit();
@@ -293,6 +424,19 @@ class AccountModel {
             }
             return "Lỗi hệ thống khi tạo tài khoản.";
         }
+    }
+    /**
+     * Lấy danh sách vai trò có sẵn cho admin cấp trường
+     * Chỉ trả về: HocSinh, PhuHuynh, GiaoVien, BanGiamHieu
+     * Loại bỏ: NhanVienSoGD, ThiSinh, QuanTriVien
+     */
+    public function getAvailableRolesForSchoolAdmin() {
+        return [
+            'HocSinh' => 'Học Sinh',
+            'PhuHuynh' => 'Phụ Huynh',
+            'GiaoVien' => 'Giáo Viên',
+            'BanGiamHieu' => 'Ban Giám Hiệu'
+        ];
     }
 }
 ?>

@@ -293,8 +293,8 @@ class TkbController extends Controller {
             $is_gv_ban = isset($gv_ban_lich[$thu][$tiet]);
             
             $is_phong_ban = false;
-            if ($ma_phong_du_kien !== null) {
-                // Kiểm tra Phòng bận
+            if ($ma_phong_du_kien !== null && $ma_phong_du_kien != $phong_hoc_chinh_id) {
+                // Kiểm tra Phòng bận (NHƯ NG: Nếu là phòng chính của lớp thì không check bận vì là phòng riêng của lớp)
                 $phong_ban_lich = $this->tkbModel->getPhongBan($ma_phong_du_kien);
                 $is_phong_ban = isset($phong_ban_lich[$thu][$tiet]);
             }

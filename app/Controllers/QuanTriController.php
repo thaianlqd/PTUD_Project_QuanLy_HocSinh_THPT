@@ -4,9 +4,6 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Include TkbController
-require_once __DIR__ . '/TkbController.php';
-
 class QuanTriController extends Controller {
 
     private $userModel;
@@ -44,57 +41,6 @@ class QuanTriController extends Controller {
         exit;
     }
 
-    // --- CÁC HÀM XẾP THỜI KHÓA BIỂU ĐÃ CHUYỂN SANG TkbController ---
-    
-    /**
-     * Redirect sang TkbController (route cũ vẫn hoạt động)
-     */
-    public function xeptkb() {
-        $tkbController = new TkbController();
-        $tkbController->xeptkb();
-    }
-
-    public function chiTietTkb($ma_lop = 0) {
-        $tkbController = new TkbController();
-        $tkbController->chiTietTkb($ma_lop);
-    }
-
-    public function luuTietHoc() {
-        $tkbController = new TkbController();
-        $tkbController->luuTietHoc();
-    }
-
-    public function getDanhSachMonHocGV($ma_lop = 0, $thu = 0, $tiet = 0) {
-        // Instantiate TkbController WITHOUT running its constructor to avoid headers/redirects/output
-        if (!class_exists('TkbController')) {
-            require_once __DIR__ . '/TkbController.php';
-        }
-        $ref = new ReflectionClass('TkbController');
-        $tkbController = $ref->newInstanceWithoutConstructor();
-
-        // Inject required models into private properties via Reflection
-        try {
-            $userModel = $this->loadModel('UserModel');
-            $tkbModel = $this->loadModel('TkbModel');
-
-            $pUser = $ref->getProperty('userModel');
-            $pUser->setAccessible(true);
-            $pUser->setValue($tkbController, $userModel);
-
-            $pTkb = $ref->getProperty('tkbModel');
-            $pTkb->setAccessible(true);
-            $pTkb->setValue($tkbController, $tkbModel);
-        } catch (ReflectionException $e) {
-            error_log('Reflection error injecting models into TkbController: ' . $e->getMessage());
-            // Fallback: try to call directly (may trigger constructor)
-            $tkbController = new TkbController();
-        }
-
-        // Call the API method
-        $tkbController->getDanhSachMonHocGV($ma_lop, $thu, $tiet);
-    }
-
-
     // --- CÁC HÀM QUẢN LÝ TÀI KHOẢN (GIỮ NGUYÊN) ---
 
     /**
@@ -102,6 +48,12 @@ class QuanTriController extends Controller {
      */
     public function quanlytaikhoan() {
         if (!$this->accountModel) { die("Lỗi: AccountModel chưa được load."); }
+        
+        // Lấy trang hiện tại từ query string (mặc định trang 1)
+        $current_page = (int)($_GET['page'] ?? 1);
+        if ($current_page < 1) $current_page = 1;
+        $limit_per_page = 10;
+        
         // Lọc theo trường nếu admin đang ở cấp trường
         $school_id = $_SESSION['admin_school_id'] ?? null;
         if (!$school_id && isset($_SESSION['user_id'])) {
@@ -111,14 +63,37 @@ class QuanTriController extends Controller {
             if ($school_id) $_SESSION['admin_school_id'] = $school_id;
         }
 
+        // Lấy dữ liệu phân trang
         if ($school_id) {
-            $accounts = $this->accountModel->getAccountsBySchool($school_id);
+            $accounts = $this->accountModel->getAccountsBySchoolPaginated($school_id, $current_page, $limit_per_page);
+            $total_accounts = $this->accountModel->countAccountsBySchool($school_id);
         } else {
-            $accounts = $this->accountModel->getAllAccounts();
+            $accounts = $this->accountModel->getAllAccountsPaginated($current_page, $limit_per_page);
+            $total_accounts = $this->accountModel->countAllAccounts();
         }
+        
+        // Tính toán số trang
+        $total_pages = ceil($total_accounts / $limit_per_page);
+        if ($current_page > $total_pages && $total_pages > 0) $current_page = $total_pages;
+        
+        // Lấy danh sách vai trò khả dụng (nếu admin trường thì lọc, nếu super admin thì tất cả)
+        $available_roles = $school_id ? $this->accountModel->getAvailableRolesForSchoolAdmin() : [
+            'HocSinh' => 'Học Sinh',
+            'PhuHuynh' => 'Phụ Huynh',
+            'GiaoVien' => 'Giáo Viên',
+            'BanGiamHieu' => 'Ban Giám Hiệu',
+            'NhanVienSoGD' => 'Nhân Viên Sở GD',
+            'ThiSinh' => 'Thí Sinh'
+        ];
+        
         $data = [
             'user_name' => $_SESSION['user_name'] ?? 'Admin',
-            'accounts' => $accounts
+            'accounts' => $accounts,
+            'available_roles' => $available_roles,
+            'current_page' => $current_page,
+            'total_pages' => $total_pages,
+            'total_accounts' => $total_accounts,
+            'limit_per_page' => $limit_per_page
         ];
         $content = $this->loadView('QuanTri/quan_ly_taikhoan', $data);
         echo $content;
@@ -283,7 +258,10 @@ class QuanTriController extends Controller {
             return;
         }
         
-        $result = $this->accountModel->createAccount($data);
+        // Lấy school_id từ session (nếu có)
+        $school_id = $this->userModel->getAdminSchoolId($_SESSION['user_id'] ?? null);
+        
+        $result = $this->accountModel->createAccount($data, $school_id);
         
         if ($result === true) {
             echo json_encode(['success' => true, 'message' => 'Tạo tài khoản mới thành công!']);

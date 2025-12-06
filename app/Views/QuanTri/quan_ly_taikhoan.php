@@ -124,9 +124,72 @@
                 </table>
             </div>
         </div>
-    </div>
 
-    <!-- Modal Sửa Tài Khoản -->
+        <!-- Pagination -->
+        <div class="card mt-3 p-3">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <p class="text-muted mb-0">
+                        Đang hiển thị <strong><?php echo count($data['accounts']); ?></strong> tài khoản 
+                        trong số <strong><?php echo $data['total_accounts']; ?></strong> 
+                        | Trang <strong><?php echo $data['current_page']; ?></strong> / <strong><?php echo $data['total_pages']; ?></strong>
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <nav aria-label="Phân trang">
+                        <ul class="pagination justify-content-end mb-0">
+                            <!-- Nút "Trang trước" -->
+                            <li class="page-item <?php echo $data['current_page'] <= 1 ? 'disabled' : ''; ?>">
+                                <a class="page-link" href="<?php echo BASE_URL; ?>/quantri/quanlytaikhoan?page=<?php echo max(1, $data['current_page'] - 1); ?>">
+                                    <i class="bi bi-chevron-left"></i> Trước
+                                </a>
+                            </li>
+
+                            <!-- Các nút trang -->
+                            <?php
+                            $start_page = max(1, $data['current_page'] - 2);
+                            $end_page = min($data['total_pages'], $data['current_page'] + 2);
+                            
+                            if ($start_page > 1): ?>
+                                <li class="page-item">
+                                    <a class="page-link" href="<?php echo BASE_URL; ?>/quantri/quanlytaikhoan?page=1">1</a>
+                                </li>
+                                <?php if ($start_page > 2): ?>
+                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                <?php endif;
+                            endif;
+
+                            for ($p = $start_page; $p <= $end_page; $p++): ?>
+                                <li class="page-item <?php echo $p == $data['current_page'] ? 'active' : ''; ?>">
+                                    <a class="page-link" href="<?php echo BASE_URL; ?>/quantri/quanlytaikhoan?page=<?php echo $p; ?>">
+                                        <?php echo $p; ?>
+                                    </a>
+                                </li>
+                            <?php endfor;
+
+                            if ($end_page < $data['total_pages']): 
+                                if ($end_page < $data['total_pages'] - 1): ?>
+                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                <?php endif; ?>
+                                <li class="page-item">
+                                    <a class="page-link" href="<?php echo BASE_URL; ?>/quantri/quanlytaikhoan?page=<?php echo $data['total_pages']; ?>">
+                                        <?php echo $data['total_pages']; ?>
+                                    </a>
+                                </li>
+                            <?php endif; ?>
+
+                            <!-- Nút "Trang sau" -->
+                            <li class="page-item <?php echo $data['current_page'] >= $data['total_pages'] ? 'disabled' : ''; ?>">
+                                <a class="page-link" href="<?php echo BASE_URL; ?>/quantri/quanlytaikhoan?page=<?php echo min($data['total_pages'], $data['current_page'] + 1); ?>">
+                                    Sau <i class="bi bi-chevron-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="modal fade" id="editAccountModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -236,17 +299,20 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="createPassword" class="form-label">Mật khẩu (Tối thiểu 6 ký tự) <span class="text-danger">*</span></label>
-                                <input type="password" class="form-control" id="createPassword" required minlength="6">
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="createPassword" required minlength="6">
+                                    <button class="btn btn-outline-secondary" type="button" id="generatePasswordBtn" title="Tạo mật khẩu mặc định: 123456@A">
+                                        <i class="bi bi-arrow-repeat"></i> Phát sinh
+                                    </button>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label for="createRole" class="form-label">Vai Trò <span class="text-danger">*</span></label>
                                 <select class="form-select" id="createRole" required>
                                     <option value="" selected disabled>-- Chọn vai trò --</option>
-                                    <option value="HocSinh">Học Sinh</option>
-                                    <option value="PhuHuynh">Phụ Huynh</option>
-                                    <option value="GiaoVien">Giáo Viên</option>
-                                    <option value="NhanVienSoGD">Nhân Viên Sở GD</option>
-                                    <option value="ThiSinh">Thí Sinh</option>
+                                    <?php foreach ($data['available_roles'] as $role_key => $role_label): ?>
+                                        <option value="<?php echo $role_key; ?>"><?php echo $role_label; ?></option>
+                                    <?php endforeach; ?>
                                 </select>
                             </div>
                             <div class="col-md-6">
@@ -287,6 +353,15 @@
             editModal = new bootstrap.Modal(document.getElementById('editAccountModal'));
             deleteModal = new bootstrap.Modal(document.getElementById('deleteAccountModal'));
             createModal = new bootstrap.Modal(document.getElementById('createAccountModal')); // <-- THÊM DÒNG NÀY
+            
+            // Thêm event listener cho nút phát sinh mật khẩu
+            document.getElementById('generatePasswordBtn').addEventListener('click', () => {
+                document.getElementById('createPassword').value = '123456@A';
+                document.getElementById('createPassword').type = 'text'; // Hiển thị mật khẩu để người dùng thấy
+                setTimeout(() => {
+                    document.getElementById('createPassword').type = 'password'; // Ẩn lại sau 2 giây
+                }, 2000);
+            });
         });
 
         // --- HÀM VALIDATION (Client-side) ---
@@ -536,8 +611,8 @@
                 if (result.success) {
                     createModal.hide();
                     showGlobalNotification(result.message, 'success');
-                    // Tải lại trang để thấy tài khoản mới
-                    setTimeout(() => window.location.reload(), 1500); 
+                    // Redirect sang trang 1 để thấy tài khoản mới (vì mới nhất ở đầu)
+                    setTimeout(() => window.location.href = `${BASE_URL}/quantri/quanlytaikhoan?page=1`, 1500); 
                 } else {
                     notificationEl.textContent = result.message || 'Lỗi không xác định.';
                 }

@@ -584,7 +584,7 @@
                                             </div>
                                         </td>
                                         <td class="text-end pe-3">
-                                            <a href="<?php echo BASE_URL . '/quantri/chiTietTkb/' . htmlspecialchars($lop['ma_lop']); ?>"
+                                            <a href="<?php echo BASE_URL . '/tkb/chiTietTkb/' . htmlspecialchars($lop['ma_lop']); ?>"
                                                class="btn btn-sm btn-outline-primary">
                                                <i class="bi bi-pencil-square me-1"></i> Xếp lịch
                                             </a>
