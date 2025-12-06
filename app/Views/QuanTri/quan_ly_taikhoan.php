@@ -276,352 +276,403 @@
 
     <!-- Modal Cấp tài khoản (Đã vô hiệu hóa) -->
     <div class="modal fade" id="createAccountModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i> Cấp Tài Khoản Mới</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="createForm">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="createFullName" class="form-label">Họ Tên <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="createFullName" required maxlength="100">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="createPhone" class="form-label">Số Điện Thoại <span class="text-danger">*</span></label>
-                                <input type="tel" class="form-control" id="createPhone" required maxlength="15">
-                            </div>
-                            <div class="col-md-6">
-                                <label for="createEmail" class="form-label">Email (Tên Đăng Nhập) <span class="text-danger">*</span></label>
-                                <input type="email" class="form-control" id="createEmail" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="createPassword" class="form-label">Mật khẩu (Tối thiểu 6 ký tự) <span class="text-danger">*</span></label>
-                                <div class="input-group">
-                                    <input type="password" class="form-control" id="createPassword" required minlength="6">
-                                    <button class="btn btn-outline-secondary" type="button" id="generatePasswordBtn" title="Tạo mật khẩu mặc định: 123456@A">
-                                        <i class="bi bi-arrow-repeat"></i> Phát sinh
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="createRole" class="form-label">Vai Trò <span class="text-danger">*</span></label>
-                                <select class="form-select" id="createRole" required>
-                                    <option value="" selected disabled>-- Chọn vai trò --</option>
-                                    <?php foreach ($data['available_roles'] as $role_key => $role_label): ?>
-                                        <option value="<?php echo $role_key; ?>"><?php echo $role_label; ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="createBirthday" class="form-label">Ngày Sinh</label>
-                                <input type="date" class="form-control" id="createBirthday">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Giới Tính</label>
-                                <select class="form-select" id="createGender">
-                                    <option value="Nam">Nam</option>
-                                    <option value="Nu">Nữ</option>
-                                    <option value="Khac">Khác</option>
-                                </select>
-                            </div>
-                            <div class="col-12">
-                                <label for="createAddress" class="form-label">Địa chỉ</label>
-                                <input type="text" class="form-control" id="createAddress" placeholder="Nhập địa chỉ...">
-                            </div>
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Cấp Tài Khoản Mới</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label>Họ và tên <span class="text-danger">*</span></label>
+                        <input type="text" id="createFullName" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label>Số điện thoại <span class="text-danger">*</span></label>
+                        <input type="text" id="createPhone" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label>Email (làm tên đăng nhập) <span class="text-danger">*</span></label>
+                        <input type="email" id="createEmail" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mật khẩu <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="password" id="createPassword" class="form-control" required placeholder="Nhập mật khẩu...">
+                            <button class="btn btn-outline-secondary" type="button" id="generatePasswordBtn" title="Tự động tạo mật khẩu">
+                                <i class="bi bi-magic"></i> Random
+                            </button>
                         </div>
-                        <div id="createNotification" class="mt-3 text-danger"></div>
-                    </form>
+                        <small class="text-muted" style="font-size: 0.8rem;">Click Random để tạo pass: 123456@A</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label>Vai trò <span class="text-danger">*</span></label>
+                        <select id="createRole" class="form-select" required>
+                            <option value="">-- Chọn vai trò --</option>
+                            <option value="HocSinh">Học Sinh</option>
+                            <option value="PhuHuynh">Phụ Huynh</option>
+                            <option value="GiaoVien">Giáo Viên</option>
+                            <option value="BanGiamHieu">Ban Giám Hiệu</option>
+                        </select>
+                    </div>
+
+                    <!-- Phần động theo vai trò -->
+                    <div id="divLopHoc" class="col-12" style="display:none;">
+                        <label>Lớp học <span class="text-danger">*</span></label>
+                        <select id="createLop" class="form-select"></select>
+                    </div>
+                    <div id="divMonHoc" class="col-12" style="display:none;">
+                        <label>Bộ môn chuyên môn (tùy chọn)</label>
+                        <select id="createMonHoc" class="form-select">
+                            <option value="">-- Không chọn --</option>
+                            <!-- Sẽ load bằng JS -->
+                        </select>
+                    </div>
+                    <div id="divHocSinhCon" class="col-12" style="display:none;">
+                        <label>Chọn con (có thể chọn nhiều)</label>
+                        <select id="createHocSinhCon" class="form-select" multiple size="5"></select>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label>Ngày sinh</label>
+                        <input type="date" id="createBirthday" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label>Giới tính</label>
+                        <select id="createGender" class="form-select">
+                            <option value="">-- Chọn --</option>
+                            <option value="Nam">Nam</option>
+                            <option value="Nu">Nữ</option>
+                            <option value="Khac">Khác</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label>Địa chỉ</label>
+                        <input type="text" id="createAddress" class="form-control">
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="button" class="btn btn-success" onclick="handleCreate()">Xác nhận Tạo</button>
-                </div>
+                <div id="createNotification" class="mt-3 text-danger"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-success" onclick="handleCreate()">Tạo tài khoản</button>
             </div>
         </div>
     </div>
+</div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Khởi tạo các đối tượng Modal của Bootstrap
-        let editModal, deleteModal, createModal; // <-- THÊM createModal
-        const BASE_URL = "<?php echo BASE_URL ?? ''; ?>"; // Lấy BASE_URL từ PHP
+    // --- KHAI BÁO BIẾN TOÀN CỤC ---
+    let editModal, deleteModal, createModal;
+    // Lấy BASE_URL từ PHP (đảm bảo code PHP đã define biến này)
+    const BASE_URL = "<?php echo BASE_URL ?? ''; ?>";
 
-        document.addEventListener('DOMContentLoaded', () => {
-            editModal = new bootstrap.Modal(document.getElementById('editAccountModal'));
-            deleteModal = new bootstrap.Modal(document.getElementById('deleteAccountModal'));
-            createModal = new bootstrap.Modal(document.getElementById('createAccountModal')); // <-- THÊM DÒNG NÀY
-            
-            // Thêm event listener cho nút phát sinh mật khẩu
-            document.getElementById('generatePasswordBtn').addEventListener('click', () => {
-                document.getElementById('createPassword').value = '123456@A';
-                document.getElementById('createPassword').type = 'text'; // Hiển thị mật khẩu để người dùng thấy
-                setTimeout(() => {
-                    document.getElementById('createPassword').type = 'password'; // Ẩn lại sau 2 giây
-                }, 2000);
+    // --- KHỞI TẠO KHI DOM READY ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // 1. Khởi tạo các Modal Bootstrap
+        const editModalEl = document.getElementById('editAccountModal');
+        const deleteModalEl = document.getElementById('deleteAccountModal');
+        const createModalEl = document.getElementById('createAccountModal');
+
+        if (editModalEl) editModal = new bootstrap.Modal(editModalEl);
+        if (deleteModalEl) deleteModal = new bootstrap.Modal(deleteModalEl);
+        if (createModalEl) createModal = new bootstrap.Modal(createModalEl);
+
+        // 2. Lắng nghe sự kiện thay đổi VAI TRÒ (trong Modal Tạo mới)
+        const createRoleSelect = document.getElementById('createRole');
+        if (createRoleSelect) {
+            createRoleSelect.addEventListener('change', handleRoleChange);
+        }
+
+        // 3. Sự kiện nút tạo mật khẩu ngẫu nhiên (nếu có trong HTML)
+        const genPassBtn = document.getElementById('generatePasswordBtn');
+        if (genPassBtn) {
+            genPassBtn.addEventListener('click', () => {
+                const passInput = document.getElementById('createPassword');
+                passInput.value = '123456@A'; // Mật khẩu mặc định
+                passInput.type = 'text';
+                setTimeout(() => passInput.type = 'password', 2000);
             });
-        });
-
-        // --- HÀM VALIDATION (Client-side) ---
-        function validateInput(field, value, notificationElId) {
-             const notification = document.getElementById(notificationElId);
-            notification.textContent = ''; // Xóa lỗi cũ
-            if (field === 'fullName') {
-                if (value.length > 100) { notification.textContent = "Họ tên không được vượt quá 100 ký tự."; return false; }
-            }
-            if (field === 'email') {
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailRegex.test(value)) { notification.textContent = "Email không đúng định dạng."; return false; }
-            }
-             if (field === 'password') {
-                if (value.length > 0 && value.length < 6) { // Chỉ kiểm tra nếu người dùng nhập
-                    notification.textContent = "Mật khẩu mới phải có ít nhất 6 ký tự."; return false; 
-                }
-            }
-            return true; // Hợp lệ
         }
+    });
 
-        // --- CÁC HÀM XỬ LÝ CHÍNH ---
+    // --- CÁC HÀM XỬ LÝ LOGIC GIAO DIỆN (UI) ---
 
-        // Xử lý Tìm kiếm (Client-side)
-        function handleSearch(event) {
-            event.preventDefault();
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
-            const rows = document.querySelectorAll('#accountTableBody tr.account-row');
-            let found = false;
+    // Xử lý khi đổi vai trò -> Ẩn/Hiện các ô nhập liệu tương ứng
+    function handleRoleChange() {
+        const role = this.value; // this = #createRole select box
 
-            rows.forEach(row => {
-                row.classList.remove('highlight-search'); // Xóa highlight cũ
-                const hoTen = row.dataset.hoTen.toLowerCase();
-                const phone = row.dataset.soDienThoai.toLowerCase();
+        // Ẩn tất cả các div mở rộng trước
+        document.getElementById('divLopHoc').style.display = 'none';
+        document.getElementById('divMonHoc').style.display = 'none';
+        document.getElementById('divHocSinhCon').style.display = 'none';
 
-                if (searchTerm === '') {
-                    row.style.display = ''; // Hiển thị lại tất cả
-                    found = true;
-                } else if (hoTen.includes(searchTerm) || phone.includes(searchTerm)) {
-                    row.style.display = ''; // Hiển thị hàng khớp
-                    row.classList.add('highlight-search'); // Highlight hàng
-                    found = true;
-                } else {
-                    row.style.display = 'none'; // Ẩn hàng không khớp
-                }
-            });
-            
-             const helpText = document.getElementById('searchHelp');
-             if (!found && searchTerm !== '') {
-                 helpText.textContent = `Không tìm thấy tài khoản nào khớp với "${searchTerm}".`;
-                 helpText.classList.remove('text-muted');
-                 helpText.classList.add('text-danger');
-             } else {
-                 helpText.textContent = 'Tìm kiếm sẽ lọc danh sách bên dưới.';
-                 helpText.classList.remove('text-danger');
-                 helpText.classList.add('text-muted');
-             }
-             
-            return false; // Ngăn form submit
+        // Reset giá trị để tránh gửi dữ liệu thừa
+        document.getElementById('createLop').value = "";
+        document.getElementById('createMonHoc').value = "";
+
+        // Logic hiển thị theo vai trò
+        if (role === 'HocSinh') {
+            document.getElementById('divLopHoc').style.display = 'block';
+            loadDsLop(); // Gọi API lấy danh sách lớp
+        } else if (role === 'GiaoVien') {
+            document.getElementById('divMonHoc').style.display = 'block';
+            // loadDsMonHoc(); // Nếu cần load môn học thì gọi hàm ở đây
+        } else if (role === 'PhuHuynh') {
+            document.getElementById('divHocSinhCon').style.display = 'block';
+            // loadDsHocSinh(); // Nếu cần load ds học sinh thì gọi hàm ở đây
         }
+    }
 
-        // Mở Modal Sửa
-        function openEditModal(ma_tai_khoan) {
-            // Tìm <tr> tương ứng bằng data-ma-tai-khoan
-            const tr = document.querySelector(`tr[data-ma-tai-khoan="${ma_tai_khoan}"]`);
-            if (!tr) {
-                alert("Lỗi: Không tìm thấy dữ liệu tài khoản.");
-                return;
-            }
-            const account = tr.dataset; // Lấy tất cả data-* attributes
+    // Hàm gọi API lấy danh sách lớp (Chỉ load 1 lần để tối ưu)
+    async function loadDsLop() {
+        const selectLop = document.getElementById('createLop');
+        // Nếu đã có dữ liệu (lớn hơn 1 option mặc định) thì không load lại
+        if (selectLop.options.length > 1) return; 
 
-            // Điền dữ liệu vào form
-            document.getElementById('editMaTaiKhoan').value = account.maTaiKhoan;
-            document.getElementById('editFullName').value = account.hoTen;
-            document.getElementById('editPhone').value = account.soDienThoai;
-            document.getElementById('editEmail').value = account.email;
-            document.getElementById('editRole').value = account.vaiTro;
-            document.getElementById('editAddress').value = account.diaChi || '';
-            document.getElementById('editPassword').value = ''; // Luôn xóa trống
-            document.getElementById('editNotification').textContent = '';
+        try {
+            // Gọi API từ Controller: QuanTriController -> getDsLopApi
+            const response = await fetch(`${BASE_URL}/quantri/getDsLopApi`);
+            const result = await response.json();
 
-            editModal.show();
-        }
-
-        // Xử lý Cập nhật (Gọi API)
-        async function handleUpdate() {
-            const notificationEl = document.getElementById('editNotification');
-            
-            // Lấy dữ liệu từ form
-            const ma_tai_khoan = document.getElementById('editMaTaiKhoan').value;
-            const ho_ten = document.getElementById('editFullName').value;
-            const email = document.getElementById('editEmail').value;
-            const vai_tro = document.getElementById('editRole').value;
-            const password = document.getElementById('editPassword').value; // Để trống nếu không đổi
-            const dia_chi = document.getElementById('editAddress').value;
-
-            // Validate
-            if (!validateInput('fullName', ho_ten, 'editNotification') || 
-                !validateInput('email', email, 'editNotification') ||
-                !validateInput('password', password, 'editNotification')) {
-                return; // Dừng nếu lỗi
-            }
-
-            const payload = {
-                ma_tai_khoan: ma_tai_khoan,
-                ho_ten: ho_ten,
-                email: email, // Email mới cũng sẽ là username mới
-                vai_tro: vai_tro,
-                dia_chi: dia_chi,
-                password: password // Gửi mật khẩu (trống hoặc mới)
-            };
-
-            try {
-                const response = await fetch(`${BASE_URL}/quantri/updateTaiKhoan`, {
-                    method: 'POST', // Hoặc PUT
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+            if (result.success && result.data) {
+                let html = '<option value="">-- Chọn lớp học --</option>';
+                result.data.forEach(lop => {
+                    // Giả sử API trả về {ma_lop: 1, ten_lop: '10A1'}
+                    html += `<option value="${lop.ma_lop}">${lop.ten_lop}</option>`;
                 });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    editModal.hide();
-                    showGlobalNotification(result.message, 'success');
-                    // Cập nhật lại bảng (Cách đơn giản: reload trang)
-                    // Cách tốt hơn: Cập nhật DOM (phức tạp hơn)
-                    window.location.reload(); // Tải lại trang để thấy thay đổi
-                } else {
-                    notificationEl.textContent = result.message || 'Lỗi không xác định.';
-                }
-            } catch (error) {
-                console.error("Lỗi fetch update:", error);
-                notificationEl.textContent = 'Lỗi kết nối máy chủ. Vui lòng thử lại.';
+                selectLop.innerHTML = html;
+            } else {
+                console.warn("Không tải được danh sách lớp:", result.message);
             }
+        } catch (error) {
+            console.error("Lỗi kết nối khi tải lớp:", error);
         }
+    }
+
+    // --- CÁC HÀM CRUD (TẠO, SỬA, XÓA, TÌM KIẾM) ---
+
+    // 1. TẠO MỚI TÀI KHOẢN (CREATE)
+    async function handleCreate() {
+        const notificationEl = document.getElementById('createNotification');
+        notificationEl.textContent = '';
+
+        // Thu thập dữ liệu
+        const payload = {
+            ho_ten: document.getElementById('createFullName').value.trim(),
+            so_dien_thoai: document.getElementById('createPhone').value.trim(),
+            email: document.getElementById('createEmail').value.trim(),
+            password: document.getElementById('createPassword').value,
+            vai_tro: document.getElementById('createRole').value,
+            ngay_sinh: document.getElementById('createBirthday').value,
+            gioi_tinh: document.getElementById('createGender').value,
+            dia_chi: document.getElementById('createAddress').value.trim(),
+            // Dữ liệu mở rộng
+            ma_lop: document.getElementById('createLop').value,
+            mon_chuyen_mon: document.getElementById('createMonHoc').value,
+            hoc_sinh_con: [] // Xử lý multiselect phụ huynh sau nếu cần
+        };
+
+        // Validate cơ bản phía Client
+        if (!payload.ho_ten || !payload.email || !payload.password || !payload.vai_tro) {
+            notificationEl.textContent = 'Vui lòng điền các trường bắt buộc (*).';
+            return;
+        }
+        if (!validateInput('email', payload.email, 'createNotification')) return;
         
-        // Mở Modal Xóa
-        function openDeleteModal(ma_tai_khoan) {
-            const tr = document.querySelector(`tr[data-ma-tai-khoan="${ma_tai_khoan}"]`);
-             if (!tr) {
-                alert("Lỗi: Không tìm thấy dữ liệu tài khoản.");
-                return;
-            }
-            const account = tr.dataset;
-
-            document.getElementById('deleteFullNameDisplay').textContent = account.hoTen;
-            document.getElementById('deletePhoneDisplay').textContent = account.soDienThoai;
-            document.getElementById('deleteRoleDisplay').textContent = account.vaiTro;
-            document.getElementById('deleteMaTaiKhoan').value = account.maTaiKhoan; // Lưu ID vào input ẩn
-            document.getElementById('deleteNotification').textContent = '';
-            
-            deleteModal.show();
+        // Validate logic nghiệp vụ
+        if (payload.vai_tro === 'HocSinh' && !payload.ma_lop) {
+            notificationEl.textContent = 'Với Học sinh, bắt buộc phải chọn Lớp học.';
+            return;
         }
 
-        // Xử lý Xóa (Gọi API)
-        async function handleDelete() {
-            const ma_tai_khoan = document.getElementById('deleteMaTaiKhoan').value;
-            const notificationEl = document.getElementById('deleteNotification');
+        try {
+            const res = await fetch(`${BASE_URL}/quantri/addAccountApi`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
 
-            if (!ma_tai_khoan) {
-                notificationEl.textContent = 'Lỗi: Không tìm thấy mã tài khoản.';
-                return;
+            if (data.success) {
+                createModal.hide();
+                showGlobalNotification(data.message, 'success');
+                // Reload trang để cập nhật danh sách
+                setTimeout(() => window.location.href = `${BASE_URL}/quantri/quanlytaikhoan?page=1`, 1000);
+            } else {
+                notificationEl.textContent = data.message || "Có lỗi xảy ra.";
             }
+        } catch (error) {
+            console.error(error);
+            notificationEl.textContent = "Lỗi kết nối server.";
+        }
+    }
 
-             try {
-                const response = await fetch(`${BASE_URL}/quantri/deleteTaiKhoan`, {
-                    method: 'POST', // Hoặc DELETE
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ma_tai_khoan: ma_tai_khoan })
-                });
+    // 2. MỞ MODAL SỬA (EDIT)
+    function openEditModal(ma_tai_khoan) {
+        // Tìm dòng tr chứa dữ liệu
+        const tr = document.querySelector(`tr[data-ma-tai-khoan="${ma_tai_khoan}"]`);
+        if (!tr) return;
 
-                const result = await response.json();
+        const d = tr.dataset; // Lấy dataset
+        
+        // Đổ dữ liệu vào form sửa
+        document.getElementById('editMaTaiKhoan').value = d.maTaiKhoan;
+        document.getElementById('editFullName').value = d.hoTen;
+        document.getElementById('editPhone').value = d.soDienThoai; // Readonly
+        document.getElementById('editEmail').value = d.email;
+        document.getElementById('editRole').value = d.vaiTro;
+        document.getElementById('editAddress').value = d.diaChi || '';
+        document.getElementById('editPassword').value = ''; // Reset pass
+        document.getElementById('editNotification').textContent = '';
 
-                if (result.success) {
-                    deleteModal.hide();
-                    showGlobalNotification(result.message, 'success');
-                    // Xóa hàng khỏi DOM
-                    const tr = document.querySelector(`tr[data-ma-tai-khoan="${ma_tai_khoan}"]`);
-                    if (tr) tr.remove();
-                } else {
-                    notificationEl.textContent = result.message || 'Lỗi không xác định.';
-                }
-            } catch (error) {
-                console.error("Lỗi fetch delete:", error);
-                notificationEl.textContent = 'Lỗi kết nối máy chủ. Vui lòng thử lại.';
+        editModal.show();
+    }
+
+    // 3. CẬP NHẬT TÀI KHOẢN (UPDATE)
+    async function handleUpdate() {
+        const notiEl = document.getElementById('editNotification');
+        
+        const payload = {
+            ma_tai_khoan: document.getElementById('editMaTaiKhoan').value,
+            ho_ten: document.getElementById('editFullName').value.trim(),
+            email: document.getElementById('editEmail').value.trim(),
+            vai_tro: document.getElementById('editRole').value,
+            dia_chi: document.getElementById('editAddress').value.trim(),
+            password: document.getElementById('editPassword').value
+        };
+
+        if (!validateInput('email', payload.email, 'editNotification')) return;
+
+        try {
+            const res = await fetch(`${BASE_URL}/quantri/updateTaiKhoan`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                editModal.hide();
+                showGlobalNotification(data.message, 'success');
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                notiEl.textContent = data.message;
+            }
+        } catch (err) {
+            notiEl.textContent = "Lỗi kết nối server.";
+        }
+    }
+
+    // 4. MỞ MODAL XÓA (DELETE)
+    function openDeleteModal(ma_tai_khoan) {
+        const tr = document.querySelector(`tr[data-ma-tai-khoan="${ma_tai_khoan}"]`);
+        if (!tr) return;
+        const d = tr.dataset;
+
+        document.getElementById('deleteFullNameDisplay').textContent = d.hoTen;
+        document.getElementById('deletePhoneDisplay').textContent = d.soDienThoai;
+        document.getElementById('deleteRoleDisplay').textContent = d.vaiTro;
+        document.getElementById('deleteMaTaiKhoan').value = d.maTaiKhoan;
+        document.getElementById('deleteNotification').textContent = '';
+
+        deleteModal.show();
+    }
+
+    // 5. XÁC NHẬN XÓA
+    async function handleDelete() {
+        const ma_tai_khoan = document.getElementById('deleteMaTaiKhoan').value;
+        const notiEl = document.getElementById('deleteNotification');
+
+        try {
+            const res = await fetch(`${BASE_URL}/quantri/deleteTaiKhoan`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ma_tai_khoan })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                deleteModal.hide();
+                showGlobalNotification(data.message, 'warning'); // Màu vàng cho action xóa
+                // Xóa dòng khỏi bảng ngay lập tức (UI trick)
+                const tr = document.querySelector(`tr[data-ma-tai-khoan="${ma_tai_khoan}"]`);
+                if (tr) tr.remove();
+            } else {
+                notiEl.textContent = data.message;
+            }
+        } catch (err) {
+            notiEl.textContent = "Lỗi kết nối server.";
+        }
+    }
+
+    // 6. TÌM KIẾM (CLIENT SIDE - FILTER)
+    function handleSearch(event) {
+        event.preventDefault();
+        const term = document.getElementById('searchInput').value.toLowerCase().trim();
+        const rows = document.querySelectorAll('#accountTableBody tr.account-row');
+        let found = false;
+
+        rows.forEach(row => {
+            const name = row.dataset.hoTen.toLowerCase();
+            const phone = row.dataset.soDienThoai.toLowerCase();
+            const email = row.dataset.email.toLowerCase();
+
+            if (name.includes(term) || phone.includes(term) || email.includes(term)) {
+                row.style.display = '';
+                found = true;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Hiển thị thông báo tìm kiếm
+        const helpText = document.getElementById('searchHelp');
+        if (!found && term !== '') {
+            helpText.textContent = 'Không tìm thấy kết quả nào.';
+            helpText.className = 'mt-2 text-danger';
+        } else {
+            helpText.textContent = 'Tìm kiếm sẽ lọc danh sách bên dưới.';
+            helpText.className = 'mt-2 text-muted';
+        }
+        return false;
+    }
+
+    // --- CÁC HÀM TIỆN ÍCH (HELPER) ---
+    
+    function validateInput(field, value, notiId) {
+        const noti = document.getElementById(notiId);
+        noti.textContent = '';
+        
+        if (field === 'email') {
+            const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!regex.test(value)) {
+                noti.textContent = 'Email không đúng định dạng.';
+                return false;
             }
         }
+        return true;
+    }
 
-        // Hiển thị thông báo chung
-        function showGlobalNotification(message, type = 'success') {
-            const el = document.getElementById('globalNotification');
-            el.textContent = message;
-            el.className = `alert alert-${type} alert-dismissible fade show`;
-            el.style.display = 'block';
-            
-            // Thêm nút đóng (nếu chưa có)
-            if (!el.querySelector('.btn-close')) {
-                 const closeButton = document.createElement('button');
-                 closeButton.type = 'button';
-                 closeButton.className = 'btn-close';
-                 closeButton.setAttribute('data-bs-dismiss', 'alert');
-                 closeButton.setAttribute('aria-label', 'Close');
-                 el.appendChild(closeButton);
-            }
-
-            // Tự động ẩn sau 5s
-            setTimeout(() => {
-                 if (el) el.style.display = 'none';
-            }, 5000);
+    function showGlobalNotification(msg, type = 'success') {
+        const el = document.getElementById('globalNotification');
+        if (!el) return;
+        el.textContent = msg;
+        el.className = `alert alert-${type} alert-dismissible fade show`;
+        el.style.display = 'block';
+        
+        // Nút đóng
+        if (!el.querySelector('.btn-close')) {
+            const btn = document.createElement('button');
+            btn.className = 'btn-close';
+            btn.dataset.bsDismiss = 'alert';
+            el.appendChild(btn);
         }
 
-
-        // HÀM MỚI: Xử lý Tạo (Gọi API)
-        async function handleCreate() {
-            const notificationEl = document.getElementById('createNotification');
-            notificationEl.textContent = ''; // Xóa lỗi cũ
-            
-            // Lấy dữ liệu từ form
-            const payload = {
-                ho_ten: document.getElementById('createFullName').value.trim(),
-                so_dien_thoai: document.getElementById('createPhone').value.trim(),
-                email: document.getElementById('createEmail').value.trim(),
-                password: document.getElementById('createPassword').value,
-                vai_tro: document.getElementById('createRole').value,
-                ngay_sinh: document.getElementById('createBirthday').value,
-                gioi_tinh: document.getElementById('createGender').value,
-                dia_chi: document.getElementById('createAddress').value.trim()
-            };
-
-            // Validate cơ bản
-            if (!payload.ho_ten || !payload.so_dien_thoai || !payload.email || !payload.password || !payload.vai_tro) {
-                notificationEl.textContent = 'Vui lòng điền đầy đủ các trường có dấu (*).';
-                return;
-            }
-            if (!validateInput('email', payload.email, 'createNotification')) return;
-            if (!validateInput('password', payload.password, 'createNotification')) return;
-
-            try {
-                const response = await fetch(`${BASE_URL}/quantri/addAccountApi`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    createModal.hide();
-                    showGlobalNotification(result.message, 'success');
-                    // Redirect sang trang 1 để thấy tài khoản mới (vì mới nhất ở đầu)
-                    setTimeout(() => window.location.href = `${BASE_URL}/quantri/quanlytaikhoan?page=1`, 1500); 
-                } else {
-                    notificationEl.textContent = result.message || 'Lỗi không xác định.';
-                }
-            } catch (error) {
-                console.error("Lỗi fetch create:", error);
-                notificationEl.textContent = 'Lỗi kết nối máy chủ. Vui lòng thử lại.';
-            }
-        }
-
-    </script>
+        setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+</script>
 </body>
 </html>

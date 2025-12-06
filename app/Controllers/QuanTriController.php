@@ -46,6 +46,7 @@ class QuanTriController extends Controller {
     /**
      * URL: /quantri/quanlytaikhoan
      */
+
     public function quanlytaikhoan() {
         if (!$this->accountModel) { die("Lỗi: AccountModel chưa được load."); }
         
@@ -248,25 +249,38 @@ class QuanTriController extends Controller {
     /**
      * API MỚI: /quantri/addAccountApi (POST)
      */
+    // public function addAccountApi() {
+    //     header('Content-Type: application/json');
+    //     $data = json_decode(file_get_contents('php://input'), true);
+        
+    //     if (empty($data['email']) || empty($data['password']) || empty($data['ho_ten']) || empty($data['vai_tro']) || empty($data['so_dien_thoai'])) {
+    //         http_response_code(400);
+    //         echo json_encode(['success' => false, 'message' => 'Vui lòng điền đầy đủ các trường bắt buộc (*).']);
+    //         return;
+    //     }
+        
+    //     // Lấy school_id từ session (nếu có)
+    //     $school_id = $this->userModel->getAdminSchoolId($_SESSION['user_id'] ?? null);
+        
+    //     $result = $this->accountModel->createAccount($data, $school_id);
+        
+    //     if ($result === true) {
+    //         echo json_encode(['success' => true, 'message' => 'Tạo tài khoản mới thành công!']);
+    //     } else {
+    //         http_response_code(400); 
+    //         echo json_encode(['success' => false, 'message' => $result]);
+    //     }
+    // }
     public function addAccountApi() {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
-        
-        if (empty($data['email']) || empty($data['password']) || empty($data['ho_ten']) || empty($data['vai_tro']) || empty($data['so_dien_thoai'])) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Vui lòng điền đầy đủ các trường bắt buộc (*).']);
-            return;
-        }
-        
-        // Lấy school_id từ session (nếu có)
-        $school_id = $this->userModel->getAdminSchoolId($_SESSION['user_id'] ?? null);
-        
-        $result = $this->accountModel->createAccount($data, $school_id);
-        
+
+        $result = $this->accountModel->createAccount($data);
+
         if ($result === true) {
-            echo json_encode(['success' => true, 'message' => 'Tạo tài khoản mới thành công!']);
+            echo json_encode(['success' => true, 'message' => 'Tạo tài khoản thành công!']);
         } else {
-            http_response_code(400); 
+            http_response_code(400);
             echo json_encode(['success' => false, 'message' => $result]);
         }
     }
@@ -307,14 +321,40 @@ class QuanTriController extends Controller {
     /**
      * API MỚI: /quantri/getDsLopApi (GET)
      */
+    // public function getDsLopApi() {
+    //     header('Content-Type: application/json');
+    //     if (!$this->tuyenSinhModel) { // Sửa check
+    //          http_response_code(500);
+    //          echo json_encode(['success' => false, 'message' => 'Lỗi server: TuyenSinhModel không khả dụng.']);
+    //          return;
+    //     }
+    //     $ds_lop = $this->tuyenSinhModel->getDanhSachLop(1); 
+    //     echo json_encode(['success' => true, 'data' => $ds_lop]);
+    // }
     public function getDsLopApi() {
         header('Content-Type: application/json');
-        if (!$this->tuyenSinhModel) { // Sửa check
+        
+        $school_id = $_SESSION['admin_school_id'] ?? null;
+
+        if (!$school_id) {
+            echo json_encode([
+                'success' => false, 
+                'message' => 'Không xác định được trường của Admin.', 
+                'data' => [] 
+            ]);
+            return;
+        }
+        
+        // SỬA Ở ĐÂY: Gọi từ accountModel
+        if (!$this->accountModel) {
              http_response_code(500);
-             echo json_encode(['success' => false, 'message' => 'Lỗi server: TuyenSinhModel không khả dụng.']);
+             echo json_encode(['success' => false, 'message' => 'Lỗi: AccountModel chưa load.']);
              return;
         }
-        $ds_lop = $this->tuyenSinhModel->getDanhSachLop(1); 
+
+        // Gọi hàm vừa thêm bên AccountModel
+        $ds_lop = $this->accountModel->getDanhSachLop($school_id); 
+        
         echo json_encode(['success' => true, 'data' => $ds_lop]);
     }
     
