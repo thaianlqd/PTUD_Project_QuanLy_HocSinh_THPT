@@ -53,7 +53,7 @@ class HocSinhController extends Controller {
     }
 
     /**
-     * API: Nộp điểm danh
+     * API: Nộp điểm danh (có hỗ trợ mật khẩu)
      * URL: /hocsinh/submitDiemDanhApi
      */
     public function submitDiemDanhApi() {
@@ -66,20 +66,54 @@ class HocSinhController extends Controller {
         }
 
         $ma_phien = filter_input(INPUT_POST, 'ma_phien', FILTER_VALIDATE_INT);
+        $mat_khau = trim($_POST['mat_khau'] ?? '');
+        
         if (!$ma_phien) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Thiếu mã phiên.']);
             return;
         }
 
-        $result = $this->diemDanhHSModel->submitDiemDanh($ma_phien, $this->ma_hoc_sinh, $this->ma_lop);
+        // Sử dụng DiemDanhModel thay vì DiemDanhHSModel
+        $diemDanhModel = $this->loadModel('DiemDanhModel');
+        $result = $diemDanhModel->diemDanhHocSinh($ma_phien, $this->ma_hoc_sinh, $mat_khau);
 
         if ($result['success']) {
             echo json_encode($result);
         } else {
-            http_response_code(400); // Bad Request (VD: phiên đã đóng)
+            http_response_code(400);
             echo json_encode($result);
         }
+    }
+
+    /**
+     * API: Lấy chi tiết bài nộp (kèm ngay_nop_vietnam UTC+7)
+     * URL: /hocsinh/getBaiNopChiTietApi?ma_bai_nop=XXX
+     */
+    public function getBaiNopChiTietApi() {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $ma_bai_nop = filter_input(INPUT_GET, 'ma_bai_nop', FILTER_VALIDATE_INT);
+
+        if (!$ma_bai_nop) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Thiếu mã bài nộp'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $baiTapModel = $this->loadModel('BaiTapModel');
+        $submission = $baiTapModel->getChiTietBaiNopChoHocSinh($ma_bai_nop, $this->ma_hoc_sinh);
+
+        if (!$submission) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy bài nộp'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'data' => $submission
+        ], JSON_UNESCAPED_UNICODE);
     }
 }
 ?>

@@ -101,17 +101,96 @@ class QuanTriController extends Controller {
     }
 
     /**
+     * API: Lấy danh sách môn theo lớp
+     * URL: /quantri/getDsMonTheoLopApi/{ma_lop}
+     */
+    public function getDsMonTheoLopApi($ma_lop = 0) {
+        header('Content-Type: application/json');
+        
+        $ma_lop = (int)$ma_lop;
+        if ($ma_lop <= 0) {
+            echo json_encode(['success' => false, 'data' => []]);
+            return;
+        }
+
+        if (!$this->accountModel) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Lỗi Model']);
+            return;
+        }
+
+        $ds_mon = $this->accountModel->getDanhSachMonTheoLop($ma_lop);
+        echo json_encode(['success' => true, 'data' => $ds_mon]);
+    }
+
+    /**
+     * API: /quantri/getHocSinhInfoApi/{ma_tai_khoan}
+     * Trả về thông tin lớp/khối hiện tại của học sinh
+     */
+    public function getHocSinhInfoApi($ma_tai_khoan = 0) {
+        header('Content-Type: application/json');
+
+        $ma_tai_khoan = (int)$ma_tai_khoan;
+        if ($ma_tai_khoan <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ma_tai_khoan']);
+            return;
+        }
+
+        $data = $this->accountModel->getHocSinhInfo($ma_tai_khoan);
+        echo json_encode(['success' => (bool)$data, 'data' => $data ?: null]);
+    }
+
+    /**
+     * API: /quantri/getGiaoVienInfoApi/{ma_tai_khoan}
+     * Trả về thông tin lớp/môn hiện tại của giáo viên hoặc BGH
+     */
+    public function getGiaoVienInfoApi($ma_tai_khoan = 0) {
+        header('Content-Type: application/json');
+
+        $ma_tai_khoan = (int)$ma_tai_khoan;
+        if ($ma_tai_khoan <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ma_tai_khoan']);
+            return;
+        }
+
+        $data = $this->accountModel->getGiaoVienInfo($ma_tai_khoan);
+        echo json_encode(['success' => (bool)$data, 'data' => $data ?: null]);
+    }
+
+    /**
+     * API: /quantri/getPhuHuynhInfoApi/{ma_tai_khoan}
+     * Trả về lớp và học sinh đang liên kết với phụ huynh
+     */
+    public function getPhuHuynhInfoApi($ma_tai_khoan = 0) {
+        header('Content-Type: application/json');
+
+        $ma_tai_khoan = (int)$ma_tai_khoan;
+        if ($ma_tai_khoan <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ma_tai_khoan']);
+            return;
+        }
+
+        $data = $this->accountModel->getPhuHuynhInfo($ma_tai_khoan);
+        echo json_encode(['success' => (bool)$data, 'data' => $data ?: null]);
+    }
+
+    /**
      * API: /quantri/updateTaiKhoan (POST)
      */
     public function updateTaiKhoan() {
         header('Content-Type: application/json');
         $data = json_decode(file_get_contents('php://input'), true);
+        
+        // ✅ Kiểm tra dữ liệu bắt buộc
         if (!$data || !isset($data['ma_tai_khoan']) || empty($data['ho_ten']) || empty($data['email']) || empty($data['vai_tro'])) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ.']);
             return;
         }
+        
+        // ✅ Gọi hàm updateAccount() từ AccountModel
         $success = $this->accountModel->updateAccount($data);
+        
         if ($success === true) {
             echo json_encode(['success' => true, 'message' => 'Cập nhật tài khoản thành công!']);
         } else {
@@ -148,23 +227,33 @@ class QuanTriController extends Controller {
      * URL: /quantri/quanlygiaovien
      */
     public function quanlygiaovien() {
-        // Lọc giáo viên theo trường nếu admin ở cấp trường
-        $school_id = $_SESSION['admin_school_id'] ?? null;
-        if (!$school_id && isset($_SESSION['user_id'])) {
-            if (!$this->userModel) { $this->userModel = $this->loadModel('UserModel'); }
-            $school_id = $this->userModel->getAdminSchoolId($_SESSION['user_id']);
-            if ($school_id) $_SESSION['admin_school_id'] = $school_id;
+        $school_id = $_SESSION['admin_school_id'] ?? 1;
+        
+        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+        $limit = 10;
+        
+        $giao_vien_list = $this->giaoVienModel->getDanhSachGiaoVienPaginated($school_id, $page, $limit);
+        $total_giao_vien = $this->giaoVienModel->countGiaoVien($school_id);
+        
+        // Load môn dạy và lớp dạy cho từng GV
+        foreach ($giao_vien_list as &$gv) {
+            $gv['mon_day'] = $this->giaoVienModel->getMonDayByGiaoVien($gv['ma_nguoi_dung']);
+            $gv['lop_day'] = $this->giaoVienModel->getLopDayByGiaoVien($gv['ma_nguoi_dung']);
         }
         
-        $danhSachGiaoVien = $this->giaoVienModel->getDanhSachGiaoVien($school_id);
+        $total_pages = ceil($total_giao_vien / $limit);
+        
+        // ✅ FIX: Truyền vào mảng $data giống như quanlytaikhoan()
         $data = [
-            'user_name' => $_SESSION['user_name'] ?? 'Admin',
-            'giao_vien' => $danhSachGiaoVien
+            'giao_vien_list' => $giao_vien_list,
+            'current_page' => $page,
+            'total_pages' => $total_pages,
+            'total_giao_vien' => $total_giao_vien
         ];
+        
         $content = $this->loadView('QuanTri/quan_ly_giaovien', $data);
         echo $content;
     }
-
     /**
      * API: /quantri/getGiaoVienDetailsApi/{id} (GET)
      */
@@ -177,14 +266,21 @@ class QuanTriController extends Controller {
             return;
         }
         $details = $this->giaoVienModel->getGiaoVienById($ma_nguoi_dung);
+        $mon_day = $this->giaoVienModel->getMonDayByGiaoVien($ma_nguoi_dung);
+        $lop_day = $this->giaoVienModel->getLopDayByGiaoVien($ma_nguoi_dung);
+
         if ($details) {
-            echo json_encode(['success' => true, 'data' => $details]);
+            echo json_encode([
+                'success' => true,
+                'data' => $details,
+                'mon_day' => $mon_day,
+                'lop_day' => $lop_day
+            ]);
         } else {
-             http_response_code(404);
+            http_response_code(404);
             echo json_encode(['success' => false, 'message' => 'Không tìm thấy giáo viên.']);
         }
     }
-
     /**
      * API: /quantri/addGiaoVienApi (POST)
      */
@@ -197,7 +293,17 @@ class QuanTriController extends Controller {
             return;
         }
         $result = $this->giaoVienModel->addGiaoVien($data);
-        if ($result === true) {
+        
+        // $result giờ là ID của GV vừa thêm (hoặc false/string error)
+        if (is_numeric($result) && $result > 0) {
+            $ma_giao_vien = $result;
+            
+            // Thêm phân công dạy lớp + môn nếu user chọn
+            if (!empty($data['ma_lop']) && !empty($data['ma_mon_hoc'])) {
+                $so_tiet_tuan = $data['so_tiet_tuan'] ?? 4;
+                $this->giaoVienModel->addPhanCongGiaoVien($ma_giao_vien, $data['ma_lop'], $data['ma_mon_hoc'], $so_tiet_tuan);
+            }
+            
             echo json_encode(['success' => true, 'message' => 'Thêm giáo viên mới thành công!']);
         } else {
             http_response_code(400);
@@ -205,25 +311,29 @@ class QuanTriController extends Controller {
         }
     }
 
-    /**
-     * API: /quantri/updateGiaoVienApi (POST)
-     */
     public function updateGiaoVienApi() {
         header('Content-Type: application/json');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Phương thức không hợp lệ']);
+            return;
+        }
         $data = json_decode(file_get_contents('php://input'), true);
-        if (empty($data['ma_nguoi_dung']) || empty($data['ma_tai_khoan']) || empty($data['ho_ten']) || empty($data['email'])) {
+        if (empty($data['ma_nguoi_dung'])) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ.']);
+            echo json_encode(['success' => false, 'message' => 'Thiếu mã giáo viên!']);
             return;
         }
         $result = $this->giaoVienModel->updateGiaoVien($data);
         if ($result === true) {
-            echo json_encode(['success' => true, 'message' => 'Cập nhật thông tin giáo viên thành công!']);
+            echo json_encode(['success' => true, 'message' => 'Cập nhật giáo viên thành công!']);
         } else {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => is_string($result) ? $result : 'Lỗi không xác định khi cập nhật.']);
+            echo json_encode(['success' => false, 'message' => is_string($result) ? $result : 'Cập nhật thất bại!']);
         }
     }
+
+
     
     /**
      * API: /quantri/deleteGiaoVienApi (POST)
@@ -244,6 +354,80 @@ class QuanTriController extends Controller {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => is_string($result) ? $result : 'Lỗi không xác định khi xóa.']);
         }
+    }
+
+    /**
+     * API: /quantri/getDsKhoiGiaoVienApi (GET) - Load khối cho GV
+     */
+    public function getDsKhoiGiaoVienApi() {
+        header('Content-Type: application/json');
+        
+        $school_id = $_SESSION['admin_school_id'] ?? null;
+        if (!$school_id) {
+            echo json_encode(['success' => false, 'message' => 'Không xác định được trường của Admin.', 'data' => []]);
+            return;
+        }
+        
+        if (!$this->accountModel) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Lỗi: AccountModel chưa load.']);
+            return;
+        }
+
+        $ds_khoi = $this->accountModel->getDanhSachKhoi($school_id);
+        echo json_encode(['success' => true, 'data' => $ds_khoi]);
+    }
+
+    /**
+     * API: /quantri/getDsLopGiaoVienApi/{khoi} (GET) - Load lớp theo khối cho GV
+     */
+    public function getDsLopGiaoVienApi($khoi = null) {
+        header('Content-Type: application/json');
+        
+        $school_id = $_SESSION['admin_school_id'] ?? null;
+        if (!$school_id) {
+            echo json_encode(['success' => false, 'message' => 'Không xác định được trường của Admin.', 'data' => []]);
+            return;
+        }
+        
+        $khoi = (int)$khoi;
+        if ($khoi < 10 || $khoi > 12) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Khối không hợp lệ.', 'data' => []]);
+            return;
+        }
+        
+        if (!$this->accountModel) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Lỗi: AccountModel chưa load.']);
+            return;
+        }
+
+        // Tham số mới của model: (khoi, ma_truong)
+        $ds_lop = $this->accountModel->getDanhSachLopTheoKhoi($khoi, $school_id);
+        echo json_encode(['success' => true, 'data' => $ds_lop]);
+    }
+
+    /**
+     * API: /quantri/getDsMonTheoLopGiaoVienApi/{ma_lop} (GET) - Load môn theo lớp cho GV
+     */
+    public function getDsMonTheoLopGiaoVienApi($ma_lop = 0) {
+        header('Content-Type: application/json');
+        
+        $ma_lop = (int)$ma_lop;
+        if ($ma_lop <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Mã lớp không hợp lệ.', 'data' => []]);
+            return;
+        }
+
+        if (!$this->accountModel) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Lỗi: AccountModel chưa load.']);
+            return;
+        }
+
+        $ds_mon = $this->accountModel->getDanhSachMonTheoLop($ma_lop);
+        echo json_encode(['success' => true, 'data' => $ds_mon]);
     }
 
     /**
@@ -356,6 +540,141 @@ class QuanTriController extends Controller {
         $ds_lop = $this->accountModel->getDanhSachLop($school_id); 
         
         echo json_encode(['success' => true, 'data' => $ds_lop]);
+    }
+    
+    /**
+     * API MỚI: /quantri/getDsKhoiApi (GET) - Lấy danh sách khối
+     */
+    public function getDsKhoiApi() {
+        header('Content-Type: application/json');
+        
+        $school_id = $_SESSION['admin_school_id'] ?? null;
+        if (!$school_id) {
+            echo json_encode(['success' => false, 'message' => 'Không xác định được trường của Admin.', 'data' => []]);
+            return;
+        }
+        
+        if (!$this->accountModel) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Lỗi: AccountModel chưa load.']);
+            return;
+        }
+
+        $ds_khoi = $this->accountModel->getDanhSachKhoi($school_id);
+        echo json_encode(['success' => true, 'data' => $ds_khoi]);
+    }
+    
+    /**
+     * API MỚI: /quantri/getDsLopTheoKhoiApi/{khoi} (GET)
+     */
+    public function getDsLopTheoKhoiApi($khoi = null) {
+        header('Content-Type: application/json');
+        
+        $school_id = $_SESSION['admin_school_id'] ?? null;
+        if (!$school_id) {
+            echo json_encode(['success' => false, 'message' => 'Không xác định được trường của Admin.', 'data' => []]);
+            return;
+        }
+        
+        $khoi = (int)$khoi;
+        if ($khoi < 10 || $khoi > 12) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Khối không hợp lệ.', 'data' => []]);
+            return;
+        }
+        
+        if (!$this->accountModel) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Lỗi: AccountModel chưa load.']);
+            return;
+        }
+
+        // Tham số mới của model: (khoi, ma_truong)
+        $ds_lop = $this->accountModel->getDanhSachLopTheoKhoi($khoi, $school_id);
+        echo json_encode(['success' => true, 'data' => $ds_lop]);
+    }
+
+    /**
+     * API MỚI: /quantri/getDsLopAllApi (GET) - Lấy tất cả lớp của trường (cho GV/BGH)
+     */
+    public function getDsLopAllApi() {
+        header('Content-Type: application/json');
+        
+        $school_id = $_SESSION['admin_school_id'] ?? null;
+        if (!$school_id) {
+            echo json_encode(['success' => false, 'message' => 'Không xác định được trường của Admin.', 'data' => []]);
+            return;
+        }
+        
+        if (!$this->accountModel) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Lỗi: AccountModel chưa load.']);
+            return;
+        }
+
+        $ds_lop = $this->accountModel->getDanhSachLopAll($school_id);
+        echo json_encode(['success' => true, 'data' => $ds_lop]);
+    }
+
+    /**
+     * API: /quantri/getDsMonHocApi (GET)
+     */
+    public function getDsMonHocApi() {
+        header('Content-Type: application/json');
+
+        if (!$this->accountModel) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Lỗi: AccountModel chưa load.']);
+            return;
+        }
+
+        $ds_mon = $this->accountModel->getDanhSachMonHoc();
+        echo json_encode(['success' => true, 'data' => $ds_mon]);
+    }
+
+    /**
+     * API MỚI: /quantri/getDsHocSinhChuaCoPhApi/{ma_lop} (GET)
+     * Lấy danh sách học sinh chưa có phụ huynh trong lớp
+     */
+    public function getDsHocSinhChuaCoPhApi($ma_lop = null) {
+        header('Content-Type: application/json');
+        
+        if (!$ma_lop) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Thiếu mã lớp.', 'data' => []]);
+            return;
+        }
+        
+        if (!$this->accountModel) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Lỗi: AccountModel chưa load.']);
+            return;
+        }
+
+        $ds_hs = $this->accountModel->getDanhSachHocSinhChuaCoPhuHuynh($ma_lop);
+        echo json_encode(['success' => true, 'data' => $ds_hs]);
+    }
+
+    /**
+     * API: /quantri/getDsHocSinhApi (GET)
+     */
+    public function getDsHocSinhApi() {
+        header('Content-Type: application/json');
+
+        $school_id = $_SESSION['admin_school_id'] ?? null;
+        if (!$school_id) {
+            echo json_encode(['success' => false, 'message' => 'Không xác định được trường của Admin.', 'data' => []]);
+            return;
+        }
+
+        if (!$this->accountModel) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Lỗi: AccountModel chưa load.']);
+            return;
+        }
+
+        $ds_hs = $this->accountModel->getDanhSachHocSinh($school_id);
+        echo json_encode(['success' => true, 'data' => $ds_hs]);
     }
     
     /**
@@ -543,5 +862,134 @@ class QuanTriController extends Controller {
     }
     
     // --- HẾT PHẦN TUYỂN SINH ---
+
+    /**
+     * Quản Lý Học Sinh - URL: /quantri/quanlyhocsink
+     */
+    public function quanlyhocsink() {
+        if (!isset($_SESSION['admin_school_id'])) {
+            header('Location: ' . BASE_URL . '/auth/index');
+            exit;
+        }
+        
+        $ma_truong = $_SESSION['admin_school_id'];
+        $page = $_GET['page'] ?? 1;
+        
+        // ✅ Dùng HocSinhCNModel thay vì HocSinhModel
+        $hocSinhModel = $this->loadModel('HocSinhCNModel');
+        $lopHocModel = $this->loadModel('LopHocModel');
+        
+        // Lấy danh sách học sinh
+        $keyword = $_GET['keyword'] ?? '';
+        $hocsinhList = $hocSinhModel->getHocSinhBySchool($ma_truong, $keyword);
+        
+        // 🔍 DEBUG: Log dữ liệu
+        error_log("DEBUG quanlyhocsink: ma_truong=$ma_truong, totalCount=" . count($hocsinhList));
+        if (count($hocsinhList) > 0) {
+            error_log("DEBUG: First HS: " . json_encode($hocsinhList[0]));
+        }
+        
+        $totalCount = count($hocsinhList);
+        $limit = 15;
+        $totalPages = ceil($totalCount / $limit);
+        
+        // Phân trang thủ công
+        $offset = ($page - 1) * $limit;
+        $hocsinhList = array_slice($hocsinhList, $offset, $limit);
+        
+        // Lấy danh sách lớp
+        $classes = $lopHocModel->getDanhSachLopByTruong($ma_truong);
+        
+        $data = [
+            'school_id' => $ma_truong,
+            'hocsinhList' => $hocsinhList,
+            'classes' => $classes,
+            'totalPages' => $totalPages,
+            'currentPage' => $page,
+            'totalCount' => $totalCount
+        ];
+        
+        echo $this->loadView('QuanTri/quan_ly_hoc_sinh', $data);
+    }
+
+    /**
+     * API: Thêm học sinh mới
+     */
+    public function addHocSinhApi() {
+        header('Content-Type: application/json');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Phương thức không hợp lệ']);
+            return;
+        }
+        $data = json_decode(file_get_contents('php://input'), true);
+        
+        if (empty($data['ho_ten']) || empty($data['email']) || empty($data['password']) || empty($data['ma_lop'])) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng điền đầy đủ thông tin!']);
+            return;
+        }
+        
+        $data['ma_truong'] = $_SESSION['admin_school_id'] ?? 0;
+        
+        $hocSinhModel = $this->loadModel('HocSinhCNModel');
+        $result = $hocSinhModel->addStudent($data);
+        
+        if ($result === true) {
+            echo json_encode(['success' => true, 'message' => 'Thêm học sinh thành công!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => is_string($result) ? $result : 'Lỗi không xác định!']);
+        }
+    }
+
+    /**
+     * API: Xóa học sinh
+     */
+    public function deleteHocSinhApi() {
+        header('Content-Type: application/json');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Phương thức không hợp lệ']);
+            return;
+        }
+        $data = json_decode(file_get_contents('php://input'), true);
+        
+        if (empty($data['ma_hoc_sinh'])) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu mã học sinh!']);
+            return;
+        }
+        
+        $hocSinhModel = $this->loadModel('HocSinhCNModel');
+        $result = $hocSinhModel->deleteStudent($data['ma_hoc_sinh']);
+        
+        if ($result) {
+            echo json_encode(['success' => true, 'message' => 'Xóa học sinh thành công!']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Xóa thất bại!']);
+        }
+    }
+
+    /**
+     * API: /quantri/updateHocSinhApi (POST)
+     */
+    public function updateHocSinhApi() {
+        header('Content-Type: application/json');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Phương thức không hợp lệ']); return;
+        }
+        $data = json_decode(file_get_contents('php://input'), true);
+        if (empty($data['ma_hoc_sinh'])) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Thiếu mã học sinh!']); return;
+        }
+        $hocSinhModel = $this->loadModel('HocSinhCNModel');
+        $result = $hocSinhModel->updateStudent($data);
+        if ($result === true) {
+            echo json_encode(['success' => true, 'message' => 'Cập nhật thành công!']);
+        } else {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => is_string($result) ? $result : 'Cập nhật thất bại!']);
+        }
+    }
 }
 ?>

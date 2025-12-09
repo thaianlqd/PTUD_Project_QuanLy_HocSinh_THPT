@@ -91,10 +91,6 @@
     $hoa_don_count = $data['hoa_don_count'] ?? 0;
     $phieu_vang_count = $data['phieu_vang_count'] ?? 0;
     $bang_diem = $data['bang_diem'] ?? [];
-
-    // Chuẩn bị dữ liệu cho biểu đồ
-    $chart_labels = json_encode(array_keys($bang_diem));
-    $chart_data = json_encode(array_map(fn($v) => floatval($v['TB']), $bang_diem));
 ?>
 
 <!-- SIDEBAR -->
@@ -204,9 +200,23 @@
                 <i class="bi bi-graph-up-arrow fs-1 text-success mb-3"></i>
                 <h5 class="fw-bold text-success">Điểm Trung Bình Chung</h5>
                 <?php 
-                    $dtb_chung = !empty($bang_diem) 
-                        ? round(array_sum(array_column($bang_diem, 'TB')) / count($bang_diem), 2)
-                        : '--';
+                    $tong_diem = 0;
+                    $so_mon = 0;
+                    
+                    if (!empty($bang_diem) && is_array($bang_diem)) {
+                        foreach ($bang_diem as $mon => $hoc_ky_data) {
+                            if (is_array($hoc_ky_data)) {
+                                foreach ($hoc_ky_data as $hk => $d) {
+                                    if (isset($d['TB']) && is_numeric($d['TB']) && $d['TB'] > 0) {
+                                        $tong_diem += $d['TB'];
+                                        $so_mon++;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    $dtb_chung = $so_mon > 0 ? round($tong_diem / $so_mon, 2) : '--';
                 ?>
                 <h2 class="fw-bold text-success mb-0"><?= $dtb_chung ?></h2>
                 <small class="text-muted">Tính đến thời điểm hiện tại</small>
@@ -239,30 +249,57 @@
                 <thead class="table-danger text-white">
                     <tr>
                         <th>Môn Học</th>
+                        <th>Học Kỳ</th>
                         <th>Điểm Miệng</th>
                         <th>15 Phút</th>
                         <th>1 Tiết</th>
-                        <th>Học Kỳ</th>
+                        <th>Giữa Kỳ</th>
+                        <th>Cuối Kỳ</th>
                         <th class="text-center"><strong>TB Môn</strong></th>
+                        <th>Xếp Loại</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($bang_diem)): ?>
-                        <tr><td colspan="6" class="text-center py-5 text-muted">Chưa có dữ liệu điểm số</td></tr>
+                        <tr><td colspan="9" class="text-center py-5 text-muted">
+                            <i class="bi bi-info-circle fs-3 d-block mb-2"></i>
+                            Chưa có dữ liệu điểm số
+                        </td></tr>
                     <?php else: ?>
-                        <?php foreach ($bang_diem as $mon => $d): ?>
-                            <tr>
-                                <td class="fw-bold"><?= htmlspecialchars($mon) ?></td>
-                                <td><?= implode(', ', $d['DiemMieng'] ?: ['-']) ?></td>
-                                <td><?= implode(', ', $d['Diem15Phut'] ?: ['-']) ?></td>
-                                <td><?= implode(', ', $d['Diem1Tiet'] ?: ['-']) ?></td>
-                                <td><?= implode(', ', $d['DiemHocKy'] ?: ['-']) ?></td>
-                                <td class="text-center">
-                                    <span class="badge bg-<?= $d['TB'] >= 8 ? 'success' : ($d['TB'] >= 6.5 ? 'warning' : 'danger') ?> fs-6 px-3">
-                                        <?= $d['TB'] ?>
-                                    </span>
-                                </td>
-                            </tr>
+                        <?php foreach ($bang_diem as $mon => $hoc_ky_data): ?>
+                            <?php foreach ($hoc_ky_data as $hoc_ky => $d): ?>
+                                <tr>
+                                    <td class="fw-bold"><?= htmlspecialchars($mon) ?></td>
+                                    <td><span class="badge bg-info"><?= htmlspecialchars($hoc_ky) ?></span></td>
+                                    <td><?= $d['DiemMieng'] ?? '-' ?></td>
+                                    <td><?= $d['Diem15Phut'] ?? '-' ?></td>
+                                    <td><?= $d['Diem1Tiet'] ?? '-' ?></td>
+                                    <td><?= $d['DiemGiuaKy'] ?? '-' ?></td>
+                                    <td><?= $d['DiemCuoiKy'] ?? '-' ?></td>
+                                    <td class="text-center">
+                                        <?php 
+                                            $tb = $d['TB'] ?? 0;
+                                            $badge_color = $tb >= 8 ? 'success' : ($tb >= 6.5 ? 'warning' : 'danger');
+                                        ?>
+                                        <span class="badge bg-<?= $badge_color ?> fs-6 px-3">
+                                            <?= number_format($tb, 1) ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <?php
+                                            $xep_loai = $d['XepLoai'] ?? 'ChuaXepLoai';
+                                            $xep_loai_label = [
+                                                'Gioi' => '<span class="badge bg-success">Giỏi</span>',
+                                                'Kha' => '<span class="badge bg-primary">Khá</span>',
+                                                'Dat' => '<span class="badge bg-warning">Đạt</span>',
+                                                'ChuaDat' => '<span class="badge bg-danger">Chưa Đạt</span>',
+                                                'ChuaXepLoai' => '<span class="badge bg-secondary">Chưa xếp loại</span>'
+                                            ];
+                                            echo $xep_loai_label[$xep_loai] ?? '<span class="badge bg-secondary">N/A</span>';
+                                        ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </tbody>
@@ -284,6 +321,26 @@
 
     // Biểu đồ điểm
     const ctx = document.getElementById('gradeChart');
+    
+    <?php
+        // Chuẩn bị dữ liệu cho biểu đồ - Tính TB qua tất cả học kỳ
+        $chart_data_arr = [];
+        foreach ($bang_diem as $mon => $hoc_ky_data) {
+            $tong_tb = 0;
+            $count = 0;
+            foreach ($hoc_ky_data as $hk => $d) {
+                if (isset($d['TB']) && $d['TB'] > 0) {
+                    $tong_tb += $d['TB'];
+                    $count++;
+                }
+            }
+            $chart_data_arr[$mon] = $count > 0 ? round($tong_tb / $count, 2) : 0;
+        }
+        
+        $chart_labels = json_encode(array_keys($chart_data_arr));
+        $chart_data = json_encode(array_values($chart_data_arr));
+    ?>
+    
     const labels = <?= $chart_labels ?>;
     const data = <?= $chart_data ?>;
 

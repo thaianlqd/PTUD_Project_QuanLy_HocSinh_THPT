@@ -113,37 +113,69 @@ class BaiTapController extends Controller {
 
     // --- API MỚI ĐỂ XEM LẠI/HỦY BÀI NỘP ---
     /**
-     * API: Lấy chi tiết bài ĐÃ NỘP
-     * URL: /baitap/getBaiNopChiTiet/{id} (GET)
+     * API: Lấy chi tiết bài NỘP (kèm ngay_nop_vietnam UTC+7)
+     * URL: /baitap/getBaiNopChiTietApi?ma_bai_nop=XXX (GET)
+     * Trả về: data flattened (không cần submission + assignment riêng)
      */
-    public function getBaiNopChiTiet($ma_bai_tap_str = '') {
-        header('Content-Type: application/json');
-        $ma_bai_tap = filter_var($ma_bai_tap_str, FILTER_VALIDATE_INT);
+    public function getBaiNopChiTietApi() {
+        header('Content-Type: application/json; charset=utf-8');
 
-        if (!$ma_bai_tap) {
+        $ma_bai_nop = filter_input(INPUT_GET, 'ma_bai_nop', FILTER_VALIDATE_INT);
+        $ma_hoc_sinh = $_SESSION['user_id'] ?? null;
+
+        if (!$ma_bai_nop || !$ma_hoc_sinh) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Mã bài tập không hợp lệ.']);
+            echo json_encode(['success' => false, 'message' => 'Thiếu thông tin'], JSON_UNESCAPED_UNICODE);
             return;
         }
 
-        // 1. Lấy thông tin bài nộp (nội dung, file, điểm...)
-        $submission_data = $this->baiTapModel->getBaiNopChiTiet($ma_bai_tap, $this->ma_hoc_sinh);
-        
-        if ($submission_data) {
-             // 2. Lấy cả thông tin chung của bài tập (tên, loại, câu hỏi TN nếu có)
-            $assignment_data = $this->baiTapModel->getChiTietBaiTap($ma_bai_tap, $this->ma_hoc_sinh);
-            
+        try {
+            $baiNop = $this->baiTapModel->getChiTietBaiNopChoHocSinh($ma_bai_nop, $ma_hoc_sinh);
+
+            if (!$baiNop) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'Không tìm thấy bài nộp'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            // ✅ Trả về JSON (Đã bổ sung nhan_xet)
             echo json_encode([
-                'success' => true, 
-                'submission' => $submission_data, // Thông tin bài nộp (file, text, điểm)
-                'assignment' => $assignment_data   // Thông tin bài tập (tên, loại, câu hỏi)
-            ]);
-        } else {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'message' => 'Không tìm thấy bài đã nộp.']);
+                'success' => true,
+                'data' => [
+                    'ma_bai_nop' => $baiNop['ma_bai_nop'],
+                    'ma_bai_tap' => $baiNop['ma_bai_tap'],
+                    'ten_bai_tap' => $baiNop['ten_bai_tap'],
+                    'loai_bai_tap' => $baiNop['loai_bai_tap'],
+                    'mo_ta' => $baiNop['mo_ta'],
+                    'ngay_nop_vietnam' => $baiNop['ngay_nop_vietnam'],
+                    'han_nop_vietnam' => $baiNop['han_nop_vietnam'],
+                    'ngay_nop' => $baiNop['ngay_nop'],
+                    'han_nop' => $baiNop['han_nop'],
+                    'trang_thai' => $baiNop['trang_thai'],
+                    'diem_so' => $baiNop['diem_so'],
+                    
+                    // 👇👇 THÊM DÒNG NÀY VÀO ĐÂY 👇👇
+                    'nhan_xet' => $baiNop['nhan_xet'], 
+                    
+                    'file_nop' => $baiNop['file_nop'],
+                    'noi_dung_tra_loi' => $baiNop['noi_dung_tra_loi'],
+                    'gio_bat_dau_lam_bai' => $baiNop['gio_bat_dau_lam_bai'],
+                    
+                    // Các thông tin khác giữ nguyên
+                    'de_bai_tu_luan' => $baiNop['de_bai_tu_luan'],
+                    'danh_sach_cau_hoi' => $baiNop['danh_sach_cau_hoi'],
+                    'thoi_gian_lam_bai' => $baiNop['thoi_gian_lam_bai'],
+                    'loai_file_cho_phep' => $baiNop['loai_file_cho_phep'],
+                    'dung_luong_toi_da' => $baiNop['dung_luong_toi_da']
+                ]
+            ], JSON_UNESCAPED_UNICODE);
+
+        } catch (Exception $e) {
+            error_log("Lỗi getBaiNopChiTietApi: " . $e->getMessage());
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Lỗi hệ thống'], JSON_UNESCAPED_UNICODE);
         }
     }
-
     /**
      * API: Hủy bài đã nộp
      * URL: /baitap/huyBaiNop (POST)
@@ -205,18 +237,28 @@ class BaiTapController extends Controller {
 
         if (!$ma_bai_tap || !$answersJson || json_decode($answersJson) === null) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ (thiếu mã bài tập hoặc câu trả lời).']);
+            echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ.']);
             return;
         }
 
-        // SỬA: Gọi hàm chấm điểm mới, trả diem_so
         $result = $this->baiTapModel->luuVaChamDiemTracNghiem($ma_bai_tap, $this->ma_hoc_sinh, $answersJson);
+        
         if ($result['success']) {
             $newStatus = $this->baiTapModel->getTrangThaiSauNop($ma_bai_tap, $this->ma_hoc_sinh);
-            echo json_encode(['success' => true, 'message' => $result['message'], 'newStatus' => $newStatus, 'diem_so' => $result['diem_so']]);
+            
+            // ✅ THÊM MỚI: Lấy ma_bai_nop để trả về cho JS
+            $ma_bai_nop = $this->baiTapModel->getMaBaiNop($ma_bai_tap, $this->ma_hoc_sinh);
+
+            echo json_encode([
+                'success' => true, 
+                'message' => $result['message'], 
+                'newStatus' => $newStatus, 
+                'diem_so' => $result['diem_so'],
+                'ma_bai_nop' => $ma_bai_nop // <--- QUAN TRỌNG
+            ]);
         } else {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => $result['message'] ?? 'Có lỗi xảy ra khi lưu bài nộp. Vui lòng thử lại.']);
+            echo json_encode(['success' => false, 'message' => $result['message']]);
         }
     }
 
@@ -237,12 +279,12 @@ class BaiTapController extends Controller {
 
         if (!$ma_bai_tap || empty($noi_dung)) {
              http_response_code(400);
-             echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ (thiếu mã bài tập hoặc nội dung).']);
+             echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ.']);
             return;
         }
-         if (mb_strlen($noi_dung, 'UTF-8') < 20) { // Kiểm tra độ dài ký tự Unicode
+         if (mb_strlen($noi_dung, 'UTF-8') < 20) {
              http_response_code(400);
-             echo json_encode(['success' => false, 'message' => 'Nội dung bài làm quá ngắn (yêu cầu ít nhất 20 ký tự).']);
+             echo json_encode(['success' => false, 'message' => 'Nội dung quá ngắn (tối thiểu 20 ký tự).']);
              return;
          }
 
@@ -250,10 +292,19 @@ class BaiTapController extends Controller {
 
          if ($success) {
             $newStatus = $this->baiTapModel->getTrangThaiSauNop($ma_bai_tap, $this->ma_hoc_sinh);
-            echo json_encode(['success' => true, 'message' => 'Nộp bài thành công!', 'newStatus' => $newStatus]);
+            
+            // ✅ THÊM MỚI: Lấy ma_bai_nop
+            $ma_bai_nop = $this->baiTapModel->getMaBaiNop($ma_bai_tap, $this->ma_hoc_sinh);
+
+            echo json_encode([
+                'success' => true, 
+                'message' => 'Nộp bài thành công!', 
+                'newStatus' => $newStatus,
+                'ma_bai_nop' => $ma_bai_nop // <--- QUAN TRỌNG
+            ]);
         } else {
             http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Có lỗi xảy ra khi lưu bài nộp. Vui lòng thử lại.']);
+            echo json_encode(['success' => false, 'message' => 'Lỗi lưu bài nộp.']);
         }
     }
 
@@ -272,11 +323,11 @@ class BaiTapController extends Controller {
 
         if (!$ma_bai_tap || !isset($_FILES['file_bai_lam']) || $_FILES['file_bai_lam']['error'] !== UPLOAD_ERR_OK) {
             http_response_code(400);
-             echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ hoặc lỗi tải file. Mã lỗi: ' . ($_FILES['file_bai_lam']['error'] ?? 'N/A')]);
+             echo json_encode(['success' => false, 'message' => 'Lỗi tải file.']);
             return;
         }
 
-        // SỬA: Check quá hạn trước khi xử lý file
+        // Check quá hạn
         $assignmentDetails = $this->baiTapModel->getChiTietBaiTap($ma_bai_tap, $this->ma_hoc_sinh);
         if (!$assignmentDetails) {
             http_response_code(404);
@@ -296,22 +347,22 @@ class BaiTapController extends Controller {
 
         if (!in_array($file['type'], $allowedTypes)) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Loại file không hợp lệ. Chỉ chấp nhận PDF hoặc DOCX.']);
+            echo json_encode(['success' => false, 'message' => 'Chỉ chấp nhận file PDF hoặc DOCX.']);
             return;
         }
         if ($file['size'] > $maxSize) {
             http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Dung lượng file vượt quá 5MB.']);
+            echo json_encode(['success' => false, 'message' => 'File quá lớn (> 5MB).']);
             return;
         }
 
         $uploadDir = '../public/uploads/bailam/';
         if (!is_dir($uploadDir) && !mkdir($uploadDir, 0777, true)) {
              http_response_code(500);
-             error_log("Không thể tạo thư mục upload: " . $uploadDir);
-             echo json_encode(['success' => false, 'message' => 'Lỗi server: Không thể tạo thư mục lưu file.']);
+             echo json_encode(['success' => false, 'message' => 'Lỗi server (mkdir).']);
              return;
         }
+        
         $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $safeFileName = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
         $newFileName = 'bailam_' . $ma_bai_tap . '_hs_' . $this->ma_hoc_sinh . '_' . time() . '_' . $safeFileName . '.' . $fileExtension;
@@ -323,16 +374,75 @@ class BaiTapController extends Controller {
 
              if ($success) {
                  $newStatus = $this->baiTapModel->getTrangThaiSauNop($ma_bai_tap, $this->ma_hoc_sinh);
-                echo json_encode(['success' => true, 'message' => 'Upload và nộp bài thành công!', 'newStatus' => $newStatus]);
+                 
+                 // ✅ THÊM MỚI: Lấy ma_bai_nop
+                 $ma_bai_nop = $this->baiTapModel->getMaBaiNop($ma_bai_tap, $this->ma_hoc_sinh);
+
+                echo json_encode([
+                    'success' => true, 
+                    'message' => 'Upload thành công!', 
+                    'newStatus' => $newStatus,
+                    'ma_bai_nop' => $ma_bai_nop // <--- QUAN TRỌNG
+                ]);
             } else {
                  unlink($destination);
                  http_response_code(500);
-                echo json_encode(['success' => false, 'message' => 'Có lỗi xảy ra khi lưu thông tin bài nộp.']);
+                echo json_encode(['success' => false, 'message' => 'Lỗi lưu thông tin bài nộp.']);
             }
         } else {
             http_response_code(500);
-            error_log("Không thể di chuyển file upload từ " . $file['tmp_name'] . " đến " . $destination);
-            echo json_encode(['success' => false, 'message' => 'Lỗi server: Không thể di chuyển file đã upload.']);
+            echo json_encode(['success' => false, 'message' => 'Lỗi di chuyển file.']);
+        }
+    }
+
+    /**
+     * ✅ API: Download file bài nộp
+     * URL: /baitap/downloadBaiNopApi?ma_bai_nop=XXX (GET)
+     */
+    public function downloadBaiNopApi() {
+        $ma_bai_nop = filter_input(INPUT_GET, 'ma_bai_nop', FILTER_VALIDATE_INT);
+        $ma_hoc_sinh = $_SESSION['user_id'] ?? null;
+
+        if (!$ma_bai_nop || !$ma_hoc_sinh) {
+            http_response_code(400);
+            die('Thiếu thông tin xác thực.');
+        }
+
+        try {
+            // GỌI MODEL (Thay vì $this->db->prepare...)
+            $fileRelPath = $this->baiTapModel->getFilePath($ma_bai_nop, $ma_hoc_sinh);
+
+            if (!$fileRelPath) {
+                http_response_code(404);
+                die('Không tìm thấy file hoặc bạn không có quyền.');
+            }
+
+            // Đường dẫn thực tế trên server
+            $filePath = __DIR__ . '/../../public/' . $fileRelPath; 
+            // Lưu ý: $fileRelPath trong DB là "uploads/bailam/..." nên nối thêm public/
+
+            if (!file_exists($filePath)) {
+                error_log("File not found on disk: $filePath");
+                http_response_code(404);
+                die('File vật lý không tồn tại.');
+            }
+
+            // Download file
+            header('Content-Description: File Transfer');
+            header('Content-Type: application/octet-stream');
+            header('Content-Disposition: attachment; filename="' . basename($filePath) . '"');
+            header('Expires: 0');
+            header('Cache-Control: must-revalidate');
+            header('Pragma: public');
+            header('Content-Length: ' . filesize($filePath));
+
+            readfile($filePath);
+            exit;
+
+        } catch (Exception $e) {
+            error_log("Lỗi downloadBaiNopApi: " . $e->getMessage());
+            http_response_code(500);
+            die('Lỗi server.');
         }
     }
 

@@ -120,24 +120,51 @@ class HocSinhModel {
     }
 
     // 5. ĐIỂM TRUNG BÌNH MÔN – TỰ ĐỘNG TÍNH (KHÔNG CẦN CỘT diem_trung_binh_mon)
-    public function getDiemTrungBinhMon($hs_id) {
+    // public function getDiemTrungBinhMon($hs_id) {
+    //     $sql = "
+    //         SELECT 
+    //             mh.ten_mon_hoc,
+    //             ROUND(AVG(ds.diem), 2) AS diem_tb
+    //         FROM diem_so ds
+    //         JOIN mon_hoc mh ON ds.ma_mon_hoc = mh.ma_mon_hoc
+    //         WHERE ds.ma_hoc_sinh = ? 
+    //           AND ds.diem IS NOT NULL 
+    //           AND ds.diem >= 0
+    //         GROUP BY ds.ma_mon_hoc, mh.ten_mon_hoc
+    //         ORDER BY mh.ten_mon_hoc
+    //     ";
+
+    //     try {
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([$hs_id]);
+            
+    //         $result = [];
+    //         foreach ($stmt->fetchAll() as $row) {
+    //             $result[$row['ten_mon_hoc']] = $row['diem_tb'];
+    //         }
+    //         return $result;
+    //     } catch (PDOException $e) {
+    //         error_log("Lỗi getDiemTrungBinhMon: " . $e->getMessage());
+    //         return [];
+    //     }
+    // }
+    public function getDiemTrungBinhMon($hs_id, $ma_hoc_ky = 'HK1') {
         $sql = "
             SELECT 
                 mh.ten_mon_hoc,
-                ROUND(AVG(ds.diem), 2) AS diem_tb
-            FROM diem_so ds
-            JOIN mon_hoc mh ON ds.ma_mon_hoc = mh.ma_mon_hoc
-            WHERE ds.ma_hoc_sinh = ? 
-              AND ds.diem IS NOT NULL 
-              AND ds.diem >= 0
-            GROUP BY ds.ma_mon_hoc, mh.ten_mon_hoc
+                ROUND(AVG(dmhk.diem_tb_mon_hk), 2) AS diem_tb
+            FROM diem_mon_hoc_hoc_ky dmhk
+            JOIN mon_hoc mh ON dmhk.ma_mon_hoc = mh.ma_mon_hoc
+            WHERE dmhk.ma_hoc_sinh = ?
+              AND dmhk.ma_hoc_ky   = ?
+              AND dmhk.diem_tb_mon_hk IS NOT NULL
+            GROUP BY dmhk.ma_mon_hoc, mh.ten_mon_hoc
             ORDER BY mh.ten_mon_hoc
         ";
 
         try {
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([$hs_id]);
-            
+            $stmt->execute([$hs_id, $ma_hoc_ky]);
             $result = [];
             foreach ($stmt->fetchAll() as $row) {
                 $result[$row['ten_mon_hoc']] = $row['diem_tb'];
@@ -149,20 +176,24 @@ class HocSinhModel {
         }
     }
 
+
     // 6. ĐIỂM TỔNG KẾT HỌC KỲ
-    public function getDiemTongKetHK($hs_id) {
-        // Nếu có bảng ket_qua_hoc_tap thì ưu tiên lấy
-        $sql = "SELECT diem_tb_hoc_ky FROM ket_qua_hoc_tap WHERE ma_nguoi_dung = ? LIMIT 1";
+    public function getDiemTongKetHK($hs_id, $ma_hoc_ky = 'HK1') {
+        // Ưu tiên lấy từ ket_qua_hoc_tap (cột mới: diem_tb_hk)
+        $sql = "SELECT diem_tb_hk 
+                FROM ket_qua_hoc_tap 
+                WHERE ma_hoc_sinh = ? AND ma_hoc_ky = ?
+                LIMIT 1";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$hs_id]);
+        $stmt->execute([$hs_id, $ma_hoc_ky]);
         $res = $stmt->fetchColumn();
 
         if ($res !== false && $res !== null) {
             return round($res, 2);
         }
 
-        // Nếu chưa có thì tính trung bình từ các môn
-        $diemMon = $this->getDiemTrungBinhMon($hs_id);
+        // Nếu chưa có, tính TB từ diem_mon_hoc_hoc_ky
+        $diemMon = $this->getDiemTrungBinhMon($hs_id, $ma_hoc_ky);
         if (empty($diemMon)) return '--';
 
         $tong = array_sum($diemMon);
@@ -171,25 +202,54 @@ class HocSinhModel {
     }
 
     // 7. LỊCH HỌC TUẦN (Thời khóa biểu)
+    // public function getLichHocTuan($ma_lop) {
+    //     $sql = "
+    //         SELECT 
+    //             t.thu,
+    //             t.tiet_bat_dau AS tiet,
+    //             mh.ten_mon_hoc AS mon,
+    //             nd.ho_ten AS gv,
+    //             p.ten_phong AS phong
+    //         FROM tkb_chi_tiet t
+    //         JOIN thoi_khoa_bieu tkb ON t.ma_tkb = tkb.ma_tkb
+    //         JOIN mon_hoc mh ON t.ma_mon = mh.ma_mon_hoc
+    //         LEFT JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
+    //         LEFT JOIN giao_vien gv ON bpc.ma_giao_vien = gv.ma_giao_vien
+    //         LEFT JOIN nguoi_dung nd ON gv.ma_giao_vien = nd.ma_nguoi_dung
+    //         LEFT JOIN phong_hoc p ON t.ma_phong_hoc = p.ma_phong
+    //         WHERE tkb.ma_lop = ? AND tkb.trang_thai = 'ApDung'
+    //         ORDER BY 
+    //             FIELD(t.thu, 'Hai', 'Ba', 'Tư', 'Năm', 'Sáu', 'Bảy', 'Chủ nhật'),
+    //             t.tiet_bat_dau
+    //     ";
+
+    //     try {
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([$ma_lop]);
+    //         return $stmt->fetchAll();
+    //     } catch (PDOException $e) {
+    //         error_log("Lỗi getLichHocTuan: " . $e->getMessage());
+    //         return [];
+    //     }
+    // }
     public function getLichHocTuan($ma_lop) {
         $sql = "
             SELECT 
                 t.thu,
-                t.tiet_bat_dau AS tiet,
+                t.tiet AS tiet,
                 mh.ten_mon_hoc AS mon,
                 nd.ho_ten AS gv,
                 p.ten_phong AS phong
             FROM tkb_chi_tiet t
-            JOIN thoi_khoa_bieu tkb ON t.ma_tkb = tkb.ma_tkb
-            JOIN mon_hoc mh ON t.ma_mon = mh.ma_mon_hoc
-            LEFT JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
+            JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
+            JOIN mon_hoc mh ON bpc.ma_mon_hoc = mh.ma_mon_hoc
             LEFT JOIN giao_vien gv ON bpc.ma_giao_vien = gv.ma_giao_vien
             LEFT JOIN nguoi_dung nd ON gv.ma_giao_vien = nd.ma_nguoi_dung
             LEFT JOIN phong_hoc p ON t.ma_phong_hoc = p.ma_phong
-            WHERE tkb.ma_lop = ? AND tkb.trang_thai = 'ApDung'
+            WHERE t.ma_lop = ?
             ORDER BY 
-                FIELD(t.thu, 'Hai', 'Ba', 'Tư', 'Năm', 'Sáu', 'Bảy', 'Chủ nhật'),
-                t.tiet_bat_dau
+                FIELD(t.thu, 'Thu2', 'Thu3', 'Thu4', 'Thu5', 'Thu6', 'Thu7', 'ChuNhat'),
+                t.tiet
         ";
 
         try {
@@ -199,6 +259,68 @@ class HocSinhModel {
         } catch (PDOException $e) {
             error_log("Lỗi getLichHocTuan: " . $e->getMessage());
             return [];
+        }
+    }
+
+    /**
+     * Lấy danh sách học sinh có phân trang (cho admin quản lý)
+     */
+    public function getDanhSachHocSinhPaginated($ma_truong, $page = 1, $limit = 15) {
+        if ($this->db === null) return [];
+
+        $offset = ($page - 1) * $limit;
+
+        $sql = "SELECT 
+                    hs.ma_hoc_sinh,
+                    nd.ho_ten,
+                    nd.ngay_sinh,
+                    nd.dia_chi,
+                    nd.so_dien_thoai,
+                    l.ten_lop,
+                    l.ma_lop,
+                    nh.ten_nam_hoc,
+                    hs.trang_thai
+                FROM hoc_sinh hs
+                LEFT JOIN nguoi_dung nd ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
+                LEFT JOIN lop_hoc l ON hs.ma_lop = l.ma_lop
+                LEFT JOIN nam_hoc nh ON l.ma_nam_hoc = nh.ma_nam_hoc
+                WHERE l.ma_truong = :ma_truong
+                ORDER BY l.ten_lop, nd.ho_ten
+                LIMIT :limit OFFSET :offset";
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindParam(':ma_truong', $ma_truong, PDO::PARAM_INT);
+            $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("Lỗi getDanhSachHocSinhPaginated: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Đếm tổng số học sinh theo trường
+     */
+    public function countHocSinh($ma_truong) {
+        if ($this->db === null) return 0;
+
+        $sql = "SELECT COUNT(*) as total
+                FROM hoc_sinh hs
+                LEFT JOIN lop_hoc l ON hs.ma_lop = l.ma_lop
+                WHERE l.ma_truong = :ma_truong";
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindParam(':ma_truong', $ma_truong, PDO::PARAM_INT);
+            $stmt->execute();
+            $result = $stmt->fetch();
+            return $result['total'] ?? 0;
+        } catch (PDOException $e) {
+            error_log("Lỗi countHocSinh: " . $e->getMessage());
+            return 0;
         }
     }
 }

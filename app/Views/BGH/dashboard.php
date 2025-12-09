@@ -136,6 +136,10 @@
             <li class="nav-item">
                 <button class="nav-link <?php echo (!$data['is_bgh'] && !$data['is_gvcn']) ? 'active' : ''; ?>" id="gd-tab" data-bs-toggle="tab" data-bs-target="#tab-gd" type="button"><i class="bi bi-book-half me-2"></i>Công Tác Giảng Dạy</button>
             </li>
+            
+            <li class="nav-item">
+                <button class="nav-link" id="phieu-tab" data-bs-toggle="tab" data-bs-target="#tab-phieu" type="button"><i class="bi bi-file-earmark-check me-2"></i>Phiếu Của Tôi</button>
+            </li>
         </ul>
 
         <div class="tab-content" id="dashboardTabContent">
@@ -238,11 +242,15 @@
                                                     <span class="badge bg-danger rounded-pill"><?php echo $hs['so_buoi_vang']; ?></span>
                                                 <?php else: ?> <span class="text-muted">-</span> <?php endif; ?>
                                             </td>
-                                            <td class="text-center fw-bold text-primary"><?php echo $hs['diem_tb_hoc_ky'] ?? '--'; ?></td>
+                                            <td class="text-center fw-bold text-primary"><?php echo $hs['diem_tb_hk'] ?? '--'; ?></td>
                                             <td>
                                                 <?php 
-                                                    $hk = $hs['xep_loai_hanh_kiem'] ?? 'Chưa xếp';
-                                                    $bg = ($hk == 'Tốt') ? 'success' : 'warning';
+                                                    $hk = $hs['hanh_kiem'] ?? 'Chưa xếp';
+                                                    $bg = 'secondary';
+                                                    if ($hk === 'Tot') $bg = 'success';
+                                                    elseif ($hk === 'Kha') $bg = 'info';
+                                                    elseif ($hk === 'Dat') $bg = 'warning';
+                                                    elseif ($hk === 'ChuaDat') $bg = 'danger';
                                                     echo "<span class='badge bg-$bg bg-opacity-75'>$hk</span>";
                                                 ?>
                                             </td>
@@ -272,6 +280,145 @@
                         <i class="bi bi-plus-circle-fill me-2"></i>Giao Bài Tập Mới
                     </a>
                 </div>
+
+                <!-- BẢNG ĐIỂM MÔN - GV BỘ MÔN -->
+                <?php if(!empty($data['gv_diem_mon'])): ?>
+                <div class="stat-card mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h6 class="fw-bold text-warning mb-0">
+                            <i class="bi bi-file-earmark-bar-graph me-2"></i>Danh Sách Điểm Môn (Học Kỳ <?php echo $data['gv_hoc_ky']; ?>)
+                        </h6>
+                        <div class="d-flex gap-2 align-items-center flex-wrap">
+                            <!-- FILTER LỚP -->
+                            <select id="filterLop" class="form-select form-select-sm" style="width: 140px;">
+                                <option value="">-- Tất cả lớp --</option>
+                                <?php 
+                                    $lopList = [];
+                                    foreach($data['gv_diem_mon'] as $row) {
+                                        if (!in_array($row['ten_lop'], $lopList)) {
+                                            $lopList[] = $row['ten_lop'];
+                                        }
+                                    }
+                                    sort($lopList);
+                                    foreach($lopList as $lop): 
+                                ?>
+                                <option value="<?php echo htmlspecialchars($lop); ?>"><?php echo $lop; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+
+                            <!-- FILTER MÔN HỌC -->
+                            <select id="filterMon" class="form-select form-select-sm" style="width: 160px;">
+                                <option value="">-- Tất cả môn --</option>
+                                <?php 
+                                    $monList = [];
+                                    foreach($data['gv_diem_mon'] as $row) {
+                                        // Bỏ môn "Chào cờ" và "Sinh hoạt lớp"
+                                        if (!in_array(strtolower(trim($row['ten_mon_hoc'])), ['chào cờ', 'sinh hoạt lớp', 'sinh hoạt', 'chào cờ và sinh hoạt'])) {
+                                            if (!in_array($row['ten_mon_hoc'], $monList)) {
+                                                $monList[] = $row['ten_mon_hoc'];
+                                            }
+                                        }
+                                    }
+                                    sort($monList);
+                                    foreach($monList as $mon): 
+                                ?>
+                                <option value="<?php echo htmlspecialchars($mon); ?>"><?php echo $mon; ?></option>
+                                <?php endforeach; ?>
+                            </select>
+
+                            <!-- FILTER HỌC KỲ -->
+                            <div class="btn-group btn-group-sm" role="group">
+                                <a href="?hk=HK1" class="btn btn-outline-warning <?php echo ($data['gv_hoc_ky'] === 'HK1') ? 'active' : ''; ?>">HK1</a>
+                                <a href="?hk=HK2" class="btn btn-outline-warning <?php echo ($data['gv_hoc_ky'] === 'HK2') ? 'active' : ''; ?>">HK2</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive" style="max-height: 600px;">
+                        <table class="table table-hover align-middle" id="tableDiemMon">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 40px;">STT</th>
+                                    <th>Lớp</th>
+                                    <th>Môn Học</th>
+                                    <th>Học Sinh</th>
+                                    <th class="text-center">Miệng</th>
+                                    <th class="text-center">15 Phút</th>
+                                    <th class="text-center">1 Tiết</th>
+                                    <th class="text-center fw-bold">TX (x1)</th>
+                                    <th class="text-center">GK (x2)</th>
+                                    <th class="text-center">CK (x3)</th>
+                                    <th class="text-center fw-bold">ĐTB Môn</th>
+                                    <th>Xếp Loại</th>
+                                    <th style="width: 50px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                    foreach($data['gv_diem_mon'] as $row):
+                                    // Bỏ môn "Chào cờ" và "Sinh hoạt lớp"
+                                    if (in_array(strtolower(trim($row['ten_mon_hoc'])), ['chào cờ', 'sinh hoạt lớp', 'sinh hoạt', 'chào cờ và sinh hoạt'])) {
+                                        continue;
+                                    }
+
+                                    // Hiển thị tất cả (cả điểm và chưa nhập)
+                                    $hasScore = ($row['diem_tb_mon_hk'] !== null && $row['diem_tb_mon_hk'] !== '');
+                                ?>
+                                <tr class="row-mon" data-lop="<?php echo htmlspecialchars($row['ten_lop']); ?>" data-mon="<?php echo htmlspecialchars($row['ten_mon_hoc']); ?>" style="<?php echo !$hasScore ? 'background-color: #f8f9fa; opacity: 0.7;' : ''; ?>">
+                                    <td class="fw-bold text-center text-muted stt-cell">-</td>
+                                    <td><span class="badge bg-light text-dark"><?php echo $row['ten_lop']; ?></span></td>
+                                    <td class="fw-bold"><?php echo htmlspecialchars($row['ten_mon_hoc']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['ho_ten']); ?></td>
+                                    <td class="text-center"><?php echo ($hasScore && $row['diem_mieng'] !== null) ? number_format($row['diem_mieng'], 2) : '--'; ?></td>
+                                    <td class="text-center"><?php echo ($hasScore && $row['diem_15phut'] !== null) ? number_format($row['diem_15phut'], 2) : '--'; ?></td>
+                                    <td class="text-center"><?php echo ($hasScore && $row['diem_1tiet'] !== null) ? number_format($row['diem_1tiet'], 2) : '--'; ?></td>
+                                    <td class="text-center fw-bold text-warning"><?php echo ($hasScore && $row['diem_tx'] !== null) ? number_format($row['diem_tx'], 2) : '--'; ?></td>
+                                    <td class="text-center"><?php echo ($hasScore && $row['diem_gua_ky'] !== null) ? number_format($row['diem_gua_ky'], 2) : '--'; ?></td>
+                                    <td class="text-center"><?php echo ($hasScore && $row['diem_cuoi_ky'] !== null) ? number_format($row['diem_cuoi_ky'], 2) : '--'; ?></td>
+                                    <td class="text-center fw-bold <?php echo $hasScore ? 'text-primary' : 'text-muted'; ?>">
+                                        <?php echo $hasScore ? number_format($row['diem_tb_mon_hk'], 2) : '<em>Chưa nhập</em>'; ?>
+                                    </td>
+                                    <td>
+                                        <?php 
+                                            if (!$hasScore) {
+                                                echo '<span class="badge bg-secondary bg-opacity-50">---</span>';
+                                            } else {
+                                                $xlt = $row['xep_loai_mon'] ?? 'Chưa xếp';
+                                                $bgXlt = 'secondary';
+                                                if ($xlt === 'Gioi') $bgXlt = 'success';
+                                                elseif ($xlt === 'Kha') $bgXlt = 'info';
+                                                elseif ($xlt === 'Dat') $bgXlt = 'warning';
+                                                elseif ($xlt === 'ChuaDat') $bgXlt = 'danger';
+                                                echo "<span class='badge bg-$bgXlt bg-opacity-75'>$xlt</span>";
+                                            }
+                                        ?>
+                                    </td>
+                                    <td class="text-end">
+                                        <?php 
+                                        $da_co_diem = ($row['diem_tb_mon_hk'] !== null && $row['diem_tb_mon_hk'] !== '');
+                                        if ($da_co_diem): 
+                                        ?>
+                                            <button class="btn btn-sm btn-warning" 
+                                                    onclick="openModalChinhSuaDiem(<?php echo $row['ma_hoc_sinh']; ?>, <?php echo $row['ma_mon_hoc']; ?>, '<?php echo htmlspecialchars($row['ten_mon_hoc'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars($row['ho_ten'], ENT_QUOTES); ?>', <?php echo $row['diem_mieng'] ?? 'null'; ?>, <?php echo $row['diem_15phut'] ?? 'null'; ?>, <?php echo $row['diem_1tiet'] ?? 'null'; ?>, <?php echo $row['diem_gua_ky'] ?? 'null'; ?>, <?php echo $row['diem_cuoi_ky'] ?? 'null'; ?>)">
+                                                <i class="bi bi-pencil-fill"></i> Chỉnh sửa
+                                            </button>
+                                        <?php else: ?>
+                                            <button class="btn btn-sm btn-primary" 
+                                                    onclick="openModalNhapDiem(<?php echo $row['ma_hoc_sinh']; ?>, <?php echo $row['ma_mon_hoc']; ?>, '<?php echo htmlspecialchars($row['ten_mon_hoc'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars($row['ho_ten'], ENT_QUOTES); ?>')">
+                                                <i class="bi bi-pencil-square"></i> Nhập
+                                            </button>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Pagination Container -->
+                    <div id="paginationContainer" class="mt-3"></div>
+                </div>
+                <?php else: ?>
+                <div class="alert alert-info"><i class="bi bi-info-circle me-2"></i>Chưa có dữ liệu điểm môn.</div>
+                <?php endif; ?>
 
                 <div class="row g-4 mb-4">
                     <div class="col-md-4">
@@ -314,6 +461,44 @@
                             <h6 class="fw-bold text-warning mb-3">Điểm Danh Tổng Quát</h6>
                             <div style="height: 300px; display:flex; justify-content:center;"><canvas id="chartGdPie"></canvas></div>
                         </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tab Content: Phiếu Yêu Cầu Của Tôi -->
+            <div class="tab-pane fade" id="tab-phieu">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0 fw-bold"><i class="bi bi-file-earmark-text text-warning me-2"></i>Phiếu Yêu Cầu Chỉnh Sửa Điểm</h5>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button class="btn btn-outline-secondary active" onclick="filterPhieu('TatCa')">Tất cả</button>
+                            <button class="btn btn-outline-warning" onclick="filterPhieu('ChoDuyet')">Chờ duyệt</button>
+                            <button class="btn btn-outline-success" onclick="filterPhieu('DaDuyet')">Đã duyệt</button>
+                            <button class="btn btn-outline-danger" onclick="filterPhieu('TuChoi')">Từ chối</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Mã Phiếu</th>
+                                    <th>Học Sinh</th>
+                                    <th>Môn Học</th>
+                                    <th>Học Kỳ</th>
+                                    <th>Ngày Gửi</th>
+                                    <th>Trạng Thái</th>
+                                    <th style="width: 80px;">Thao Tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablePhieuBody">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        <i class="bi bi-hourglass-split fs-4"></i><br>
+                                        <span class="small">Đang tải dữ liệu...</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -381,6 +566,524 @@
             data: { labels: ['Có Mặt', 'Vắng'], datasets: [{ data: [<?php echo $ddData['CoMat']; ?>, <?php echo $ddData['Vang']; ?>], backgroundColor: ['#20c997', '#dc3545'] }] },
             options: { responsive: true, cutout: '70%', plugins: { legend: { position: 'bottom' } } }
         });
+
+        // === FILTER LỚP + MÔN - ĐIỂM MÔN + PHÂN TRANG ===
+        const filterLop = document.getElementById('filterLop');
+        const filterMon = document.getElementById('filterMon');
+        let currentPage = 1;
+        const rowsPerPage = 20;
+        
+        function paginateTable() {
+            const selectedLop = filterLop ? filterLop.value : '';
+            const selectedMon = filterMon ? filterMon.value : '';
+            const rows = document.querySelectorAll('#tableDiemMon tbody tr.row-mon');
+            
+            // Lọc các dòng phù hợp
+            let visibleRows = [];
+            rows.forEach(row => {
+                const rowLop = row.getAttribute('data-lop');
+                const rowMon = row.getAttribute('data-mon');
+                const lopMatch = selectedLop === '' || rowLop === selectedLop;
+                const monMatch = selectedMon === '' || rowMon === selectedMon;
+                
+                if (lopMatch && monMatch) {
+                    visibleRows.push(row);
+                }
+            });
+            
+            // Tính tổng số trang
+            const totalPages = Math.ceil(visibleRows.length / rowsPerPage);
+            
+            // Ẩn tất cả, chỉ hiển thị trang hiện tại
+            let stt = 0;
+            rows.forEach(row => row.style.display = 'none');
+            
+            const start = (currentPage - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            
+            for (let i = start; i < end && i < visibleRows.length; i++) {
+                const row = visibleRows[i];
+                row.style.display = '';
+                stt++;
+                const sttCell = row.querySelector('.stt-cell');
+                if (sttCell) sttCell.textContent = start + stt;
+            }
+            
+            // Cập nhật nút phân trang
+            renderPagination(totalPages, visibleRows.length);
+        }
+        
+        function renderPagination(totalPages, totalRows) {
+            const paginationContainer = document.getElementById('paginationContainer');
+            if (!paginationContainer) return;
+            
+            if (totalPages <= 1) {
+                paginationContainer.innerHTML = '';
+                return;
+            }
+            
+            let html = '<nav><ul class="pagination pagination-sm justify-content-center mb-0">';
+            
+            // Nút Previous
+            html += '<li class="page-item ' + (currentPage === 1 ? 'disabled' : '') + '">' +
+                    '<a class="page-link" href="#" onclick="changePage(' + (currentPage - 1) + '); return false;">«</a></li>';
+            
+            // Các nút số trang
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    html += '<li class="page-item ' + (i === currentPage ? 'active' : '') + '">' +
+                            '<a class="page-link" href="#" onclick="changePage(' + i + '); return false;">' + i + '</a></li>';
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                }
+            }
+            
+            // Nút Next
+            html += '<li class="page-item ' + (currentPage === totalPages ? 'disabled' : '') + '">' +
+                    '<a class="page-link" href="#" onclick="changePage(' + (currentPage + 1) + '); return false;">»</a></li>';
+            
+            html += '</ul></nav>';
+            html += '<div class="text-center text-muted small mt-2">Hiển thị ' + 
+                    Math.min((currentPage-1)*rowsPerPage+1, totalRows) + '-' + 
+                    Math.min(currentPage*rowsPerPage, totalRows) + ' / ' + totalRows + ' dòng</div>';
+            
+            paginationContainer.innerHTML = html;
+        }
+        
+        function changePage(page) {
+            currentPage = page;
+            paginateTable();
+        }
+        
+        // Gọi lại khi filter thay đổi
+        function applyFiltersWithPagination() {
+            currentPage = 1; // Reset về trang 1
+            paginateTable();
+        }
+        
+        // Chạy lần đầu khi load trang
+        paginateTable();
+        
+        if (filterLop) filterLop.addEventListener('change', applyFiltersWithPagination);
+        if (filterMon) filterMon.addEventListener('change', applyFiltersWithPagination);
+        
+        // === NHẬP ĐIỂM - MODAL ===
+        function openModalNhapDiem(ma_hs, ma_mon, ten_mon, ten_hs) {
+            document.getElementById('modal_hs_name').textContent = ten_hs;
+            document.getElementById('modal_mon_name').textContent = ten_mon;
+            document.getElementById('modal_ma_hs').value = ma_hs;
+            document.getElementById('modal_ma_mon').value = ma_mon;
+            
+            // Reset form
+            document.getElementById('formNhapDiem').reset();
+            
+            const modal = new bootstrap.Modal(document.getElementById('modalNhapDiem'));
+            modal.show();
+        }
+        
+        function submitNhapDiem() {
+            const form = document.getElementById('formNhapDiem');
+            if (!form.checkValidity()) {
+                alert('Vui lòng điền đầy đủ thông tin!');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('ma_hoc_sinh', document.getElementById('modal_ma_hs').value);
+            formData.append('ma_mon_hoc', document.getElementById('modal_ma_mon').value);
+            formData.append('ma_hoc_ky', document.getElementById('modal_hoc_ky').value);
+            formData.append('diem_mieng', document.getElementById('inp_mieng').value);
+            formData.append('diem_15phut', document.getElementById('inp_15phut').value);
+            formData.append('diem_1tiet', document.getElementById('inp_1tiet').value);
+            formData.append('diem_gua_ky', document.getElementById('inp_gk').value);
+            formData.append('diem_cuoi_ky', document.getElementById('inp_ck').value);
+            
+            fetch('<?php echo BASE_URL; ?>/diemso/nhap', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('Lỗi: ' + data.message);
+                }
+            })
+            .catch(err => {
+                alert('Lỗi kết nối: ' + err.message);
+            });
+        }
+        
+        // === CHỈNH SỬA ĐIỂM - GỬI PHIẾU YÊU CẦU ===
+        function openModalChinhSuaDiem(ma_hs, ma_mon, ten_mon, ten_hs, diem_mieng, diem_15phut, diem_1tiet, diem_gk, diem_ck) {
+            document.getElementById('modal_sua_hs_name').textContent = ten_hs;
+            document.getElementById('modal_sua_mon_name').textContent = ten_mon;
+            document.getElementById('modal_sua_ma_hs').value = ma_hs;
+            document.getElementById('modal_sua_ma_mon').value = ma_mon;
+            
+            // Điền điểm cũ vào form
+            document.getElementById('inp_sua_mieng').value = diem_mieng !== null ? diem_mieng : '';
+            document.getElementById('inp_sua_15phut').value = diem_15phut !== null ? diem_15phut : '';
+            document.getElementById('inp_sua_1tiet').value = diem_1tiet !== null ? diem_1tiet : '';
+            document.getElementById('inp_sua_gk').value = diem_gk !== null ? diem_gk : '';
+            document.getElementById('inp_sua_ck').value = diem_ck !== null ? diem_ck : '';
+            document.getElementById('inp_ly_do').value = '';
+            
+            const modal = new bootstrap.Modal(document.getElementById('modalChinhSuaDiem'));
+            modal.show();
+        }
+        
+        function submitChinhSuaDiem() {
+            const form = document.getElementById('formChinhSuaDiem');
+            if (!form.checkValidity()) {
+                alert('Vui lòng điền đầy đủ thông tin và lý do chỉnh sửa!');
+                return;
+            }
+            
+            const ly_do = document.getElementById('inp_ly_do').value.trim();
+            if (ly_do === '') {
+                alert('Vui lòng nhập lý do chỉnh sửa điểm!');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('ma_hoc_sinh', document.getElementById('modal_sua_ma_hs').value);
+            formData.append('ma_mon_hoc', document.getElementById('modal_sua_ma_mon').value);
+            formData.append('ma_hoc_ky', document.getElementById('modal_sua_hoc_ky').value);
+            formData.append('diem_mieng', document.getElementById('inp_sua_mieng').value);
+            formData.append('diem_15phut', document.getElementById('inp_sua_15phut').value);
+            formData.append('diem_1tiet', document.getElementById('inp_sua_1tiet').value);
+            formData.append('diem_gua_ky', document.getElementById('inp_sua_gk').value);
+            formData.append('diem_cuoi_ky', document.getElementById('inp_sua_ck').value);
+            formData.append('ly_do', ly_do);
+            
+            fetch('<?php echo BASE_URL; ?>/diemso/guiPhieuChinhSua', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message + '\nPhiếu đã được gửi đến Ban Giám Hiệu để duyệt.');
+                    bootstrap.Modal.getInstance(document.getElementById('modalChinhSuaDiem')).hide();
+                } else {
+                    alert('Lỗi: ' + data.message);
+                }
+            })
+            .catch(err => {
+                alert('Lỗi kết nối: ' + err.message);
+            });
+        }
+        
+        // === QUẢN LÝ PHIẾU YÊU CẦU CỦA GIÁO VIÊN ===
+        let currentFilter = 'TatCa';
+        let allPhieuData = [];
+
+        function loadDanhSachPhieu(trangThai = 'TatCa') {
+            currentFilter = trangThai;
+            
+            fetch('<?php echo BASE_URL; ?>/diemso/danhSachPhieuCuaToi?trang_thai=' + trangThai)
+                .then(res => res.json())
+                .then(result => {
+                    if (!result.success) {
+                        alert(result.message);
+                        return;
+                    }
+                    
+                    allPhieuData = result.data;
+                    const tbody = document.getElementById('tablePhieuBody');
+                    tbody.innerHTML = '';
+                    
+                    if (result.data.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-4"></i><br>
+                            <span class="small">Không có phiếu nào</span>
+                        </td></tr>`;
+                        return;
+                    }
+                    
+                    result.data.forEach(phieu => {
+                        const badgeClass = phieu.trang_thai_phieu === 'ChoDuyet' ? 'warning' :
+                                           phieu.trang_thai_phieu === 'DaDuyet' ? 'success' : 'danger';
+                        const badgeText = phieu.trang_thai_phieu === 'ChoDuyet' ? 'Chờ duyệt' :
+                                          phieu.trang_thai_phieu === 'DaDuyet' ? 'Đã duyệt' : 'Từ chối';
+                        
+                        const ngayGui = new Date(phieu.ngay_lap_phieu);
+                        const ngayGuiStr = ngayGui.toLocaleDateString('vi-VN');
+                        
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><span class="badge bg-secondary">#${phieu.ma_phieu}</span></td>
+                                <td>${phieu.ten_hoc_sinh}</td>
+                                <td>${phieu.ten_mon_hoc}</td>
+                                <td><span class="badge bg-info">${phieu.ma_hoc_ky}</span></td>
+                                <td><small>${ngayGuiStr}</small></td>
+                                <td><span class="badge bg-${badgeClass}">${badgeText}</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="xemChiTietPhieu(${phieu.ma_phieu})" title="Xem chi tiết">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                })
+                .catch(err => {
+                    console.error('Lỗi:', err);
+                    alert('Không thể tải danh sách phiếu');
+                });
+        }
+
+        function filterPhieu(trangThai) {
+            // Highlight button active
+            document.querySelectorAll('#tab-phieu .btn-group .btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            loadDanhSachPhieu(trangThai);
+        }
+
+        function xemChiTietPhieu(maPhieu) {
+            const phieu = allPhieuData.find(p => p.ma_phieu == maPhieu);
+            if (!phieu) {
+                alert('Không tìm thấy thông tin phiếu');
+                return;
+            }
+            
+            // Điền thông tin vào modal
+            document.getElementById('detailMaPhieu').textContent = '#' + phieu.ma_phieu;
+            document.getElementById('detailHocSinh').textContent = phieu.ten_hoc_sinh;
+            document.getElementById('detailMonHoc').textContent = phieu.ten_mon_hoc + ' - ' + phieu.ma_hoc_ky;
+            document.getElementById('detailLyDo').textContent = phieu.ly_do_chinh_sua || '--';
+            
+            // Điểm cũ
+            document.getElementById('detailDiemCu').innerHTML = `
+                Miệng: <strong>${phieu.diem_mieng_cu ?? '--'}</strong> | 
+                15p: <strong>${phieu.diem_15phut_cu ?? '--'}</strong> | 
+                1T: <strong>${phieu.diem_1tiet_cu ?? '--'}</strong> | 
+                GK: <strong>${phieu.diem_gua_ky_cu ?? '--'}</strong> | 
+                CK: <strong>${phieu.diem_cuoi_ky_cu ?? '--'}</strong>
+            `;
+            
+            // Điểm mới đề xuất
+            document.getElementById('detailDiemMoi').innerHTML = `
+                Miệng: <strong class="text-primary">${phieu.diem_mieng_moi ?? '--'}</strong> | 
+                15p: <strong class="text-primary">${phieu.diem_15phut_moi ?? '--'}</strong> | 
+                1T: <strong class="text-primary">${phieu.diem_1tiet_moi ?? '--'}</strong> | 
+                GK: <strong class="text-primary">${phieu.diem_gua_ky_moi ?? '--'}</strong> | 
+                CK: <strong class="text-primary">${phieu.diem_cuoi_ky_moi ?? '--'}</strong>
+            `;
+            
+            const statusClass = phieu.trang_thai_phieu === 'ChoDuyet' ? 'warning' :
+                               phieu.trang_thai_phieu === 'DaDuyet' ? 'success' : 'danger';
+            const statusText = phieu.trang_thai_phieu === 'ChoDuyet' ? 'Chờ duyệt' :
+                              phieu.trang_thai_phieu === 'DaDuyet' ? 'Đã duyệt' : 'Từ chối';
+            document.getElementById('detailTrangThai').innerHTML = `<span class="badge bg-${statusClass}">${statusText}</span>`;
+            
+            // Thông tin duyệt
+            if (phieu.trang_thai_phieu === 'DaDuyet') {
+                const ngayDuyet = new Date(phieu.ngay_duyet);
+                document.getElementById('detailNguoiDuyet').innerHTML = `
+                    <strong class="text-success">${phieu.ten_nguoi_duyet || 'Ban Giám Hiệu'}</strong><br>
+                    <small class="text-muted">Duyệt lúc: ${ngayDuyet.toLocaleString('vi-VN')}</small>
+                `;
+            } else if (phieu.trang_thai_phieu === 'TuChoi') {
+                const ngayDuyet = new Date(phieu.ngay_duyet);
+                document.getElementById('detailNguoiDuyet').innerHTML = `
+                    <strong class="text-danger">${phieu.ten_nguoi_duyet || 'Ban Giám Hiệu'}</strong><br>
+                    <small class="text-muted">Từ chối lúc: ${ngayDuyet.toLocaleString('vi-VN')}</small><br>
+                    <div class="alert alert-danger mt-2 mb-0 small">
+                        <i class="bi bi-x-circle"></i> <strong>Lý do:</strong> ${phieu.ly_do_tu_choi || 'Không rõ'}
+                    </div>
+                `;
+            } else {
+                document.getElementById('detailNguoiDuyet').innerHTML = '<span class="text-muted fst-italic">Chưa xử lý</span>';
+            }
+            
+            const modal = new bootstrap.Modal(document.getElementById('modalChiTietPhieu'));
+            modal.show();
+        }
+
+        // Load khi tab được click
+        document.querySelector('[data-bs-target="#tab-phieu"]').addEventListener('shown.bs.tab', function() {
+            loadDanhSachPhieu('TatCa');
+        });
     </script>
+
+    <!-- Modal Nhập Điểm -->
+    <div class="modal fade" id="modalNhapDiem" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-clipboard-data"></i> Nhập Điểm</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Học sinh:</strong> <span id="modal_hs_name"></span></p>
+                    <p><strong>Môn học:</strong> <span id="modal_mon_name"></span></p>
+                    <form id="formNhapDiem">
+                        <input type="hidden" id="modal_ma_hs">
+                        <input type="hidden" id="modal_ma_mon">
+                        <input type="hidden" id="modal_hoc_ky" value="<?php echo $data['gv_hoc_ky'] ?? 'HK1'; ?>">
+                        
+                        <div class="alert alert-info small">
+                            <i class="bi bi-info-circle"></i> <strong>Công thức tính:</strong><br>
+                            Điểm TX = (Miệng + 15 Phút + 1 Tiết) / 3<br>
+                            ĐTB Môn = (TX×1 + GK×2 + CK×3) / 6
+                        </div>
+                        
+                        <div class="row g-2 mb-3">
+                            <div class="col-4">
+                                <label class="form-label small fw-bold">Miệng <span class="text-danger">*</span></label>
+                                <input type="number" step="0.01" min="0" max="10" class="form-control form-control-sm" id="inp_mieng" required>
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small fw-bold">15 Phút <span class="text-danger">*</span></label>
+                                <input type="number" step="0.01" min="0" max="10" class="form-control form-control-sm" id="inp_15phut" required>
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small fw-bold">1 Tiết <span class="text-danger">*</span></label>
+                                <input type="number" step="0.01" min="0" max="10" class="form-control form-control-sm" id="inp_1tiet" required>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold">Giữa kỳ <span class="text-danger">*</span></label>
+                                <input type="number" step="0.01" min="0" max="10" class="form-control form-control-sm" id="inp_gk" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold">Cuối kỳ <span class="text-danger">*</span></label>
+                                <input type="number" step="0.01" min="0" max="10" class="form-control form-control-sm" id="inp_ck" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="submitNhapDiem()">
+                        <i class="bi bi-save"></i> Lưu Điểm
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Chỉnh Sửa Điểm (Gửi Phiếu Yêu Cầu) -->
+    <div class="modal fade" id="modalChinhSuaDiem" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title"><i class="bi bi-pencil-fill"></i> Gửi Phiếu Yêu Cầu Chỉnh Sửa Điểm</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning small">
+                        <i class="bi bi-exclamation-triangle"></i> <strong>Lưu ý:</strong> 
+                        Điểm đã nhập không thể sửa trực tiếp. Vui lòng gửi phiếu yêu cầu chỉnh sửa đến Ban Giám Hiệu để duyệt.
+                    </div>
+                    
+                    <p><strong>Học sinh:</strong> <span id="modal_sua_hs_name" class="text-primary"></span></p>
+                    <p><strong>Môn học:</strong> <span id="modal_sua_mon_name" class="text-primary"></span></p>
+                    
+                    <form id="formChinhSuaDiem">
+                        <input type="hidden" id="modal_sua_ma_hs">
+                        <input type="hidden" id="modal_sua_ma_mon">
+                        <input type="hidden" id="modal_sua_hoc_ky" value="<?php echo $data['gv_hoc_ky'] ?? 'HK1'; ?>">
+                        
+                        <h6 class="fw-bold text-dark mt-3 mb-2">Điểm Mới (Cần Chỉnh Sửa)</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">Miệng <span class="text-danger">*</span></label>
+                                <input type="number" step="0.01" min="0" max="10" class="form-control form-control-sm" id="inp_sua_mieng" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">15 Phút <span class="text-danger">*</span></label>
+                                <input type="number" step="0.01" min="0" max="10" class="form-control form-control-sm" id="inp_sua_15phut" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold">1 Tiết <span class="text-danger">*</span></label>
+                                <input type="number" step="0.01" min="0" max="10" class="form-control form-control-sm" id="inp_sua_1tiet" required>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Giữa kỳ <span class="text-danger">*</span></label>
+                                <input type="number" step="0.01" min="0" max="10" class="form-control form-control-sm" id="inp_sua_gk" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold">Cuối kỳ <span class="text-danger">*</span></label>
+                                <input type="number" step="0.01" min="0" max="10" class="form-control form-control-sm" id="inp_sua_ck" required>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Lý do chỉnh sửa <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="inp_ly_do" rows="3" placeholder="VD: Nhập sai kết quả bài kiểm tra, cần cập nhật theo phúc khảo..." required></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-warning btn-sm text-dark fw-bold" onclick="submitChinhSuaDiem()">
+                        <i class="bi bi-send-fill"></i> Gửi Phiếu Yêu Cầu
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Chi Tiết Phiếu -->
+    <div class="modal fade" id="modalChiTietPhieu" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title">
+                        <i class="bi bi-file-earmark-text text-warning"></i> Chi Tiết Phiếu <span id="detailMaPhieu" class="text-primary"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="text-muted small fw-bold">Học sinh</label>
+                            <p class="fw-bold mb-0" id="detailHocSinh"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small fw-bold">Môn học - Học kỳ</label>
+                            <p class="fw-bold mb-0" id="detailMonHoc"></p>
+                        </div>
+                        <div class="col-12">
+                            <label class="text-muted small fw-bold">Lý do yêu cầu chỉnh sửa</label>
+                            <p id="detailLyDo" class="fst-italic bg-light p-2 rounded"></p>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-secondary mb-0">
+                                <label class="text-muted small fw-bold d-block mb-1">Điểm cũ (Hiện tại)</label>
+                                <p id="detailDiemCu" class="mb-0"></p>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="alert alert-primary mb-0">
+                                <label class="text-muted small fw-bold d-block mb-1">Điểm mới (Đề xuất)</label>
+                                <p id="detailDiemMoi" class="mb-0"></p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small fw-bold">Trạng thái</label>
+                            <p id="detailTrangThai"></p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small fw-bold">Người xử lý</label>
+                            <p id="detailNguoiDuyet" class="mb-0"></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

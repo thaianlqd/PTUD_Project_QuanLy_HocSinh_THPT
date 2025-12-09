@@ -23,6 +23,7 @@ class GiaoVienBaiTapModel {
                 $this->db->setAttribute(PDO::ATTR_EMULATE_PREPARES, true); 
                 
                 $this->db->exec("SET NAMES 'utf8mb4'");
+                $this->db->exec("SET time_zone = '+07:00'"); // Timezone Việt Nam
                 
                 $connected = true;
                 break; 
@@ -71,6 +72,14 @@ class GiaoVienBaiTapModel {
     public function giaoBaiTap($data) {
         if ($this->db === null) return ['success' => false, 'message' => 'Lỗi kết nối CSDL.'];
         
+        // ✅ VALIDATE dữ liệu đầu vào
+        $required = ['ten_bai_tap', 'mo_ta_chung', 'han_nop', 'loai_bai_tap', 'ma_lop', 'ma_giao_vien', 'ma_mon_hoc'];
+        foreach ($required as $field) {
+            if (!isset($data[$field]) || (is_string($data[$field]) && trim($data[$field]) === '')) {
+                return ['success' => false, 'message' => "Thiếu trường bắt buộc: $field"];
+            }
+        }
+        
         $this->db->beginTransaction();
         try {
             // 1. Insert vào bảng `bai_tap` (bảng cha)
@@ -85,7 +94,7 @@ class GiaoVienBaiTapModel {
                 ':mo_ta' => $data['mo_ta_chung'],
                 ':han_nop' => $data['han_nop'],
                 ':loai' => $data['loai_bai_tap'],
-                ':file_kem' => $data['file_dinh_kem'],
+                ':file_kem' => $data['file_dinh_kem'] ?? null,
                 ':ma_lop' => $data['ma_lop'],
                 ':ma_gv' => $data['ma_giao_vien'],
                 ':ma_mon' => $data['ma_mon_hoc']
@@ -96,15 +105,23 @@ class GiaoVienBaiTapModel {
             // 2. Insert vào bảng con
             if ($data['loai_bai_tap'] == 'TuLuan') {
                 $sql_child = "INSERT INTO bai_tap_tu_luan (ma_bai_tap, de_bai_chi_tiet) VALUES (?, ?)";
-                $this->db->prepare($sql_child)->execute([$ma_bai_tap_moi, $data['noi_dung_tu_luan']]);
+                $this->db->prepare($sql_child)->execute([$ma_bai_tap_moi, $data['noi_dung_tu_luan'] ?? '']);
             
             } elseif ($data['loai_bai_tap'] == 'UploadFile') {
                 $sql_child = "INSERT INTO bai_tap_upload_file (ma_bai_tap, loai_file_cho_phep, dung_luong_toi_da) VALUES (?, ?, ?)";
-                $this->db->prepare($sql_child)->execute([$ma_bai_tap_moi, $data['loai_file_cho_phep'], $data['dung_luong_toi_da']]);
+                $this->db->prepare($sql_child)->execute([
+                    $ma_bai_tap_moi, 
+                    $data['loai_file_cho_phep'] ?? 'pdf,docx,jpg,png', 
+                    $data['dung_luong_toi_da'] ?? 5242880 // 5MB default
+                ]);
             
             } elseif ($data['loai_bai_tap'] == 'TracNghiem') {
                 $sql_child = "INSERT INTO bai_tap_trac_nghiem (ma_bai_tap, danh_sach_cau_hoi, thoi_gian_lam_bai) VALUES (?, ?, ?)";
-                $this->db->prepare($sql_child)->execute([$ma_bai_tap_moi, $data['json_trac_nghiem'], $data['thoi_gian_lam_bai']]);
+                $this->db->prepare($sql_child)->execute([
+                    $ma_bai_tap_moi, 
+                    $data['json_trac_nghiem'] ?? '[]', 
+                    $data['thoi_gian_lam_bai'] ?? 60
+                ]);
             }
 
             $this->db->commit();
@@ -143,7 +160,7 @@ class GiaoVienBaiTapModel {
                 GROUP BY 
                     bt.ma_bai_tap
                 ORDER BY 
-                    bt.han_nop DESC";
+                    bt.ma_bai_tap DESC"; // <--- CHỖ NÀY: Sắp xếp theo ID là chuẩn nhất (Bài mới tạo ID to nhất)
         
         try {
             $stmt = $this->db->prepare($sql);
@@ -159,50 +176,73 @@ class GiaoVienBaiTapModel {
      * HÀM MỚI: Lấy Tên Lớp, Tên Môn (cho tiêu đề trang)
      */
     public function getThongTinLopMonHoc($ma_lop, $ma_mon_hoc) {
-        $sql = "SELECT 
-                    l.ten_lop, mh.ten_mon_hoc, l.ma_lop, mh.ma_mon_hoc
-                FROM lop_hoc l
-                JOIN mon_hoc mh
-                WHERE l.ma_lop = ? AND mh.ma_mon_hoc = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$ma_lop, $ma_mon_hoc]);
-        return $stmt->fetch();
+        if ($this->db === null) return null;
+        
+        try {
+            $sql = "SELECT 
+                        l.ten_lop, mh.ten_mon_hoc, l.ma_lop, mh.ma_mon_hoc
+                    FROM lop_hoc l
+                    CROSS JOIN mon_hoc mh
+                    WHERE l.ma_lop = ? AND mh.ma_mon_hoc = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_lop, $ma_mon_hoc]);
+            return $stmt->fetch();
+        } catch (PDOException $e) {
+            error_log("Lỗi getThongTinLopMonHoc: " . $e->getMessage());
+            return null;
+        }
     }
 
     /**
      * HÀM MỚI (STEP 5): Lấy thông tin cơ bản của bài tập (để lấy ma_lop)
      */
     public function getThongTinCoBanBaiTap($ma_bai_tap) {
-        $stmt = $this->db->prepare("SELECT ma_lop, ma_mon_hoc, ten_bai_tap, mo_ta FROM bai_tap WHERE ma_bai_tap = ?");
-        $stmt->execute([$ma_bai_tap]);
-        return $stmt->fetch();
+        if ($this->db === null) return null;
+        
+        try {
+            // ✅ ĐÃ SỬA: Thêm han_nop, loai_bai_tap, file_dinh_kem
+            $stmt = $this->db->prepare("SELECT ma_bai_tap, ma_lop, ma_mon_hoc, ten_bai_tap, mo_ta, han_nop, loai_bai_tap, file_dinh_kem FROM bai_tap WHERE ma_bai_tap = ?");
+            $stmt->execute([$ma_bai_tap]);
+            return $stmt->fetch();
+        } catch (PDOException $e) {
+            error_log("Lỗi getThongTinCoBanBaiTap: " . $e->getMessage());
+            return null;
+        }
     }
-
     /**
      * HÀM MỚI (STEP 5): Lấy DS Lớp và join với ai đã nộp
+     * ✅ FIX DATETIME: Convert sang UTC+7 (Vietnam time)
      */
     public function getThongKeNopBai($ma_bai_tap, $ma_lop) {
-        $sql = "SELECT 
-                    hs.ma_hoc_sinh, 
-                    nd.ho_ten, 
-                    bn.ma_bai_nop, 
-                    bn.ngay_nop, 
-                    bn.trang_thai, 
-                    bn.diem_so
-                FROM 
-                    hoc_sinh hs
-                JOIN 
-                    nguoi_dung nd ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
-                LEFT JOIN 
-                    bai_nop bn ON hs.ma_hoc_sinh = bn.ma_nguoi_dung AND bn.ma_bai_tap = ?
-                WHERE 
-                    hs.ma_lop = ?
-                ORDER BY 
-                    nd.ho_ten";
+        if ($this->db === null) return [];
         
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$ma_bai_tap, $ma_lop]);
-        return $stmt->fetchAll();
+        try {
+            $sql = "SELECT 
+                        hs.ma_hoc_sinh, 
+                        nd.ho_ten, 
+                        bn.ma_bai_nop, 
+                        bn.ngay_nop,
+                        CONVERT_TZ(bn.ngay_nop, '+00:00', '+07:00') as ngay_nop_vietnam,
+                        bn.trang_thai, 
+                        bn.diem_so
+                    FROM 
+                        hoc_sinh hs
+                    JOIN 
+                        nguoi_dung nd ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
+                    LEFT JOIN 
+                        bai_nop bn ON hs.ma_hoc_sinh = bn.ma_nguoi_dung AND bn.ma_bai_tap = ?
+                    WHERE 
+                        hs.ma_lop = ?
+                    ORDER BY 
+                        nd.ho_ten";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_bai_tap, $ma_lop]);
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("Lỗi getThongKeNopBai: " . $e->getMessage());
+            return [];
+        }
     }
 
     /**
@@ -262,29 +302,42 @@ class GiaoVienBaiTapModel {
     public function getTyLeNopBaiTB($gv_id) {
         if ($this->db === null) return 0;
 
-        // 1. Đếm tổng số bài ĐÃ NỘP (Actual)
-        $sqlActual = "SELECT COUNT(*) FROM bai_nop bn 
-                      JOIN bai_tap bt ON bn.ma_bai_tap = bt.ma_bai_tap 
-                      WHERE bt.ma_giao_vien = ?";
-        $stmt1 = $this->db->prepare($sqlActual);
-        $stmt1->execute([$gv_id]);
-        $actual = $stmt1->fetchColumn() ?? 0;
+        try {
+            // 1. Đếm tổng số bài ĐÃ NỘP (Actual)
+            $sqlActual = "SELECT COUNT(*) FROM bai_nop bn 
+                          JOIN bai_tap bt ON bn.ma_bai_tap = bt.ma_bai_tap 
+                          WHERE bt.ma_giao_vien = ?";
+            $stmt1 = $this->db->prepare($sqlActual);
+            $stmt1->execute([$gv_id]);
+            $actual = $stmt1->fetchColumn() ?? 0;
 
-        // 2. Đếm tổng số bài PHẢI NỘP (Expected)
-        // (Tổng sĩ số của các lớp được giao bài)
-        $sqlExpected = "SELECT SUM(lh.si_so) 
+            // 2. Đếm số bài tập đã giao
+            $sqlBaiTap = "SELECT COUNT(*) FROM bai_tap WHERE ma_giao_vien = ?";
+            $stmt2 = $this->db->prepare($sqlBaiTap);
+            $stmt2->execute([$gv_id]);
+            $soBaiTap = $stmt2->fetchColumn() ?? 0;
+
+            // 3. Đếm tổng sĩ số các lớp được giao bài
+            $sqlSiSo = "SELECT SUM(DISTINCT lh.si_so) 
                         FROM bai_tap bt 
                         JOIN lop_hoc lh ON bt.ma_lop = lh.ma_lop 
                         WHERE bt.ma_giao_vien = ?";
-        $stmt2 = $this->db->prepare($sqlExpected);
-        $stmt2->execute([$gv_id]);
-        $expected = $stmt2->fetchColumn() ?? 0;
+            $stmt3 = $this->db->prepare($sqlSiSo);
+            $stmt3->execute([$gv_id]);
+            $tongSiSo = $stmt3->fetchColumn() ?? 0;
 
-        // 3. Tính phần trăm
-        if ($expected > 0) {
-            return round(($actual / $expected) * 100, 1); // Làm tròn 1 chữ số thập phân
+            // 4. Tính expected = số bài tập * tổng sĩ số
+            $expected = $soBaiTap * $tongSiSo;
+
+            // 5. Tính phần trăm
+            if ($expected > 0) {
+                return round(($actual / $expected) * 100, 1);
+            }
+            return 0;
+        } catch (PDOException $e) {
+            error_log("Lỗi getTyLeNopBaiTB: " . $e->getMessage());
+            return 0;
         }
-        return 0; // Chưa giao bài nào thì là 0%
     }
 
     // --- BỔ SUNG CÁC HÀM HIỂN THỊ DASHBOARD ---
@@ -339,35 +392,275 @@ class GiaoVienBaiTapModel {
     public function getChartDiemDanh($gv_id) {
         if ($this->db === null) return ['CoMat' => 0, 'Vang' => 0];
 
-        // SỬA: Đổi 'trang_thai' thành 'trang_thai_diem_danh'
-        $sql = "SELECT ct.trang_thai_diem_danh, COUNT(*) as so_luong
-                FROM phien_diem_danh p
-                JOIN chi_tiet_diem_danh ct ON p.ma_phien = ct.ma_phien
-                WHERE p.ma_giao_vien = ?
-                GROUP BY ct.trang_thai_diem_danh";
-                
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$gv_id]);
-        
-        $data = ['CoMat' => 0, 'Vang' => 0];
-        foreach ($stmt->fetchAll() as $row) {
-            // SỬA: Lấy đúng key từ kết quả trả về
-            $status = strtolower($row['trang_thai_diem_danh']);
+        try {
+            $sql = "SELECT ct.trang_thai_diem_danh, COUNT(*) as so_luong
+                    FROM phien_diem_danh p
+                    JOIN chi_tiet_diem_danh ct ON p.ma_phien = ct.ma_phien
+                    WHERE p.ma_giao_vien = ?
+                    GROUP BY ct.trang_thai_diem_danh";
+                    
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$gv_id]);
             
-            // Logic kiểm tra (Lưu ý: check kỹ xem trong DB lưu là 'co_mat' hay 'CoMat')
-            if ($status == 'co_mat' || $status == 'comat' || $status == 'có mặt') {
-                $data['CoMat'] += $row['so_luong'];
-            } else {
-                // Gom tất cả các trạng thái khác (vắng có phép, không phép...) vào nhóm Vắng
-                $data['Vang'] += $row['so_luong'];
+            $data = ['CoMat' => 0, 'Vang' => 0];
+            
+            foreach ($stmt->fetchAll() as $row) {
+                // Chuẩn hóa: lowercase + trim
+                $status = mb_strtolower(trim($row['trang_thai_diem_danh']), 'UTF-8');
+                
+                // Loại bỏ dấu tiếng Việt để so sánh dễ hơn
+                $statusClean = str_replace(
+                    ['ó', 'ă', 'ặ', 'có', 'co', '_', ' '],
+                    ['o', 'a', 'a', 'co', 'co', '', ''],
+                    $status
+                );
+                
+                // Check nếu chứa "comat" hoặc "comat"
+                if (strpos($statusClean, 'comat') !== false || 
+                    $status == 'có mặt' || 
+                    $status == 'co_mat' ||
+                    $status == 'comat') {
+                    $data['CoMat'] += $row['so_luong'];
+                } else {
+                    $data['Vang'] += $row['so_luong'];
+                }
             }
+            
+            return $data;
+        } catch (PDOException $e) {
+            error_log("Lỗi getChartDiemDanh: " . $e->getMessage());
+            return ['CoMat' => 0, 'Vang' => 0];
         }
-        return $data;
     }
 
+    // ========== CHỨC NĂNG SỬA/XÓA BÀI TẬP ==========
+
+    /**
+     * Sửa bài tập (chỉ cho GV tạo)
+     */
+    public function suaBaiTap($ma_bai_tap, $ma_giao_vien, $data) {
+        if ($this->db === null) return ['success' => false, 'message' => 'Lỗi kết nối CSDL.'];
+
+        try {
+            // 1. Kiểm tra quyền sở hữu
+            $stmt = $this->db->prepare("SELECT ma_bai_tap FROM bai_tap WHERE ma_bai_tap = ? AND ma_giao_vien = ?");
+            $stmt->execute([$ma_bai_tap, $ma_giao_vien]);
+            if (!$stmt->fetch()) {
+                return ['success' => false, 'message' => 'Không tìm thấy bài tập hoặc bạn không có quyền sửa.'];
+            }
+
+            // 2. Xây dựng câu SQL Update động
+            // Luôn update các trường cơ bản
+            $sql = "UPDATE bai_tap SET 
+                        ten_bai_tap = :ten,
+                        mo_ta = :mo_ta,
+                        han_nop = :han_nop";
+            
+            // Chỉ update file nếu có file mới
+            if (!empty($data['file_dinh_kem'])) {
+                $sql .= ", file_dinh_kem = :file";
+            }
+
+            $sql .= " WHERE ma_bai_tap = :id";
+            
+            $stmt = $this->db->prepare($sql);
+            
+            // Bind tham số
+            $stmt->bindValue(':ten', $data['ten_bai_tap']);
+            $stmt->bindValue(':mo_ta', $data['mo_ta']);
+            $stmt->bindValue(':han_nop', $data['han_nop']);
+            $stmt->bindValue(':id', $ma_bai_tap);
+
+            if (!empty($data['file_dinh_kem'])) {
+                $stmt->bindValue(':file', $data['file_dinh_kem']);
+            }
+
+            $stmt->execute();
+
+            return ['success' => true, 'message' => 'Cập nhật thành công!'];
+
+        } catch (PDOException $e) {
+            // Ghi log lỗi để debug
+            error_log("Lỗi suaBaiTap: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Lỗi CSDL: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * Xóa bài tập (chỉ được xóa nếu chưa có HS nào nộp)
+     */
+    public function xoaBaiTap($ma_bai_tap, $ma_giao_vien) {
+        if ($this->db === null) return ['success' => false, 'message' => 'Lỗi kết nối CSDL.'];
+
+        try {
+            // 1. Kiểm tra bài tập có tồn tại và thuộc về GV này không
+            $stmt = $this->db->prepare("SELECT ma_bai_tap FROM bai_tap WHERE ma_bai_tap = ? AND ma_giao_vien = ?");
+            $stmt->execute([$ma_bai_tap, $ma_giao_vien]);
+            
+            if (!$stmt->fetch()) {
+                return ['success' => false, 'message' => 'Bài tập không tồn tại hoặc bạn không có quyền xóa!'];
+            }
+
+            // 2. Kiểm tra xem có HS nào đã nộp bài không
+            $stmt = $this->db->prepare("SELECT COUNT(*) as so_nop FROM bai_nop WHERE ma_bai_tap = ?");
+            $stmt->execute([$ma_bai_tap]);
+            $result = $stmt->fetch();
+
+            if ($result['so_nop'] > 0) {
+                return ['success' => false, 'message' => 'Không thể xóa! Đã có ' . $result['so_nop'] . ' học sinh nộp bài.'];
+            }
+
+            // 3. Xóa bảng con trước
+            $this->db->prepare("DELETE FROM bai_tap_tu_luan WHERE ma_bai_tap = ?")->execute([$ma_bai_tap]);
+            $this->db->prepare("DELETE FROM bai_tap_upload_file WHERE ma_bai_tap = ?")->execute([$ma_bai_tap]);
+            $this->db->prepare("DELETE FROM bai_tap_trac_nghiem WHERE ma_bai_tap = ?")->execute([$ma_bai_tap]);
+
+            // 4. Xóa bảng cha
+            $this->db->prepare("DELETE FROM bai_tap WHERE ma_bai_tap = ?")->execute([$ma_bai_tap]);
+
+            return ['success' => true, 'message' => 'Xóa bài tập thành công!'];
+
+        } catch (PDOException $e) {
+            error_log("Lỗi xoaBaiTap: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Lỗi CSDL: ' . $e->getMessage()];
+        }
+    }
+
+    // ========== FIX DATETIME TIMEZONE ==========
+
+    /**
+     * ✅ MỚI: Lấy chi tiết 1 bài nộp (kèm datetime chuyển UTC+7)
+     */
+    // public function getChiTietBaiNop($ma_bai_nop) {
+    //     if ($this->db === null) return null;
+
+    //     try {
+    //         $sql = "SELECT 
+    //                     bn.ma_bai_nop,
+    //                     bn.ma_bai_tap,
+    //                     bn.ma_nguoi_dung,
+    //                     nd.ho_ten,
+    //                     bn.ngay_nop,
+    //                     CONVERT_TZ(bn.ngay_nop, '+00:00', '+07:00') as ngay_nop_vietnam,
+    //                     bn.trang_thai,
+    //                     bn.diem_so,
+    //                     bn.file_nop,
+    //                     bt.ten_bai_tap,
+    //                     bt.han_nop
+    //                 FROM 
+    //                     bai_nop bn
+    //                 JOIN 
+    //                     nguoi_dung nd ON bn.ma_nguoi_dung = nd.ma_nguoi_dung
+    //                 JOIN 
+    //                     bai_tap bt ON bn.ma_bai_tap = bt.ma_bai_tap
+    //                 WHERE 
+    //                     bn.ma_bai_nop = ?";
+
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([$ma_bai_nop]);
+    //         return $stmt->fetch();
+    //     } catch (PDOException $e) {
+    //         error_log("Lỗi getChiTietBaiNop: " . $e->getMessage());
+    //         return null;
+    //     }
+    // }
+    /**
+     * Lấy chi tiết bài làm để hiển thị lên Modal chấm điểm
+     */
+    public function getChiTietBaiNop($ma_bai_nop) {
+        if ($this->db === null) return null;
+
+        try {
+            $sql = "SELECT 
+                        bn.ma_bai_nop,
+                        bn.ma_bai_tap,
+                        bn.diem_so,
+                        bn.nhan_xet,      -- Cột mới thêm
+                        bn.file_dinh_kem, -- Cột file của HS
+                        bn.noi_dung_tra_loi, -- Cột bài làm text của HS
+                        nd.ho_ten
+                    FROM 
+                        bai_nop bn
+                    JOIN 
+                        nguoi_dung nd ON bn.ma_nguoi_dung = nd.ma_nguoi_dung
+                    WHERE 
+                        bn.ma_bai_nop = ?";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_bai_nop]);
+            return $stmt->fetch();
+        } catch (PDOException $e) {
+            error_log("Lỗi getChiTietBaiNop: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Lưu điểm số và nhận xét
+     */
+    public function capNhatDiemSo($ma_bai_nop, $diem_so, $nhan_xet) {
+        if ($this->db === null) return false;
+        try {
+            // Cập nhật điểm, lời phê và đổi trạng thái thành Hoàn Thành
+            $sql = "UPDATE bai_nop 
+                    SET diem_so = ?, 
+                        nhan_xet = ?, 
+                        trang_thai = 'HoanThanh' 
+                    WHERE ma_bai_nop = ?";
+            
+            $stmt = $this->db->prepare($sql);
+            return $stmt->execute([$diem_so, $nhan_xet, $ma_bai_nop]);
+        } catch (PDOException $e) {
+            error_log("Lỗi capNhatDiemSo: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * ✅ FIX: Lấy danh sách bài nộp với datetime đúng timezone
+     */
+    public function getDanhSachBaiNopCuaBaiTap($ma_bai_tap, $ma_lop = null) {
+        if ($this->db === null) return [];
+
+        try {
+            $sql = "SELECT 
+                        bn.ma_bai_nop,
+                        bn.ma_bai_tap,
+                        nd.ho_ten,
+                        bn.ngay_nop,
+                        CONVERT_TZ(bn.ngay_nop, '+00:00', '+07:00') as ngay_nop_vietnam,
+                        bn.trang_thai,
+                        bn.diem_so,
+                        bn.file_nop
+                    FROM 
+                        bai_nop bn
+                    JOIN 
+                        nguoi_dung nd ON bn.ma_nguoi_dung = nd.ma_nguoi_dung
+                    WHERE 
+                        bn.ma_bai_tap = ?";
+            
+            if ($ma_lop) {
+                $sql .= " AND bn.ma_nguoi_dung IN (SELECT ma_hoc_sinh FROM hoc_sinh WHERE ma_lop = ?)";
+            }
+            
+            $sql .= " ORDER BY bn.ngay_nop DESC";
+
+            $stmt = $this->db->prepare($sql);
+            
+            if ($ma_lop) {
+                $stmt->execute([$ma_bai_tap, $ma_lop]);
+            } else {
+                $stmt->execute([$ma_bai_tap]);
+            }
+            
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("Lỗi getDanhSachBaiNopCuaBaiTap: " . $e->getMessage());
+            return [];
+        }
+    }
 
     
-
 
 }
 ?>

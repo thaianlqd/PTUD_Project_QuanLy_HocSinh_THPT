@@ -11,16 +11,11 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    :root{
-      --primary:#8B5CF6; /* tím */
-      --primary-600:#A78BFA;
-      --muted:#6c757d;
-      --bg:#faf7ff;
-    }
+    :root{ --primary:#8B5CF6; --primary-600:#A78BFA; --muted:#6c757d; --bg:#faf7ff; }
     body{font-family:'Roboto',sans-serif;background-color:var(--bg);}
     .sidebar{width:300px;min-width:300px;position:fixed;height:100vh;background:#fff;box-shadow:2px 0 10px rgba(0,0,0,0.08);overflow-y:auto;transition:transform .3s;z-index:1000;}
     .main-content{margin-left:300px;transition:margin-left .3s;min-height:100vh;padding:1rem;}
-    .profile-section{height:200px;padding:1rem;border-bottom:1px solid #eee;text-align:center;}
+    .profile-section{padding:1.5rem 1rem;border-bottom:1px solid #eee;text-align:center;}
     .nav-link{border-radius:8px;margin-bottom:.25rem;transition:background .2s;color:var(--primary);}
     .nav-link:hover{background-color:#f3e9ff}
     .card{border:none;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.06);display:flex;flex-direction:column;height:100%;}
@@ -29,119 +24,125 @@
     .table th,.table td{vertical-align:middle;padding:.6rem .5rem}
     .btn-primary{background:var(--primary);border-color:var(--primary);}
     @media (max-width:992px){.sidebar{transform:translateX(-100%)}.main-content{margin-left:0}.sidebar.show{transform:translateX(0)}}
-    @media (max-width:576px){.chart-container{height:240px}}
     .fade-in{animation:fadeIn .45s ease-in}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   </style>
 </head>
 <body>
-  <!-- Sidebar -->
   <div class="sidebar" id="sidebar">
     <div class="profile-section">
-      <img src="https://via.placeholder.com/80x80?text=TS" alt="TS" class="rounded-circle mb-2" style="width:80px;height:80px;border:3px solid var(--primary);">
-      <h5 class="fw-bold" style="color:var(--primary)">Phan Thị B</h5>
-      <p class="text-muted mb-0 small">Số BD: TS2025-001</p>
-      <p class="text-muted small">Nguyện vọng: 3 đã đăng</p>
-      <div class="row g-1 mt-2 text-center">
-        <div class="col-4"><small class="text-muted">NV Đã ĐK</small><br><strong class="text-primary fs-6">3</strong></div>
-        <div class="col-4"><small class="text-muted">Kết Quả</small><br><strong class="text-success fs-6">Chưa có</strong></div>
-        <div class="col-4"><small class="text-muted">Xác Nhận</small><br><strong class="text-info fs-6">Chưa</strong></div>
+      <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($data['info']['ho_ten'] ?? 'TS'); ?>&background=8B5CF6&color=fff" alt="TS" class="rounded-circle mb-2" style="width:80px;height:80px;border:3px solid var(--primary);">
+      <h5 class="fw-bold" style="color:var(--primary)"><?php echo $data['info']['ho_ten'] ?? 'Thí Sinh'; ?></h5>
+      <p class="text-muted mb-0 small">SBD: <?php echo $data['info']['so_bao_danh'] ?? '---'; ?></p>
+      <p class="text-muted small">Trường THCS: <?php echo $data['info']['truong_thcs'] ?? '---'; ?></p>
+      
+      <div class="row g-1 mt-2 text-center border-top pt-2">
+        <div class="col-4">
+            <small class="text-muted" style="font-size: 0.7rem;">NV Đã ĐK</small><br>
+            <strong class="text-primary fs-6"><?php echo $data['nv_count']; ?></strong>
+        </div>
+        <div class="col-4 border-start border-end">
+            <small class="text-muted" style="font-size: 0.7rem;">Kết Quả</small><br>
+            <?php if(isset($data['ket_qua']['trang_thai']) && $data['ket_qua']['trang_thai'] == 'Dau'): ?>
+                <strong class="text-success fs-6">Đậu</strong>
+            <?php elseif(isset($data['ket_qua']['trang_thai']) && $data['ket_qua']['trang_thai'] == 'Truot'): ?>
+                <strong class="text-danger fs-6">Trượt</strong>
+            <?php else: ?>
+                <strong class="text-muted fs-6">...</strong>
+            <?php endif; ?>
+        </div>
+        <div class="col-4">
+            <small class="text-muted" style="font-size: 0.7rem;">Xác Nhận</small><br>
+            <strong class="text-info fs-6">
+                <?php echo ($data['ket_qua']['trang_thai_xac_nhan'] ?? '') == 'Xac_nhan_nhap_hoc' ? 'OK' : '--'; ?>
+            </strong>
+        </div>
       </div>
     </div>
 
     <ul class="nav flex-column px-2 py-3">
       <li class="nav-item"><a class="nav-link" href="#overview"><i class="bi bi-speedometer2 me-2"></i>Tổng Quan</a></li>
       <li class="nav-item"><a class="nav-link" href="#thong-tin-thi"><i class="bi bi-file-earmark-text me-2"></i>Thông Tin Thi</a></li>
-      <li class="nav-item"><a class="nav-link" href="#nguyen-vong"><i class="bi bi-flag me-2"></i>Nguyện Vọng</a></li>
+      <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/ThiSinh/nguyenVong"><i class="bi bi-flag me-2"></i>Quản Lý Nguyện Vọng</a></li>
       <li class="nav-item"><a class="nav-link" href="#nhap-hoc"><i class="bi bi-journal-check me-2"></i>Đăng Ký Nhập Học</a></li>
-      <li class="nav-item mt-auto p-3 border-top"><a class="nav-link text-danger" href="login.html"><i class="bi bi-box-arrow-right me-2"></i>Đăng Xuất</a></li>
+      <li class="nav-item mt-auto p-3 border-top"><a class="nav-link text-danger" href="<?php echo BASE_URL; ?>/auth/logout"><i class="bi bi-box-arrow-right me-2"></i>Đăng Xuất</a></li>
     </ul>
   </div>
 
-  <!-- Main -->
   <div class="main-content fade-in">
     <nav class="navbar navbar-expand-lg bg-white shadow-sm mb-4 rounded-3 p-2">
       <div class="container-fluid">
         <button class="btn btn-outline-primary d-lg-none me-2 rounded-pill" id="toggleSidebar"><i class="bi bi-list"></i> Menu</button>
-        <a class="navbar-brand fw-bold" style="color:var(--primary)" href="#">THPT Manager - Thí Sinh</a>
-        <form class="d-flex mx-auto w-50">
-          <input class="form-control rounded-pill me-2 shadow-sm" type="search" placeholder="Tìm NV/mã số báo danh..." aria-label="search">
-          <button class="btn btn-outline-primary rounded-pill" type="submit"><i class="bi bi-search"></i></button>
-        </form>
-        <ul class="navbar-nav ms-auto align-items-center">
-          <li class="nav-item me-3 position-relative">
-            <a class="nav-link p-2" href="#"><i class="bi bi-bell fs-5"></i><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger small">1</span></a>
-          </li>
-          <li class="nav-item dropdown">
-            <a class="dropdown-toggle nav-link p-2" href="#" data-bs-toggle="dropdown"><img src="https://via.placeholder.com/32x32?text=TS" class="rounded-circle me-2" style="width:32px;height:32px;">Phan Thị B</a>
-            <ul class="dropdown-menu dropdown-menu-end shadow">
-              <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Cài đặt</a></li>
-              <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i>Đổi mật khẩu</a></li>
-              <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item text-danger" href="login.html"><i class="bi bi-box-arrow-right me-2"></i>Đăng xuất</a></li>
-            </ul>
-          </li>
-        </ul>
+        <a class="navbar-brand fw-bold" style="color:var(--primary)" href="#">THPT Manager - Cổng Thí Sinh</a>
+        
+        <div class="ms-auto d-flex align-items-center">
+             <span class="me-3 d-none d-md-block text-muted">Chào mừng, <strong><?php echo $data['info']['ho_ten']; ?></strong></span>
+             <a href="<?php echo BASE_URL; ?>/auth/logout" class="btn btn-sm btn-outline-danger rounded-pill">Thoát</a>
+        </div>
       </div>
     </nav>
 
-    <!-- Overview -->
     <section id="overview" class="mb-5">
-      <h2 class="fw-bold" style="color:var(--primary)">Tổng Quan Thí Sinh</h2>
+      <h2 class="fw-bold" style="color:var(--primary)">Tổng Quan Hồ Sơ</h2>
       <div class="row g-3">
         <div class="col-md-4">
           <div class="card text-center">
             <div class="card-body">
               <i class="bi bi-flag fs-1" style="color:var(--primary)"></i>
-              <h5 class="fw-bold" style="color:var(--primary)">Nguyện Vọng Đã ĐK</h5>
-              <h3 class="fw-bold">3</h3>
-              <small class="text-muted">Ưu tiên NV1: ABC</small>
+              <h5 class="fw-bold mt-2" style="color:var(--primary)">Nguyện Vọng</h5>
+              <h3 class="fw-bold"><?php echo $data['nv_count']; ?></h3>
+              <small class="text-muted">
+                  <?php 
+                    if (!empty($data['nguyen_vong'])) {
+                        echo "NV1: " . htmlspecialchars($data['nguyen_vong'][0]['ten_truong']); 
+                    } else { echo "Chưa đăng ký"; }
+                  ?>
+              </small>
             </div>
           </div>
         </div>
+        
         <div class="col-md-4">
           <div class="card text-center">
             <div class="card-body">
-              <i class="bi bi-award fs-1 text-success mb-3"></i>
-              <h5 class="fw-bold text-success">Kết Quả Thi</h5>
-              <h3 class="fw-bold">Chưa có</h3>
-              <small class="text-muted">Đợi công bố</small>
+              <i class="bi bi-award fs-1 mb-2 <?php echo $data['kq_class'] ?? 'text-secondary'; ?>"></i>
+              <h5 class="fw-bold <?php echo $data['kq_class'] ?? 'text-secondary'; ?>">Kết Quả Tuyển Sinh</h5>
+              <h4 class="fw-bold"><?php echo $data['kq_text']; ?></h4>
+              <small class="text-muted">
+                  <?php 
+                    // Dùng tổng điểm nếu controller đã truyền, fallback tính lại
+                    $tongDiem = $data['tong_diem'] ?? (
+                        (($data['diem']['diem_toan'] ?? 0) * 2) + 
+                        (($data['diem']['diem_van'] ?? 0) * 2) + 
+                        ($data['diem']['diem_anh'] ?? 0)
+                    );
+                    echo ($tongDiem > 0) ? "Tổng điểm xét tuyển: " . $tongDiem : "Đang chờ chấm điểm";
+                  ?>
+              </small>
             </div>
           </div>
         </div>
+
         <div class="col-md-4">
           <div class="card text-center">
             <div class="card-body">
               <i class="bi bi-journal-check fs-1" style="color:var(--primary)"></i>
-              <h5 class="fw-bold" style="color:var(--primary)">Xác Nhận Nhập Học</h5>
-              <h3 class="fw-bold">Chưa</h3>
-              <small class="text-muted">Sau khi trúng tuyển</small>
+              <h5 class="fw-bold mt-2" style="color:var(--primary)">Trạng Thái Hồ Sơ</h5>
+              <h3 class="fw-bold"><?php echo $data['xn_text']; ?></h3>
+              <small class="text-muted">Hạn xác nhận: 15/06/2025</small>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Charts -->
-    <section class="mb-5">
+    <section class="mb-5" id="thong-tin-thi">
       <div class="row g-4">
-        <div class="col-md-6">
+        <div class="col-md-8">
           <div class="card h-100">
-            <div class="card-header bg-light">
-              <h6 class="mb-0 fw-bold" style="color:var(--primary)">Tỷ Lệ Trúng NV (ước tính)</h6>
-            </div>
-            <div class="card-body p-0">
-              <div class="chart-container p-3">
-                <canvas id="nvPie"></canvas>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-6">
-          <div class="card h-100">
-            <div class="card-header bg-light">
-              <h6 class="mb-0 fw-bold" style="color:var(--primary)">Điểm Thi Theo Môn</h6>
+            <div class="card-header bg-light d-flex justify-content-between">
+              <h6 class="mb-0 fw-bold" style="color:var(--primary)">Biểu Đồ Điểm Thi Của Bạn</h6>
+              <span class="badge bg-primary">Năm 2025</span>
             </div>
             <div class="card-body p-0">
               <div class="chart-container p-3">
@@ -150,72 +151,107 @@
             </div>
           </div>
         </div>
+        
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0 fw-bold" style="color:var(--primary)">Chi Tiết Điểm Số</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Toán (Hệ số 2)
+                            <span class="badge bg-primary rounded-pill fs-6"><?php echo $data['diem']['diem_toan']; ?></span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Ngữ Văn (Hệ số 2)
+                            <span class="badge bg-success rounded-pill fs-6"><?php echo $data['diem']['diem_van']; ?></span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Tiếng Anh (Hệ số 1)
+                            <span class="badge bg-info rounded-pill fs-6"><?php echo $data['diem']['diem_anh']; ?></span>
+                        </li>
+                        <li class="list-group-item list-group-item-dark d-flex justify-content-between align-items-center mt-3 fw-bold">
+                            TỔNG ĐIỂM XÉT TUYỂN
+                          <span class="fs-5"><?php echo $data['tong_diem'] ?? ((($data['diem']['diem_toan'] ?? 0) * 2) + (($data['diem']['diem_van'] ?? 0) * 2) + ($data['diem']['diem_anh'] ?? 0)); ?></span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
       </div>
     </section>
 
-    <!-- Table Nguyện Vọng -->
     <section id="nguyen-vong" class="mb-5">
-      <h4 class="fw-bold" style="color:var(--primary)">Danh Sách Nguyện Vọng</h4>
+      <h4 class="fw-bold" style="color:var(--primary)">Danh Sách Nguyện Vọng Đã Đăng Ký</h4>
       <div class="card">
         <div class="card-body table-responsive">
           <table class="table table-striped align-middle mb-0">
             <thead class="table-secondary">
-              <tr><th>STT</th><th>Trường</th><th>Ngành</th><th>Tổ Hợp</th><th>Ưu Tiên</th><th>Trạng Thái</th><th>Hành Động</th></tr>
+              <tr>
+                  <th>Thứ Tự</th>
+                  <th>Trường THPT</th>
+                  <th>Trạng Thái</th>
+              </tr>
             </thead>
             <tbody>
-              <tr><td>1</td><td>THPT A</td><td>Khoa Học Tự Nhiên</td><td>Toán-Lý-Hóa</td><td>1</td><td><span class="badge bg-info">Đã đăng</span></td><td><button class="btn btn-sm btn-outline-primary">Sửa</button></td></tr>
-              <tr><td>2</td><td>THPT B</td><td>Khoa Học Xã Hội</td><td>Văn-Sử-Địa</td><td>2</td><td><span class="badge bg-info">Đã đăng</span></td><td><button class="btn btn-sm btn-outline-primary">Sửa</button></td></tr>
-              <tr><td>3</td><td>THPT C</td><td>Tiếng Anh Chuyên</td><td>Toán-Anh-Văn</td><td>3</td><td><span class="badge bg-info">Đã đăng</span></td><td><button class="btn btn-sm btn-outline-primary">Sửa</button></td></tr>
+              <?php if(!empty($data['nguyen_vong'])): ?>
+                  <?php foreach($data['nguyen_vong'] as $nv): ?>
+                  <tr>
+                    <td class="text-center fw-bold">NV <?php echo $nv['thu_tu_nguyen_vong']; ?></td>
+                    <td class="text-primary fw-bold"><?php echo htmlspecialchars($nv['ten_truong']); ?></td>
+                
+                    <td>
+                        <?php 
+                            // Logic hiển thị trạng thái từng NV
+                            if (isset($data['ket_qua']['trang_thai']) && $data['ket_qua']['trang_thai'] == 'Dau') {
+                                // Nếu đậu và đúng trường này
+                                if ($data['ket_qua']['truong_trung_tuyen'] == $nv['ten_truong']) {
+                                    echo '<span class="badge bg-success">TRÚNG TUYỂN</span>';
+                                } else {
+                                    echo '<span class="badge bg-secondary">Không trúng tuyển</span>';
+                                }
+                            } else {
+                                echo '<span class="badge bg-info">Đã ghi nhận</span>';
+                            }
+                        ?>
+                    </td>
+                  </tr>
+                  <?php endforeach; ?>
+              <?php else: ?>
+                  <tr><td colspan="4" class="text-center text-muted">Chưa có dữ liệu nguyện vọng.</td></tr>
+              <?php endif; ?>
             </tbody>
           </table>
         </div>
       </div>
     </section>
 
-    <!-- Cards chức năng -->
-    <section class="mb-5">
-      <h4 class="fw-bold" style="color:var(--primary)">Chức Năng</h4>
+    <section class="mb-5" id="nhap-hoc">
+      <h4 class="fw-bold" style="color:var(--primary)">Chức Năng Thí Sinh</h4>
       <div class="row g-3">
-        <div class="col-md-3">
-          <div class="card h-100">
+        <div class="col-md-6">
+          <div class="card h-100 border-primary">
             <div class="card-body text-center">
-              <i class="bi bi-journal-text fs-2" style="color:var(--primary)"></i>
-              <h5 class="fw-bold mt-2">Quản Lý Thông Tin Thi</h5>
-              <p class="text-muted small">SBD, Lịch thi, Phòng thi</p>
-              <a href="#" class="btn btn-outline-primary mt-2">Xem</a>
+              <i class="bi bi-journal-check fs-1 text-primary"></i>
+              <h5 class="fw-bold mt-2">Xác Nhận Nhập Học Trực Tuyến</h5>
+              <p class="text-muted small">Nếu bạn đã trúng tuyển, vui lòng xác nhận nhập học trước ngày 15/06.</p>
+              <?php if(isset($data['ket_qua']['trang_thai']) && $data['ket_qua']['trang_thai'] == 'Dau'): ?>
+                  <button class="btn btn-primary mt-2">Tiến hành Xác Nhận</button>
+              <?php else: ?>
+                  <button class="btn btn-secondary mt-2" disabled>Chưa mở / Chưa trúng tuyển</button>
+              <?php endif; ?>
             </div>
           </div>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-6">
           <div class="card h-100">
             <div class="card-body text-center">
-              <i class="bi bi-flag fs-2" style="color:var(--primary)"></i>
-              <h5 class="fw-bold mt-2">Quản Lý Nguyện Vọng</h5>
-              <p class="text-muted small">Đăng ký/Điều chỉnh NV</p>
-              <a href="#" class="btn btn-outline-primary mt-2">Quản lý</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-3">
-          <div class="card h-100">
-            <div class="card-body text-center">
-              <i class="bi bi-journal-check fs-2" style="color:var(--primary)"></i>
-              <h5 class="fw-bold mt-2">Đăng Ký Nhập Học</h5>
-              <p class="text-muted small">Xác nhận nhập học khi trúng</p>
-              <a href="#" class="btn btn-outline-primary mt-2">Đăng ký</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="col-md-3">
-          <div class="card h-100">
-            <div class="card-body text-center">
-              <i class="bi bi-download fs-2" style="color:var(--primary)"></i>
-              <h5 class="fw-bold mt-2">Xuất Tài Liệu</h5>
-              <p class="text-muted small">In/ tải kết quả & giấy tờ</p>
-              <a href="#" class="btn btn-outline-primary mt-2">Xuất</a>
+              <i class="bi bi-download fs-1" style="color:var(--primary)"></i>
+              <h5 class="fw-bold mt-2">Xuất Giấy Báo Điểm</h5>
+              <p class="text-muted small">Tải xuống file PDF giấy báo điểm thi chính thức.</p>
+              <button class="btn btn-outline-primary mt-2" onclick="window.print()">In Kết Quả</button>
             </div>
           </div>
         </div>
@@ -225,29 +261,40 @@
     <footer class="text-center mt-5 text-muted small pb-3">© 2025 THPT Manager | Dành cho Thí Sinh</footer>
   </div>
 
-  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     document.getElementById('toggleSidebar').addEventListener('click', ()=> document.getElementById('sidebar').classList.toggle('show'));
 
-    // Charts
-    new Chart(document.getElementById('nvPie'), {
-      type:'pie',
-      data:{
-        labels:['NV1','NV2','NV3'],
-        datasets:[{data:[45,30,25], backgroundColor:['#8B5CF6','#C084FC','#F0ABFC']}]
-      },
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}
-    });
+    // Dữ liệu điểm từ PHP đổ vào JS
+    const diemToan = <?php echo $data['diem']['diem_toan']; ?>;
+    const diemVan = <?php echo $data['diem']['diem_van']; ?>;
+    const diemAnh = <?php echo $data['diem']['diem_anh']; ?>;
 
-    new Chart(document.getElementById('scoreBar'), {
-      type:'bar',
-      data:{
-        labels:['Toán','Văn','Anh','Lý','Hóa'],
-        datasets:[{label:'Điểm Thi', data:[8.0,7.5,8.8,7.2,8.1], backgroundColor:'#8B5CF6'}]
-      },
-      options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,max:10}}}
-    });
+    // Chart: Biểu đồ điểm
+    const ctx = document.getElementById('scoreBar');
+    if(ctx) {
+        new Chart(ctx, {
+          type:'bar',
+          data:{
+            labels:['Toán', 'Ngữ Văn', 'Tiếng Anh'],
+            datasets:[{
+                label:'Điểm Thi', 
+                data:[diemToan, diemVan, diemAnh], 
+                backgroundColor:['#8B5CF6', '#10B981', '#3B82F6'],
+                borderRadius: 5
+            }]
+          },
+          options:{
+              responsive:true,
+              maintainAspectRatio:false,
+              scales:{
+                  y:{beginAtZero:true, max:10, grid: { borderDash: [2, 2] }},
+                  x:{grid: { display: false }}
+              },
+              plugins: { legend: { display: false } }
+          }
+        });
+    }
   </script>
 </body>
 </html>

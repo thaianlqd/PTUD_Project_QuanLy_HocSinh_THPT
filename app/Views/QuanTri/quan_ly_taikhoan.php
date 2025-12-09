@@ -94,7 +94,9 @@
                                     data-email="<?php echo htmlspecialchars($account['email']); ?>"
                                     data-vai-tro="<?php echo htmlspecialchars($account['vai_tro']); ?>"
                                     data-dia-chi="<?php echo htmlspecialchars($account['dia_chi'] ?? ''); ?>"
-                                    data-trang-thai="<?php echo htmlspecialchars($account['trang_thai']); ?>">
+                                    data-trang-thai="<?php echo htmlspecialchars($account['trang_thai']); ?>"
+                                    data-ngay-sinh="<?php echo htmlspecialchars($account['ngay_sinh'] ?? ''); ?>"
+                                    data-gioi-tinh="<?php echo htmlspecialchars($account['gioi_tinh'] ?? ''); ?>">
                                     
                                     <td><?php echo htmlspecialchars($account['username']); ?></td>
                                     <td><?php echo htmlspecialchars($account['ho_ten']); ?></td>
@@ -208,8 +210,8 @@
                                 <input type="text" class="form-control" id="editFullName" required maxlength="100">
                             </div>
                             <div class="col-md-6">
-                                <label for="editPhone" class="form-label">Số Điện Thoại</label>
-                                <input type="tel" class="form-control" id="editPhone" readonly disabled>
+                                <label for="editPhone" class="form-label">Số Điện Thoại <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="editPhone" required>
                             </div>
                             <div class="col-md-6">
                                 <label for="editEmail" class="form-label">Email (Tên Đăng Nhập) <span class="text-danger">*</span></label>
@@ -218,15 +220,71 @@
                             <div class="col-md-6">
                                 <label for="editRole" class="form-label">Vai Trò <span class="text-danger">*</span></label>
                                 <select class="form-select" id="editRole" required>
-                                    <!-- Lấy vai trò từ CSDL -->
+                                    <option value="">-- Chọn vai trò --</option>
                                     <option value="HocSinh">Học Sinh</option>
                                     <option value="PhuHuynh">Phụ Huynh</option>
                                     <option value="GiaoVien">Giáo Viên</option>
-                                    <option value="NhanVienSoGD">Nhân Viên Sở GD</option>
-                                    <option value="ThiSinh">Thí Sinh</option>
-                                    <!-- Không cho phép set QuanTriVien ở đây -->
+                                    <option value="BanGiamHieu">Ban Giám Hiệu</option>
                                 </select>
                             </div>
+
+                            <!-- ✅ PHẦN ĐỘNG CHO HỌC SINH: Khối + Lớp -->
+                            <div id="editDivKhoi" class="col-md-6" style="display:none;">
+                                <label for="editKhoi" class="form-label">Khối <span class="text-danger">*</span></label>
+                                <select id="editKhoi" class="form-select">
+                                    <option value="">-- Chọn khối --</option>
+                                </select>
+                            </div>
+                            <div id="editDivLopHoc" class="col-md-6" style="display:none;">
+                                <label for="editLopHoc" class="form-label">Lớp <span class="text-danger">*</span></label>
+                                <select id="editLopHoc" class="form-select">
+                                    <option value="">-- Chọn lớp --</option>
+                                </select>
+                            </div>
+
+                            <!-- ✅ PHẦN ĐỘNG CHO GV/BGH: Lớp + Môn -->
+                            <div id="editDivLopGV" class="col-md-6" style="display:none;">
+                                <label for="editLopGV" class="form-label">Lớp <span class="text-danger">*</span></label>
+                                <select id="editLopGV" class="form-select">
+                                    <option value="">-- Chọn lớp --</option>
+                                </select>
+                            </div>
+                            <div id="editDivMonHoc" class="col-md-6" style="display:none;">
+                                <label for="editMonHoc" class="form-label">Bộ môn chuyên môn</label>
+                                <select id="editMonHoc" class="form-select">
+                                    <option value="">-- Vui lòng chọn lớp trước --</option>
+                                </select>
+                            </div>
+
+                            <!-- ✅ PHẦN ĐỘNG CHO PHỤ HUYNH: Lớp + Học Sinh -->
+                            <div id="editDivLopPH" class="col-md-6" style="display:none;">
+                                <label for="editLopPH" class="form-label">Lớp của con <span class="text-danger">*</span></label>
+                                <select id="editLopPH" class="form-select">
+                                    <option value="">-- Chọn lớp --</option>
+                                </select>
+                            </div>
+                            <div id="editDivHocSinh" class="col-md-6" style="display:none;">
+                                <label for="editHocSinh" class="form-label">Chọn Học Sinh <span class="text-danger">*</span></label>
+                                <select id="editHocSinh" class="form-select">
+                                    <option value="">-- Vui lòng chọn lớp trước --</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="editBirthday" class="form-label">Ngày Sinh</label>
+                                <input type="date" class="form-control" id="editBirthday">
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="editGender" class="form-label">Giới Tính</label>
+                                <select class="form-select" id="editGender">
+                                    <option value="">-- Chọn --</option>
+                                    <option value="Nam">Nam</option>
+                                    <option value="Nu">Nữ</option>
+                                    <option value="Khac">Khác</option>
+                                </select>
+                            </div>
+
                             <div class="col-12">
                                 <label for="editPassword" class="form-label">Đặt lại Mật khẩu</label>
                                 <input type="password" class="form-control" id="editPassword" placeholder="Để trống nếu không muốn thay đổi">
@@ -319,19 +377,36 @@
 
                     <!-- Phần động theo vai trò -->
                     <div id="divLopHoc" class="col-12" style="display:none;">
-                        <label>Lớp học <span class="text-danger">*</span></label>
+                        <label>Khối <span class="text-danger">*</span></label>
+                        <select id="createKhoi" class="form-select">
+                            <option value="">-- Chọn khối --</option>
+                        </select>
+                    </div>
+                    <div id="divLopHocChiTiet" class="col-12" style="display:none;">
+                        <label>Lớp <span class="text-danger">*</span></label>
                         <select id="createLop" class="form-select"></select>
                     </div>
+                    
+                    <!-- Phụ Huynh: Chọn Lớp → Học sinh chưa có PH -->
+                    <div id="divPhuHuynhLop" class="col-12" style="display:none;">
+                        <label>Lớp của con <span class="text-danger">*</span></label>
+                        <select id="createLopPH" class="form-select">
+                            <option value="">-- Đang tải... --</option>
+                        </select>
+                    </div>
+                    <div id="divPhuHuynhHS" class="col-12" style="display:none;">
+                        <label>Chọn Học Sinh (con của phụ huynh) <span class="text-danger">*</span></label>
+                        <select id="createHocSinhPH" class="form-select">
+                            <option value="">-- Vui lòng chọn lớp trước --</option>
+                        </select>
+                    </div>
+                    
                     <div id="divMonHoc" class="col-12" style="display:none;">
                         <label>Bộ môn chuyên môn (tùy chọn)</label>
                         <select id="createMonHoc" class="form-select">
                             <option value="">-- Không chọn --</option>
                             <!-- Sẽ load bằng JS -->
                         </select>
-                    </div>
-                    <div id="divHocSinhCon" class="col-12" style="display:none;">
-                        <label>Chọn con (có thể chọn nhiều)</label>
-                        <select id="createHocSinhCon" class="form-select" multiple size="5"></select>
                     </div>
 
                     <div class="col-md-6">
@@ -380,86 +455,657 @@
         if (deleteModalEl) deleteModal = new bootstrap.Modal(deleteModalEl);
         if (createModalEl) createModal = new bootstrap.Modal(createModalEl);
 
-        // 2. Lắng nghe sự kiện thay đổi VAI TRÒ (trong Modal Tạo mới)
+        // 2. Lắng nghe sự kiện UI - Sử dụng addEventListener với proper binding
         const createRoleSelect = document.getElementById('createRole');
         if (createRoleSelect) {
-            createRoleSelect.addEventListener('change', handleRoleChange);
+            createRoleSelect.addEventListener('change', function() {
+                handleRoleChange.call(this);
+            });
+        }
+        
+        const createKhoiSelect = document.getElementById('createKhoi');
+        if (createKhoiSelect) {
+            createKhoiSelect.addEventListener('change', function() {
+                handleKhoiChange.call(this);
+            });
         }
 
-        // 3. Sự kiện nút tạo mật khẩu ngẫu nhiên (nếu có trong HTML)
+        // 3. SỰ KIỆN QUAN TRỌNG: CHỌN LỚP -> LOAD MÔN (Dành cho GV/BGH)
+        const createLopSelect = document.getElementById('createLop');
+        if (createLopSelect) {
+            createLopSelect.addEventListener('change', async function() {
+                const maLop = this.value;
+                const role = document.getElementById('createRole').value;
+                const selectMon = document.getElementById('createMonHoc');
+
+                // Chỉ chạy khi vai trò là Giáo Viên hoặc BGH
+                if ((role === 'GiaoVien' || role === 'BanGiamHieu') && selectMon) {
+                    if (!maLop) {
+                        selectMon.innerHTML = '<option value="">-- Vui lòng chọn lớp trước --</option>';
+                        return;
+                    }
+
+                    // Hiện thông báo đang tải
+                    selectMon.innerHTML = '<option value="">Đang tải môn...</option>';
+
+                    try {
+                        // Gọi API lấy môn theo lớp (Cascading)
+                        const response = await fetch(`${BASE_URL}/quantri/getDsMonTheoLopApi/${maLop}`);
+                        const result = await response.json();
+
+                        if (result.success && result.data.length > 0) {
+                            let html = '<option value="">-- Chọn môn chuyên môn --</option>';
+                            result.data.forEach(mon => {
+                                html += `<option value="${mon.ma_mon_hoc}">${mon.ten_mon_hoc}</option>`;
+                            });
+                            selectMon.innerHTML = html;
+                        } else {
+                            selectMon.innerHTML = '<option value="">-- Lớp này không có môn phù hợp --</option>';
+                        }
+                    } catch (error) {
+                        console.error("Lỗi tải môn:", error);
+                        selectMon.innerHTML = '<option value="">Lỗi kết nối</option>';
+                    }
+                }
+            });
+        }
+
+        // 4. Nút Random Password
         const genPassBtn = document.getElementById('generatePasswordBtn');
         if (genPassBtn) {
             genPassBtn.addEventListener('click', () => {
                 const passInput = document.getElementById('createPassword');
-                passInput.value = '123456@A'; // Mật khẩu mặc định
+                passInput.value = '123456@A'; // Pass mặc định
                 passInput.type = 'text';
                 setTimeout(() => passInput.type = 'password', 2000);
             });
         }
+
+        // --- LẮNG NGHE SỰ KIỆN CHỌN VAI TRÒ TRONG MODAL EDIT ---
+        const editRoleSelect = document.getElementById('editRole');
+        if (editRoleSelect) {
+            editRoleSelect.addEventListener('change', function() {
+                handleEditRoleChange.call(this);
+            });
+        }
+
+        // --- SỰ KIỆN CHỌN KHỐI TRONG EDIT ---
+        const editKhoiSelect = document.getElementById('editKhoi');
+        if (editKhoiSelect) {
+            editKhoiSelect.addEventListener('change', function() {
+                handleEditKhoiChange.call(this);
+            });
+        }
+
+        // --- SỰ KIỆN CHỌN LỚP GV/BGH TRONG EDIT ---
+        const editLopGVSelect = document.getElementById('editLopGV');
+        if (editLopGVSelect) {
+            editLopGVSelect.addEventListener('change', async function() {
+                const maLop = this.value;
+                const selectMon = document.getElementById('editMonHoc');
+                
+                if (!maLop) {
+                    selectMon.innerHTML = '<option value="">-- Vui lòng chọn lớp trước --</option>';
+                    return;
+                }
+
+                selectMon.innerHTML = '<option value="">Đang tải môn...</option>';
+
+                try {
+                    const response = await fetch(`${BASE_URL}/quantri/getDsMonTheoLopApi/${maLop}`);
+                    const result = await response.json();
+
+                    if (result.success && result.data.length > 0) {
+                        let html = '<option value="">-- Chọn môn chuyên môn --</option>';
+                        result.data.forEach(mon => {
+                            html += `<option value="${mon.ma_mon_hoc}">${mon.ten_mon_hoc}</option>`;
+                        });
+                        selectMon.innerHTML = html;
+                    } else {
+                        selectMon.innerHTML = '<option value="">-- Không có môn phù hợp --</option>';
+                    }
+                } catch (error) {
+                    console.error("Lỗi tải môn:", error);
+                    selectMon.innerHTML = '<option value="">Lỗi kết nối</option>';
+                }
+            });
+        }
+
+        // --- SỰ KIỆN CHỌN LỚP PHỤ HUYNH TRONG EDIT ---
+        const editLopPHSelect = document.getElementById('editLopPH');
+        if (editLopPHSelect) {
+            editLopPHSelect.addEventListener('change', async function() {
+                const maLop = this.value;
+                const selectHS = document.getElementById('editHocSinh');
+                
+                if (!maLop) {
+                    selectHS.innerHTML = '<option value="">-- Vui lòng chọn lớp trước --</option>';
+                    return;
+                }
+
+                selectHS.innerHTML = '<option value="">Đang tải danh sách học sinh...</option>';
+
+                try {
+                    const response = await fetch(`${BASE_URL}/quantri/getDsHocSinhChuaCoPhApi/${maLop}`);
+                    const result = await response.json();
+
+                    if (result.success && result.data.length > 0) {
+                        let html = '<option value="">-- Chọn học sinh --</option>';
+                        result.data.forEach(hs => {
+                            html += `<option value="${hs.ma_hoc_sinh}">${hs.ho_ten} (${hs.ngay_sinh || 'N/A'})</option>`;
+                        });
+                        selectHS.innerHTML = html;
+                    } else {
+                        selectHS.innerHTML = '<option value="">Tất cả học sinh đã có phụ huynh</option>';
+                    }
+                } catch (error) {
+                    console.error("Lỗi load học sinh:", error);
+                    selectHS.innerHTML = `<option value="">Lỗi: ${error.message}</option>`;
+                }
+            });
+        }
     });
 
-    // --- CÁC HÀM XỬ LÝ LOGIC GIAO DIỆN (UI) ---
+    // --- HÀM XỬ LÝ VAI TRÒ TRONG MODAL EDIT ===
+    function handleEditRoleChange() {
+        const role = this.value;
 
-    // Xử lý khi đổi vai trò -> Ẩn/Hiện các ô nhập liệu tương ứng
-    function handleRoleChange() {
-        const role = this.value; // this = #createRole select box
+        // 1. Ẩn tất cả trước
+        document.getElementById('editDivKhoi').style.display = 'none';
+        document.getElementById('editDivLopHoc').style.display = 'none';
+        document.getElementById('editDivLopGV').style.display = 'none';
+        document.getElementById('editDivMonHoc').style.display = 'none';
+        document.getElementById('editDivLopPH').style.display = 'none';
+        document.getElementById('editDivHocSinh').style.display = 'none';
 
-        // Ẩn tất cả các div mở rộng trước
-        document.getElementById('divLopHoc').style.display = 'none';
-        document.getElementById('divMonHoc').style.display = 'none';
-        document.getElementById('divHocSinhCon').style.display = 'none';
+        // Reset các select
+        document.getElementById('editKhoi').value = "";
+        document.getElementById('editLopHoc').value = "";
+        document.getElementById('editLopGV').value = "";
+        document.getElementById('editMonHoc').value = "";
+        document.getElementById('editLopPH').value = "";
+        document.getElementById('editHocSinh').value = "";
 
-        // Reset giá trị để tránh gửi dữ liệu thừa
-        document.getElementById('createLop').value = "";
-        document.getElementById('createMonHoc').value = "";
-
-        // Logic hiển thị theo vai trò
+        // 2. Hiển thị theo vai trò
         if (role === 'HocSinh') {
-            document.getElementById('divLopHoc').style.display = 'block';
-            loadDsLop(); // Gọi API lấy danh sách lớp
-        } else if (role === 'GiaoVien') {
-            document.getElementById('divMonHoc').style.display = 'block';
-            // loadDsMonHoc(); // Nếu cần load môn học thì gọi hàm ở đây
-        } else if (role === 'PhuHuynh') {
-            document.getElementById('divHocSinhCon').style.display = 'block';
-            // loadDsHocSinh(); // Nếu cần load ds học sinh thì gọi hàm ở đây
+            document.getElementById('editDivKhoi').style.display = 'block';
+            document.getElementById('editDivLopHoc').style.display = 'block';
+            loadEditDsKhoi();
+        } 
+        else if (role === 'GiaoVien' || role === 'BanGiamHieu') {
+            document.getElementById('editDivLopGV').style.display = 'block';
+            document.getElementById('editDivMonHoc').style.display = 'block';
+            loadEditDsLopAll();
+            document.getElementById('editMonHoc').innerHTML = '<option value="">-- Vui lòng chọn lớp trước --</option>';
+        }
+        else if (role === 'PhuHuynh') {
+            document.getElementById('editDivLopPH').style.display = 'block';
+            document.getElementById('editDivHocSinh').style.display = 'block';
+            loadEditDsLopForPhuHuynh();
         }
     }
 
-    // Hàm gọi API lấy danh sách lớp (Chỉ load 1 lần để tối ưu)
-    async function loadDsLop() {
-        const selectLop = document.getElementById('createLop');
-        // Nếu đã có dữ liệu (lớn hơn 1 option mặc định) thì không load lại
-        if (selectLop.options.length > 1) return; 
+    async function loadEditDsKhoi() {
+        const selectKhoi = document.getElementById('editKhoi');
+        selectKhoi.innerHTML = '<option value="">-- Đang tải... --</option>';
 
         try {
-            // Gọi API từ Controller: QuanTriController -> getDsLopApi
-            const response = await fetch(`${BASE_URL}/quantri/getDsLopApi`);
+            const response = await fetch(`${BASE_URL}/quantri/getDsKhoiApi`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
             const result = await response.json();
 
-            if (result.success && result.data) {
-                let html = '<option value="">-- Chọn lớp học --</option>';
+            if (result.success && result.data && result.data.length > 0) {
+                let html = '<option value="">-- Chọn khối --</option>';
+                result.data.forEach(khoi => {
+                    html += `<option value="${khoi}">Khối ${khoi}</option>`;
+                });
+                selectKhoi.innerHTML = html;
+            } else {
+                selectKhoi.innerHTML = '<option value="">Không có khối nào</option>';
+            }
+        } catch (error) { 
+            console.error("Lỗi load khối:", error); 
+            selectKhoi.innerHTML = '<option value="">Lỗi khi tải khối</option>';
+        }
+    }
+
+    async function handleEditKhoiChange() {
+        const khoi = this.value;
+        const selectLop = document.getElementById('editLopHoc');
+        
+        if (!khoi) {
+            selectLop.innerHTML = '<option value="">-- Chọn lớp --</option>';
+            return;
+        }
+
+        selectLop.innerHTML = '<option value="">-- Đang tải... --</option>';
+
+        try {
+            const response = await fetch(`${BASE_URL}/quantri/getDsLopTheoKhoiApi/${khoi}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const result = await response.json();
+
+            if (result.success && result.data && result.data.length > 0) {
+                let html = '<option value="">-- Chọn lớp --</option>';
                 result.data.forEach(lop => {
-                    // Giả sử API trả về {ma_lop: 1, ten_lop: '10A1'}
                     html += `<option value="${lop.ma_lop}">${lop.ten_lop}</option>`;
                 });
                 selectLop.innerHTML = html;
             } else {
-                console.warn("Không tải được danh sách lớp:", result.message);
+                selectLop.innerHTML = '<option value="">Không có lớp nào</option>';
             }
-        } catch (error) {
-            console.error("Lỗi kết nối khi tải lớp:", error);
+        } catch (error) { 
+            console.error("Lỗi load lớp:", error); 
+            selectLop.innerHTML = '<option value="">Lỗi khi tải lớp</option>';
         }
     }
 
-    // --- CÁC HÀM CRUD (TẠO, SỬA, XÓA, TÌM KIẾM) ---
+    async function loadEditDsLopAll() {
+        const selectLop = document.getElementById('editLopGV');
+        selectLop.innerHTML = '<option value="">-- Đang tải danh sách lớp... --</option>';
 
-    // 1. TẠO MỚI TÀI KHOẢN (CREATE)
+        try {
+            const response = await fetch(`${BASE_URL}/quantri/getDsLopAllApi`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const result = await response.json();
+
+            if (result.success && result.data && result.data.length > 0) {
+                let html = '<option value="">-- Chọn lớp --</option>';
+                result.data.forEach(lop => {
+                    html += `<option value="${lop.ma_lop}">Khối ${lop.khoi} - ${lop.ten_lop}</option>`;
+                });
+                selectLop.innerHTML = html;
+            } else {
+                selectLop.innerHTML = '<option value="">Không có lớp nào</option>';
+            }
+        } catch (error) { 
+            console.error("Lỗi loadEditDsLopAll:", error); 
+            selectLop.innerHTML = `<option value="">Lỗi: ${error.message}</option>`;
+        }
+    }
+
+    async function loadEditDsLopForPhuHuynh() {
+        const selectLop = document.getElementById('editLopPH');
+        selectLop.innerHTML = '<option value="">-- Đang tải danh sách lớp... --</option>';
+
+        try {
+            const response = await fetch(`${BASE_URL}/quantri/getDsLopAllApi`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const result = await response.json();
+
+            if (result.success && result.data && result.data.length > 0) {
+                let html = '<option value="">-- Chọn lớp --</option>';
+                result.data.forEach(lop => {
+                    html += `<option value="${lop.ma_lop}">Khối ${lop.khoi} - ${lop.ten_lop}</option>`;
+                });
+                selectLop.innerHTML = html;
+            } else {
+                selectLop.innerHTML = '<option value="">Không có lớp nào</option>';
+            }
+        } catch (error) { 
+            console.error("Lỗi loadEditDsLopForPhuHuynh:", error); 
+            selectLop.innerHTML = `<option value="">Lỗi: ${error.message}</option>`;
+        }
+    }
+
+    // --- HÀM TIỆN ÍCH PREFILL DỮ LIỆU THEO VAI TRÒ (EDIT) ---
+    async function loadEditHocSinhData(maTaiKhoan) {
+        const notiEl = document.getElementById('editNotification');
+        try {
+            const res = await fetch(`${BASE_URL}/quantri/getHocSinhInfoApi/${maTaiKhoan}`);
+            const result = await res.json();
+            if (!result.success || !result.data) return;
+
+            const info = result.data;
+            await loadEditDsKhoi();
+            const khoiSelect = document.getElementById('editKhoi');
+            khoiSelect.value = info.khoi || '';
+            await handleEditKhoiChange.call(khoiSelect);
+            const lopSelect = document.getElementById('editLopHoc');
+            lopSelect.value = info.ma_lop || '';
+        } catch (error) {
+            console.error('Lỗi loadEditHocSinhData:', error);
+            if (notiEl) notiEl.textContent = 'Không thể tải dữ liệu lớp của học sinh.';
+        }
+    }
+
+    async function loadEditMonHocByLop(maLop, selectedMon) {
+        const selectMon = document.getElementById('editMonHoc');
+        if (!maLop) {
+            selectMon.innerHTML = '<option value="">-- Vui lòng chọn lớp trước --</option>';
+            return;
+        }
+        
+        // Đừng reset nếu đang loading (tránh nhấp nháy), nhưng ở đây reset để an toàn
+        selectMon.innerHTML = '<option value="">Đang tải môn...</option>';
+
+        try {
+            const response = await fetch(`${BASE_URL}/quantri/getDsMonTheoLopApi/${maLop}`);
+            const result = await response.json();
+
+            if (result.success && result.data && result.data.length > 0) {
+                let html = '<option value="">-- Chọn môn chuyên môn --</option>';
+                result.data.forEach(mon => {
+                    html += `<option value="${mon.ma_mon_hoc}">${mon.ten_mon_hoc}</option>`;
+                });
+                selectMon.innerHTML = html;
+                
+                // ✅ SET GIÁ TRỊ CŨ (QUAN TRỌNG)
+                if (selectedMon) {
+                    selectMon.value = selectedMon;
+                }
+            } else {
+                selectMon.innerHTML = '<option value="">-- Không có môn phù hợp --</option>';
+            }
+        } catch (error) {
+            console.error('Lỗi loadEditMonHocByLop:', error);
+            selectMon.innerHTML = '<option value="">Lỗi kết nối</option>';
+        }
+    }
+
+    async function loadEditGiaoVienData(maTaiKhoan) {
+        const notiEl = document.getElementById('editNotification');
+        try {
+            const res = await fetch(`${BASE_URL}/quantri/getGiaoVienInfoApi/${maTaiKhoan}`);
+            const result = await res.json();
+            
+            if (!result.success || !result.data) {
+                console.log('Không có dữ liệu GV hoặc lỗi API');
+                return;
+            }
+
+            const info = result.data;
+            
+            // ✅ BƯỚC QUAN TRỌNG: Gọi hàm tải danh sách lớp và AWAIT nó
+            // Để đảm bảo <option> đã có trước khi gán value
+            await loadEditDsLopAll();
+            
+            // 2. Sau khi list lớp đã tải xong, gán giá trị lớp cũ
+            const lopSelect = document.getElementById('editLopGV');
+            lopSelect.value = info.ma_lop || '';
+            
+            // 3. Tải danh sách môn theo lớp và gán môn cũ
+            if (info.ma_lop) {
+                await loadEditMonHocByLop(info.ma_lop, info.ma_mon_hoc);
+            }
+            
+        } catch (error) {
+            console.error('Lỗi loadEditGiaoVienData:', error);
+            if (notiEl) notiEl.textContent = 'Không thể tải dữ liệu lớp/môn của giáo viên.';
+        }
+    }
+
+    async function loadEditHocSinhByLop(maLop, currentHsId, currentHsName) {
+        const selectHS = document.getElementById('editHocSinh');
+        if (!maLop) {
+            selectHS.innerHTML = '<option value="">-- Vui lòng chọn lớp trước --</option>';
+            return;
+        }
+
+        selectHS.innerHTML = '<option value="">Đang tải danh sách học sinh...</option>';
+
+        try {
+            const response = await fetch(`${BASE_URL}/quantri/getDsHocSinhChuaCoPhApi/${maLop}`);
+            const result = await response.json();
+
+            let html = '<option value="">-- Chọn học sinh --</option>';
+            let hasCurrent = false;
+
+            if (result.success && Array.isArray(result.data)) {
+                result.data.forEach(hs => {
+                    html += `<option value="${hs.ma_hoc_sinh}">${hs.ho_ten} (${hs.ngay_sinh || 'N/A'})</option>`;
+                    if (currentHsId && Number(hs.ma_hoc_sinh) === Number(currentHsId)) hasCurrent = true;
+                });
+            }
+
+            if (currentHsId && !hasCurrent) {
+                html += `<option value="${currentHsId}">${currentHsName || 'Học sinh hiện tại'}</option>`;
+            }
+
+            selectHS.innerHTML = html;
+            if (currentHsId) selectHS.value = currentHsId;
+        } catch (error) {
+            console.error('Lỗi loadEditHocSinhByLop:', error);
+            selectHS.innerHTML = `<option value="">Lỗi: ${error.message}</option>`;
+        }
+    }
+
+    async function loadEditPhuHuynhData(maTaiKhoan) {
+        const notiEl = document.getElementById('editNotification');
+        try {
+            const res = await fetch(`${BASE_URL}/quantri/getPhuHuynhInfoApi/${maTaiKhoan}`);
+            const result = await res.json();
+            if (!result.success || !result.data) return;
+
+            const info = result.data;
+            await loadEditDsLopForPhuHuynh();
+            const lopSelect = document.getElementById('editLopPH');
+            lopSelect.value = info.ma_lop || '';
+            await loadEditHocSinhByLop(info.ma_lop, info.ma_hoc_sinh, info.ten_hs);
+        } catch (error) {
+            console.error('Lỗi loadEditPhuHuynhData:', error);
+            if (notiEl) notiEl.textContent = 'Không thể tải dữ liệu phụ huynh.';
+        }
+    }
+
+    // --- CÁC HÀM XỬ LÝ LOGIC UI ---
+
+    function handleRoleChange() {
+        const role = this.value;
+
+        // 1. Ẩn và Reset tất cả trước
+        document.getElementById('divLopHoc').style.display = 'none';
+        document.getElementById('divLopHocChiTiet').style.display = 'none';
+        document.getElementById('divMonHoc').style.display = 'none';
+        document.getElementById('divPhuHuynhLop').style.display = 'none';
+        document.getElementById('divPhuHuynhHS').style.display = 'none';
+
+        const khoiEl = document.getElementById('createKhoi');
+        const lopEl = document.getElementById('createLop');
+        const monEl = document.getElementById('createMonHoc');
+        
+        if (khoiEl) khoiEl.value = "";
+        if (lopEl) lopEl.value = "";
+        if (monEl) monEl.value = "";
+
+        // 2. Logic hiển thị
+        if (role === 'HocSinh') {
+            // Học sinh: Chọn Khối → Lớp
+            document.getElementById('divLopHoc').style.display = 'block';
+            loadDsKhoi();
+        } 
+        else if (role === 'GiaoVien' || role === 'BanGiamHieu') {
+            // GV/BGH: Chọn Lớp trực tiếp (không cần Khối)
+            document.getElementById('divLopHocChiTiet').style.display = 'block';
+            document.getElementById('divMonHoc').style.display = 'block';
+            
+            // Load danh sách lớp
+            loadDsLopAll();
+            
+            // Reset ô chọn môn, bắt buộc chọn lớp trước
+            document.getElementById('createMonHoc').innerHTML = '<option value="">-- Vui lòng chọn lớp trước --</option>';
+        }
+        else if (role === 'PhuHuynh') {
+            // Phụ Huynh: Chọn Lớp → Học sinh chưa có PH
+            document.getElementById('divPhuHuynhLop').style.display = 'block';
+            document.getElementById('divPhuHuynhHS').style.display = 'block';
+            
+            // Load danh sách lớp
+            loadDsLopForPhuHuynh();
+        }
+    }
+
+    async function loadDsKhoi() {
+        const selectKhoi = document.getElementById('createKhoi');
+        selectKhoi.innerHTML = '<option value="">-- Đang tải... --</option>'; // Hiển thị đang tải
+
+        try {
+            const response = await fetch(`${BASE_URL}/quantri/getDsKhoiApi`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const result = await response.json();
+
+            if (result.success && result.data && result.data.length > 0) {
+                let html = '<option value="">-- Chọn khối --</option>';
+                result.data.forEach(khoi => {
+                    html += `<option value="${khoi}">Khối ${khoi}</option>`;
+                });
+                selectKhoi.innerHTML = html;
+            } else {
+                selectKhoi.innerHTML = '<option value="">Không có khối nào</option>';
+            }
+        } catch (error) { 
+            console.error("Lỗi load khối:", error); 
+            selectKhoi.innerHTML = '<option value="">Lỗi khi tải khối</option>';
+        }
+    }
+
+    async function loadDsLopAll() {
+        const selectLop = document.getElementById('createLop');
+        if (!selectLop) return;
+        
+        selectLop.innerHTML = '<option value="">-- Đang tải danh sách lớp... --</option>';
+
+        try {
+            const response = await fetch(`${BASE_URL}/quantri/getDsLopAllApi`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: Lỗi từ server`);
+            }
+            
+            const result = await response.json();
+
+            if (!result.success) {
+                selectLop.innerHTML = `<option value="">Lỗi: ${result.message || 'Không thể tải danh sách lớp'}</option>`;
+                return;
+            }
+
+            if (result.data && result.data.length > 0) {
+                let html = '<option value="">-- Chọn lớp --</option>';
+                result.data.forEach(lop => {
+                    html += `<option value="${lop.ma_lop}">Khối ${lop.khoi} - ${lop.ten_lop}</option>`;
+                });
+                selectLop.innerHTML = html;
+            } else {
+                selectLop.innerHTML = '<option value="">Không có lớp nào</option>';
+            }
+        } catch (error) { 
+            console.error("Lỗi loadDsLopAll:", error); 
+            selectLop.innerHTML = `<option value="">Lỗi khi tải lớp: ${error.message}</option>`;
+        }
+    }
+
+    async function handleKhoiChange() {
+        const khoi = this.value;
+        const selectLop = document.getElementById('createLop');
+        const divLopChiTiet = document.getElementById('divLopHocChiTiet');
+        const selectMon = document.getElementById('createMonHoc');
+        
+        // Reset ô Môn học khi đổi khối
+        if (selectMon) selectMon.innerHTML = '<option value="">-- Vui lòng chọn lớp trước --</option>';
+
+        if (!khoi) {
+            if (divLopChiTiet) divLopChiTiet.style.display = 'none';
+            if (selectLop) selectLop.innerHTML = '<option value="">-- Chọn lớp --</option>';
+            return;
+        }
+
+        try {
+            const response = await fetch(`${BASE_URL}/quantri/getDsLopTheoKhoiApi/${khoi}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const result = await response.json();
+
+            if (result.success && result.data && result.data.length > 0) {
+                let html = '<option value="">-- Chọn lớp --</option>';
+                result.data.forEach(lop => {
+                    html += `<option value="${lop.ma_lop}">${lop.ten_lop}</option>`;
+                });
+                if (selectLop) selectLop.innerHTML = html;
+                if (divLopChiTiet) divLopChiTiet.style.display = 'block';
+            } else {
+                if (selectLop) selectLop.innerHTML = '<option value="">Không có lớp nào</option>';
+            }
+        } catch (error) { 
+            console.error("Lỗi load lớp:", error); 
+            if (selectLop) selectLop.innerHTML = '<option value="">Lỗi khi tải lớp</option>';
+        }
+    }
+
+    // --- HÀM LOAD CHO PHỤ HUYNH ---
+    async function loadDsLopForPhuHuynh() {
+        const selectLop = document.getElementById('createLopPH');
+        if (!selectLop) return;
+        
+        selectLop.innerHTML = '<option value="">-- Đang tải danh sách lớp... --</option>';
+
+        try {
+            const response = await fetch(`${BASE_URL}/quantri/getDsLopAllApi`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const result = await response.json();
+
+            if (result.success && result.data && result.data.length > 0) {
+                let html = '<option value="">-- Chọn lớp --</option>';
+                result.data.forEach(lop => {
+                    html += `<option value="${lop.ma_lop}">Khối ${lop.khoi} - ${lop.ten_lop}</option>`;
+                });
+                selectLop.innerHTML = html;
+                
+                // Gắn event listener cho dropdown lớp PH
+                selectLop.addEventListener('change', handleLopPHChange);
+            } else {
+                selectLop.innerHTML = '<option value="">Không có lớp nào</option>';
+            }
+        } catch (error) { 
+            console.error("Lỗi loadDsLopForPhuHuynh:", error); 
+            selectLop.innerHTML = `<option value="">Lỗi: ${error.message}</option>`;
+        }
+    }
+
+    async function handleLopPHChange() {
+        const maLop = this.value;
+        const selectHS = document.getElementById('createHocSinhPH');
+        if (!selectHS) return;
+
+        if (!maLop) {
+            selectHS.innerHTML = '<option value="">-- Vui lòng chọn lớp trước --</option>';
+            return;
+        }
+
+        selectHS.innerHTML = '<option value="">-- Đang tải danh sách học sinh... --</option>';
+
+        try {
+            const response = await fetch(`${BASE_URL}/quantri/getDsHocSinhChuaCoPhApi/${maLop}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const result = await response.json();
+
+            if (result.success && result.data && result.data.length > 0) {
+                let html = '<option value="">-- Chọn học sinh --</option>';
+                result.data.forEach(hs => {
+                    html += `<option value="${hs.ma_hoc_sinh}">${hs.ho_ten} (${hs.ngay_sinh || 'N/A'})</option>`;
+                });
+                selectHS.innerHTML = html;
+            } else {
+                selectHS.innerHTML = '<option value="">Tất cả học sinh đã có phụ huynh</option>';
+            }
+        } catch (error) { 
+            console.error("Lỗi load học sinh:", error); 
+            selectHS.innerHTML = `<option value="">Lỗi: ${error.message}</option>`;
+        }
+    }
+
+    // --- CÁC HÀM CRUD (API) ---
+
+    // 1. TẠO TÀI KHOẢN
     async function handleCreate() {
         const notificationEl = document.getElementById('createNotification');
         notificationEl.textContent = '';
 
-        // Thu thập dữ liệu
         const payload = {
             ho_ten: document.getElementById('createFullName').value.trim(),
             so_dien_thoai: document.getElementById('createPhone').value.trim(),
@@ -469,24 +1115,18 @@
             ngay_sinh: document.getElementById('createBirthday').value,
             gioi_tinh: document.getElementById('createGender').value,
             dia_chi: document.getElementById('createAddress').value.trim(),
-            // Dữ liệu mở rộng
+            // Các trường phụ thuộc
             ma_lop: document.getElementById('createLop').value,
             mon_chuyen_mon: document.getElementById('createMonHoc').value,
-            hoc_sinh_con: [] // Xử lý multiselect phụ huynh sau nếu cần
+            ma_hoc_sinh: document.getElementById('createHocSinhPH')?.value || null // Cho Phụ Huynh
         };
 
-        // Validate cơ bản phía Client
+        // Validate cơ bản
         if (!payload.ho_ten || !payload.email || !payload.password || !payload.vai_tro) {
             notificationEl.textContent = 'Vui lòng điền các trường bắt buộc (*).';
             return;
         }
         if (!validateInput('email', payload.email, 'createNotification')) return;
-        
-        // Validate logic nghiệp vụ
-        if (payload.vai_tro === 'HocSinh' && !payload.ma_lop) {
-            notificationEl.textContent = 'Với Học sinh, bắt buộc phải chọn Lớp học.';
-            return;
-        }
 
         try {
             const res = await fetch(`${BASE_URL}/quantri/addAccountApi`, {
@@ -510,39 +1150,95 @@
         }
     }
 
-    // 2. MỞ MODAL SỬA (EDIT)
-    function openEditModal(ma_tai_khoan) {
-        // Tìm dòng tr chứa dữ liệu
+    // 2. MỞ MODAL SỬA
+    async function openEditModal(ma_tai_khoan) {
         const tr = document.querySelector(`tr[data-ma-tai-khoan="${ma_tai_khoan}"]`);
         if (!tr) return;
 
-        const d = tr.dataset; // Lấy dataset
-        
-        // Đổ dữ liệu vào form sửa
+        const d = tr.dataset;
         document.getElementById('editMaTaiKhoan').value = d.maTaiKhoan;
         document.getElementById('editFullName').value = d.hoTen;
-        document.getElementById('editPhone').value = d.soDienThoai; // Readonly
+        document.getElementById('editPhone').value = d.soDienThoai;
         document.getElementById('editEmail').value = d.email;
         document.getElementById('editRole').value = d.vaiTro;
         document.getElementById('editAddress').value = d.diaChi || '';
-        document.getElementById('editPassword').value = ''; // Reset pass
+        document.getElementById('editBirthday').value = d.ngaySinh || '';
+        document.getElementById('editGender').value = d.gioiTinh || '';
+        document.getElementById('editPassword').value = ''; 
         document.getElementById('editNotification').textContent = '';
+
+        try {
+            // ✅ LOAD DỮ LIỆU TRƯỚC, RỒI MỚI TRIGGER CHANGE
+            if (d.vaiTro === 'HocSinh') {
+                // Trigger change để hiển thị form HS
+                const roleSelect = document.getElementById('editRole');
+                roleSelect.dispatchEvent(new Event('change'));
+                // Chờ form load xong rồi prefill
+                await new Promise(r => setTimeout(r, 200));
+                await loadEditHocSinhData(ma_tai_khoan);
+            } 
+            else if (d.vaiTro === 'GiaoVien' || d.vaiTro === 'BanGiamHieu') {
+                // 1. Hiển thị form GV (Chỉ để show/hide các DIV)
+                const roleSelect = document.getElementById('editRole');
+                // Chúng ta set value thủ công để tránh trigger change event gây load lặp lại (optional)
+                // Nhưng để đơn giản, cứ dispatch event để nó ẩn/hiện div
+                roleSelect.dispatchEvent(new Event('change')); 
+                
+                // 2. Gọi hàm tải dữ liệu chi tiết (Hàm này giờ đã có await load lớp nên không lo)
+                await loadEditGiaoVienData(ma_tai_khoan);
+            } 
+            else if (d.vaiTro === 'PhuHuynh') {
+                // Trigger change để hiển thị form PH
+                const roleSelect = document.getElementById('editRole');
+                roleSelect.dispatchEvent(new Event('change'));
+                // Chờ form load xong rồi prefill
+                await new Promise(r => setTimeout(r, 300));
+                await loadEditPhuHuynhData(ma_tai_khoan);
+            }
+        } catch (error) {
+            console.error('Lỗi prefill edit modal:', error);
+            document.getElementById('editNotification').textContent = 'Không thể tải dữ liệu chi tiết của tài khoản.';
+        }
 
         editModal.show();
     }
 
-    // 3. CẬP NHẬT TÀI KHOẢN (UPDATE)
+    // 3. CẬP NHẬT TÀI KHOẢN
     async function handleUpdate() {
         const notiEl = document.getElementById('editNotification');
+        const role = document.getElementById('editRole').value;
         
         const payload = {
             ma_tai_khoan: document.getElementById('editMaTaiKhoan').value,
             ho_ten: document.getElementById('editFullName').value.trim(),
             email: document.getElementById('editEmail').value.trim(),
-            vai_tro: document.getElementById('editRole').value,
+            so_dien_thoai: document.getElementById('editPhone').value.trim(),
+            vai_tro: role,
             dia_chi: document.getElementById('editAddress').value.trim(),
-            password: document.getElementById('editPassword').value
+            ngay_sinh: document.getElementById('editBirthday').value,
+            gioi_tinh: document.getElementById('editGender').value,
+            password: document.getElementById('editPassword').value,
+            // ✅ THÊM: Gửi ma_lop theo vai trò
+            ma_lop: role === 'HocSinh' 
+                ? document.getElementById('editLopHoc').value 
+                : (role === 'GiaoVien' || role === 'BanGiamHieu' 
+                    ? document.getElementById('editLopGV').value 
+                    : document.getElementById('editLopPH').value),
+            // ✅ THÊM: Gửi môn cho GV/BGH
+            mon_chuyen_mon: (role === 'GiaoVien' || role === 'BanGiamHieu')
+                ? document.getElementById('editMonHoc').value 
+                : null,
+            // ✅ THÊM: Gửi học sinh cho Phụ Huynh
+            ma_hoc_sinh: role === 'PhuHuynh'
+                ? document.getElementById('editHocSinh').value
+                : null
         };
+
+        // Validate bắt buộc
+        if (!payload.ho_ten || !payload.email || !payload.so_dien_thoai) {
+            notiEl.textContent = 'Vui lòng điền các trường bắt buộc (*).';
+            return;
+        }
 
         if (!validateInput('email', payload.email, 'editNotification')) return;
 
@@ -566,7 +1262,7 @@
         }
     }
 
-    // 4. MỞ MODAL XÓA (DELETE)
+    // 4. MỞ MODAL XÓA
     function openDeleteModal(ma_tai_khoan) {
         const tr = document.querySelector(`tr[data-ma-tai-khoan="${ma_tai_khoan}"]`);
         if (!tr) return;
@@ -581,7 +1277,7 @@
         deleteModal.show();
     }
 
-    // 5. XÁC NHẬN XÓA
+    // 5. XÓA TÀI KHOẢN
     async function handleDelete() {
         const ma_tai_khoan = document.getElementById('deleteMaTaiKhoan').value;
         const notiEl = document.getElementById('deleteNotification');
@@ -596,8 +1292,7 @@
 
             if (data.success) {
                 deleteModal.hide();
-                showGlobalNotification(data.message, 'warning'); // Màu vàng cho action xóa
-                // Xóa dòng khỏi bảng ngay lập tức (UI trick)
+                showGlobalNotification(data.message, 'warning');
                 const tr = document.querySelector(`tr[data-ma-tai-khoan="${ma_tai_khoan}"]`);
                 if (tr) tr.remove();
             } else {
@@ -608,7 +1303,7 @@
         }
     }
 
-    // 6. TÌM KIẾM (CLIENT SIDE - FILTER)
+    // 6. TÌM KIẾM (Client-side)
     function handleSearch(event) {
         event.preventDefault();
         const term = document.getElementById('searchInput').value.toLowerCase().trim();
@@ -628,7 +1323,6 @@
             }
         });
         
-        // Hiển thị thông báo tìm kiếm
         const helpText = document.getElementById('searchHelp');
         if (!found && term !== '') {
             helpText.textContent = 'Không tìm thấy kết quả nào.';
@@ -640,12 +1334,10 @@
         return false;
     }
 
-    // --- CÁC HÀM TIỆN ÍCH (HELPER) ---
-    
+    // --- TIỆN ÍCH ---
     function validateInput(field, value, notiId) {
         const noti = document.getElementById(notiId);
         noti.textContent = '';
-        
         if (field === 'email') {
             const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!regex.test(value)) {
@@ -662,15 +1354,12 @@
         el.textContent = msg;
         el.className = `alert alert-${type} alert-dismissible fade show`;
         el.style.display = 'block';
-        
-        // Nút đóng
         if (!el.querySelector('.btn-close')) {
             const btn = document.createElement('button');
             btn.className = 'btn-close';
             btn.dataset.bsDismiss = 'alert';
             el.appendChild(btn);
         }
-
         setTimeout(() => { el.style.display = 'none'; }, 4000);
     }
 </script>

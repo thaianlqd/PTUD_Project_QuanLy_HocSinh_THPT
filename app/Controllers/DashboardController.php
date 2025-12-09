@@ -41,16 +41,31 @@ class DashboardController extends Controller {
                 $data['si_so_khoi'] = $this->userModel->getSiSoKhoi($school_id); 
                 $data['users_list'] = $this->userModel->getAllUsers(10, $school_id);
                 
-                echo $this->loadView('QuanTri/dashboard', $data);
+                // echo $this->loadView('QuanTri/dashboard', $data);
+                // --- ĐIỂM KHÁC BIỆT Ở ĐÂY ---
+                if ($school_id === null) {
+                    // === 1. LÀ SUPER ADMIN (SỞ GIÁO DỤC) ===
+                    // Bác có thể lấy thêm danh sách các trường để hiển thị
+                    // $data['list_truong'] = $this->userModel->getAllSchools(); (Cần viết thêm hàm này nếu muốn)
+                    
+                    echo $this->loadView('SuperAdmin/dashboard', $data);
+                } else {
+                    // === 2. LÀ ADMIN TRƯỜNG ===
+                    // Giữ nguyên giao diện quản trị trường học
+                    echo $this->loadView('QuanTri/dashboard', $data); 
+                    // Hoặc 'QuanTri/dashboard' nếu bác không muốn đổi tên folder cũ
+                }
                 break;
+            
 
+            case 'BanGiamHieu':
             case 'GiaoVien':
                 // ============================================================
                 // LOGIC TỔNG HỢP (3 TRONG 1) CHO GIÁO VIÊN
                 // ============================================================
 
                 // --- 1. DỮ LIỆU BAN GIÁM HIỆU ---
-                if ($chuc_vu && (str_contains($chuc_vu, 'BanGiamHieu') || str_contains($chuc_vu, 'Hiệu') || str_contains($chuc_vu, 'Phó'))) {
+                if ($role === 'BanGiamHieu' || ($chuc_vu && (str_contains($chuc_vu, 'BanGiamHieu') || str_contains($chuc_vu, 'Hiệu') || str_contains($chuc_vu, 'Phó')))) {
                     $data['is_bgh'] = true;
                     $diemSoModel = $this->loadModel('DiemSoModel');
                     if ($diemSoModel) {
@@ -83,14 +98,21 @@ class DashboardController extends Controller {
                     if ($lopCN) {
                         $data['is_gvcn'] = true;
                         $data['cn_info'] = $lopCN;
-                        $data['cn_hs_list'] = $gvcnModel->getDanhSachHocSinh($lopCN['ma_lop']);
-                        $data['cn_chart_hk'] = $gvcnModel->getChartHanhKiem($lopCN['ma_lop']);
+
+                        // Chọn học kỳ: ưu tiên query ?hk=HK1/HK2, mặc định HK1
+                        $ma_hoc_ky = $_GET['hk'] ?? 'HK1';
+
+                        $data['cn_hs_list']  = $gvcnModel->getDanhSachHocSinh($lopCN['ma_lop'], $ma_hoc_ky);
+                        $data['cn_chart_hk'] = $gvcnModel->getChartHanhKiem($lopCN['ma_lop'], $ma_hoc_ky);
+                        $data['cn_hoc_ky']   = $ma_hoc_ky;
                     }
                 }
-
                 // --- 3. DỮ LIỆU GIẢNG DẠY (Mặc định có) ---
                 $gvBaiTapModel = $this->loadModel('GiaoVienBaiTapModel');
                 if (!$gvBaiTapModel) { die("Lỗi: Không tìm thấy file models/GiaoVienBaiTapModel.php"); }
+                
+                // Học kỳ đang xem (mặc định HK1, có thể ?hk=HK2)
+                $ma_hoc_ky = $_GET['hk'] ?? 'HK1';
                 
                 $data['gd_mon']        = $gvBaiTapModel->getMonGiangDay($user_id);
                 $data['gd_lop_list']   = $gvBaiTapModel->getDanhSachLop($user_id);
@@ -99,6 +121,13 @@ class DashboardController extends Controller {
                 $data['gd_nopbai_pct'] = $gvBaiTapModel->getTyLeNopBaiTB($user_id);
                 $data['gd_chart_nop']  = $gvBaiTapModel->getChartNopBai($user_id);
                 $data['gd_chart_dd']   = $gvBaiTapModel->getChartDiemDanh($user_id);
+
+                // Danh sách HS + điểm môn mà GV này dạy (theo HK)
+                $diemSoModel = $this->loadModel('DiemSoModel');
+                $data['gv_hoc_ky']   = $ma_hoc_ky;
+                $data['gv_diem_mon'] = $diemSoModel
+                    ? $diemSoModel->getDanhSachDiemMonByGV($user_id, $ma_hoc_ky)
+                    : [];
 
                 // DEBUG: Bỏ comment dòng dưới để xem dữ liệu truyền sang View
                 // echo "<pre>"; print_r($data); echo "</pre>"; die();
@@ -172,6 +201,36 @@ class DashboardController extends Controller {
                     break;
                             
             case 'PhuHuynh':
+                // ✅ Load Model và check lỗi
+                $phuHuynhModel = $this->loadModel('PhuHuynhModel');
+                if (!$phuHuynhModel) {
+                    die("Lỗi nghiêm trọng: Không thể load PhuHuynhModel.php");
+                }
+                
+                // ✅ Lấy thông tin học sinh (con của phụ huynh)
+                $data['hoc_sinh_info'] = $phuHuynhModel->getHocSinhInfo($user_id);
+                
+                // ✅ DEBUG: Log thông tin HS
+                error_log("PhuHuynh - user_id: $user_id, hoc_sinh_info: " . json_encode($data['hoc_sinh_info']));
+                
+                // ✅ Lấy bảng điểm
+                $data['bang_diem'] = $phuHuynhModel->getBangDiem($user_id);
+                
+                // ✅ DEBUG: Log bảng điểm
+                error_log("PhuHuynh - bang_diem count: " . count($data['bang_diem']));
+                
+                // ✅ Lấy thống kê khác
+                $data['hoa_don_count'] = $phuHuynhModel->getHoaDonCount($user_id);
+                $data['phieu_vang_count'] = $phuHuynhModel->getPhieuVangCount($user_id);
+                $data['school_name'] = $phuHuynhModel->getTenTruongCuaCon($user_id);
+                
+                $_SESSION['school_name'] = $data['school_name'];
+                
+                // ✅ DEBUG: Uncomment để xem toàn bộ data
+                // echo "<pre>"; print_r($data); echo "</pre>"; die();
+                
+                echo $this->loadView('PhuHuynh/dashboard', $data);
+                break;
                 $phuHuynhModel = $this->loadModel('PhuHuynhModel');
                 $data['hoc_sinh_info'] = $phuHuynhModel->getHocSinhInfo($user_id);
                 $data['hoa_don_count'] = $phuHuynhModel->getHoaDonCount($user_id);
@@ -185,6 +244,46 @@ class DashboardController extends Controller {
                 break;
             
             case 'ThiSinh':
+                $tsModel = $this->loadModel('ThiSinhModel');
+                
+                // 1. Thông tin
+                $data['info'] = $tsModel->getThongTinCaNhan($user_id);
+                
+                // 2. Nguyện vọng
+                $data['nguyen_vong'] = $tsModel->getDanhSachNguyenVong($user_id);
+                $data['nv_count'] = count($data['nguyen_vong']);
+                
+                // 3. Điểm thi
+                $data['diem'] = $tsModel->getDiemThi($user_id);
+                
+                // 4. Kết quả
+                $ketQua = $tsModel->getKetQuaTuyenSinh($user_id);
+                $data['ket_qua'] = $ketQua; // null nếu chưa có, hoặc mảng nếu đã có
+                
+                // Xử lý text hiển thị nhanh
+                if ($ketQua) {
+                    if ($ketQua['trang_thai'] == 'Dau') {
+                        $data['kq_text'] = 'Đậu - ' . $ketQua['truong_trung_tuyen'];
+                        $data['kq_class'] = 'text-success';
+                        
+                        // Status xác nhận
+                        $xn = $ketQua['trang_thai_xac_nhan'];
+                        if($xn == 'Xac_nhan_nhap_hoc') $data['xn_text'] = 'Đã Xác Nhận';
+                        elseif($xn == 'Tu_choi_nhap_hoc') $data['xn_text'] = 'Đã Từ Chối';
+                        else $data['xn_text'] = 'Chờ Xác Nhận';
+                    } else {
+                        $data['kq_text'] = 'Trượt';
+                        $data['kq_class'] = 'text-danger';
+                        $data['xn_text'] = '---';
+                    }
+                } else {
+                    $data['kq_text'] = 'Chưa công bố';
+                    $data['kq_class'] = 'text-warning';
+                    $data['xn_text'] = '---';
+                }
+
+                // Load View Thí Sinh
+                // Lưu ý: Đường dẫn phải đúng file View bên dưới
                 echo $this->loadView('ThiSinh/dashboard', $data);
                 break;
 

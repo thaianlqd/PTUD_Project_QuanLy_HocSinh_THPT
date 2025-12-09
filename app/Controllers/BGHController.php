@@ -12,19 +12,11 @@ class BGHController extends Controller { // <-- Tên class là BGHController
     public function __construct() {
         // --- KIỂM TRA QUYỀN TRUY CẬP CỦA BGH ---
         
-        // 1. Phải đăng nhập với vai trò GiaoVien
-        if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] != 'GiaoVien') {
+        // ✅ SỬA: Chỉ cho BGH vào (BGH có user_role = 'BanGiamHieu')
+        if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] != 'BanGiamHieu') {
             header('Location: ' . BASE_URL . '/auth/index');
             exit;
         }
-        
-        // 2. Phải là BGH
-        // TODO: Bạn cần lấy 'user_chuc_vu' từ CSDL lúc đăng nhập và lưu vào Session
-        // Ví dụ: $_SESSION['user_chuc_vu'] = 'BanGiamHieu'
-        // if (!isset($_SESSION['user_chuc_vu']) || $_SESSION['user_chuc_vu'] != 'BanGiamHieu') {
-        //     echo "Tài khoản của bạn không có quyền truy cập chức năng này.";
-        //     exit;
-        // }
         
         // --- Hết kiểm tra quyền ---
 
@@ -73,11 +65,14 @@ class BGHController extends Controller { // <-- Tên class là BGHController
     /**
      * API: Xử lý hành động Duyệt / Từ chối
      * URL: /bgh/xuLyPhieuDiem (POST)
+     * ✅ SỬA: Đọc JSON từ request body thay vì $_POST
      */
     public function xuLyPhieuDiem() {
         header('Content-Type: application/json');
+        
+        // ✅ SỬA: Đọc JSON từ php://input
         $data = json_decode(file_get_contents('php://input'), true);
-
+        
         $ma_phieu = filter_var($data['ma_phieu'] ?? null, FILTER_VALIDATE_INT);
         $action = $data['action'] ?? ''; // 'duyet' hoặc 'tuchoi'
 
@@ -90,18 +85,18 @@ class BGHController extends Controller { // <-- Tên class là BGHController
         $result = [];
         
         if ($action == 'duyet') {
-            // Thực hiện duyệt
-            $result = $this->diemSoModel->duyetPhieu($ma_phieu, $this->ma_nguoi_dung_bgh);
+            // Thực hiện duyệt - Gọi đúng tên method trong Model
+            $result = $this->diemSoModel->duyetPhieuChinhSuaMoi($ma_phieu, $this->ma_nguoi_dung_bgh);
         
         } elseif ($action == 'tuchoi') {
             // Thực hiện từ chối
             $ly_do = $data['ly_do'] ?? '';
-            if (empty($ly_do)) {
+            if (empty(trim($ly_do))) {
                  http_response_code(400);
                  echo json_encode(['success' => false, 'message' => 'Vui lòng nhập lý do từ chối.']);
                  return;
             }
-            $result = $this->diemSoModel->tuChoiPhieu($ma_phieu, $this->ma_nguoi_dung_bgh, $ly_do);
+            $result = $this->diemSoModel->tuChoiPhieuChinhSuaMoi($ma_phieu, $this->ma_nguoi_dung_bgh, $ly_do);
         
         } else {
             http_response_code(400);

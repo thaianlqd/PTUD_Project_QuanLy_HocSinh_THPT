@@ -112,7 +112,11 @@
         const notification = document.getElementById('notification');
 
         async function submitDiemDanh(button, maPhien) {
-            if (!confirm('Bạn có chắc muốn điểm danh phiên này?')) return;
+            // Hiển thị popup nhập mật khẩu
+            const matKhau = prompt('Nhập mật khẩu điểm danh (nếu có, bỏ trống nếu không cần):');
+            
+            // Nếu người dùng bấm Cancel
+            if (matKhau === null) return;
 
             button.disabled = true;
             button.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang xử lý...';
@@ -120,6 +124,9 @@
 
             const formData = new FormData();
             formData.append('ma_phien', maPhien);
+            if (matKhau) {
+                formData.append('mat_khau', matKhau);
+            }
 
             try {
                 const res = await fetch(BASE_URL + '/hocsinh/submitDiemDanhApi', {

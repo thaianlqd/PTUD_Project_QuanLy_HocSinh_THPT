@@ -44,6 +44,7 @@
                                 <th>Thời Gian</th>
                                 <th>Kết Quả</th>
                                 <th>Trạng Thái</th>
+                                <th style="width: 130px;">Hành động</th>
                             </tr>
                         </thead>
                         <tbody id="tableHistoryBody">
@@ -87,6 +88,19 @@
                                 <input type="datetime-local" class="form-control" id="inputThoiGianDong">
                                 <div class="form-text">Bỏ trống để đặt 15 phút.</div>
                             </div>
+                            <div class="mb-3 border-top pt-3">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="checkYeuCauMatKhau">
+                                    <label class="form-check-label fw-bold" for="checkYeuCauMatKhau">
+                                        <i class="bi bi-lock-fill text-warning"></i> Yêu cầu mật khẩu khi điểm danh
+                                    </label>
+                                </div>
+                                <div id="matKhauFields" style="display: none;">
+                                    <label for="inputMatKhau" class="form-label">Mật khẩu:</label>
+                                    <input type="text" class="form-control" id="inputMatKhau" placeholder="Nhập mật khẩu...">
+                                    <div class="form-text text-danger">HS phải nhập đúng mật khẩu này mới được điểm danh.</div>
+                                </div>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="inputGhiChu" class="form-label">Ghi chú (nếu có):</label>
@@ -97,6 +111,63 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-primary w-100 fw-bold" id="btnSubmitTaoPhien" onclick="submitTaoPhien()">
                         Bắt Đầu Điểm Danh Thủ Công >>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SỬA PHIÊN -->
+    <div class="modal fade" id="modalSuaPhien" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-pencil-square"></i> Chỉnh Sửa Phiên Điểm Danh
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="notificationModalSuaPhien" class="alert" style="display: none;"></div>
+                    <form id="formSuaPhien">
+                        <input type="hidden" id="editMaPhien">
+                        <div class="mb-3">
+                            <label for="editTieuDe" class="form-label">Tiêu đề:</label>
+                            <input type="text" class="form-control" id="editTieuDe" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="editGhiChu" class="form-label">Ghi chú (tuỳ chọn):</label>
+                            <textarea class="form-control" id="editGhiChu" rows="2"></textarea>
+                        </div>
+                        <div id="editLoaiPhienInfo" class="alert alert-info mb-3">
+                            <strong>Loại phiên:</strong> <span id="editLoaiPhienText"></span>
+                        </div>
+                        <div id="editHenGioFields" style="display: none;" class="p-3 bg-light rounded border mb-3">
+                            <h6 class="text-primary">Thời gian (Học sinh tự động)</h6>
+                            <div class="mb-3">
+                                <label for="editThoiGianMo" class="form-label">Mở từ:</label>
+                                <input type="datetime-local" class="form-control" id="editThoiGianMo">
+                            </div>
+                            <div class="mb-3">
+                                <label for="editThoiGianDong" class="form-label">Đóng lúc:</label>
+                                <input type="datetime-local" class="form-control" id="editThoiGianDong">
+                            </div>
+                            <div class="form-check mb-2">
+                                <input type="checkbox" class="form-check-input" id="editCheckYeuCauMatKhau">
+                                <label class="form-check-label" for="editCheckYeuCauMatKhau">
+                                    Yêu cầu mật khẩu
+                                </label>
+                            </div>
+                            <div id="editMatKhauFields" style="display: none;">
+                                <label for="editMatKhau" class="form-label">Mật khẩu mới (để trống nếu không đổi):</label>
+                                <input type="password" class="form-control" id="editMatKhau" placeholder="Nhập mật khẩu mới...">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary w-100 fw-bold" id="btnSubmitSuaPhien" onclick="submitSuaPhien()">
+                        <i class="bi bi-save"></i> Lưu Thay Đổi
                     </button>
                 </div>
             </div>
@@ -189,6 +260,15 @@
                 }
             });
 
+            // Gắn sự kiện cho checkbox mật khẩu
+            document.getElementById('checkYeuCauMatKhau').addEventListener('change', function() {
+                const matKhauFields = document.getElementById('matKhauFields');
+                matKhauFields.style.display = this.checked ? 'block' : 'none';
+                if (!this.checked) {
+                    document.getElementById('inputMatKhau').value = '';
+                }
+            });
+
             // Tải bảng lịch sử ngay lập tức
             renderHistoryTable(preloadedHistory);
         });
@@ -198,7 +278,7 @@
             const tbodyHistory = document.getElementById('tableHistoryBody');
             tbodyHistory.innerHTML = '';
             if(!lich_su || lich_su.length === 0) {
-                tbodyHistory.innerHTML = '<tr><td colspan="5" class="text-center">Chưa có phiên điểm danh nào.</td></tr>';
+                tbodyHistory.innerHTML = '<tr><td colspan="6" class="text-center">Chưa có phiên điểm danh nào.</td></tr>';
                 return;
             }
 
@@ -222,6 +302,15 @@
                     case 'ChuaMo': trangThaiClass = 'text-primary'; trangThaiText = 'Sắp diễn ra'; break;
                 }
 
+                // Nút xóa chỉ hiện khi chưa có ai điểm danh
+                let btnXoa = phien.da_diem_danh == 0 
+                    ? `<button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); xoaPhien(${phien.ma_phien})" title="Xóa phiên">
+                            <i class="bi bi-trash"></i>
+                       </button>` 
+                    : `<button class="btn btn-sm btn-secondary" disabled title="Không thể xóa - đã có học sinh điểm danh">
+                            <i class="bi bi-trash"></i>
+                       </button>`;
+
                 tbodyHistory.innerHTML += `
                     <tr class="history-row" onclick="openSessionDetailModal(${phien.ma_phien})">
                         <td>${new Date(phien.ngay_diem_danh).toLocaleDateString('vi-VN')}</td>
@@ -232,6 +321,12 @@
                         <td>${thoiGianText}</td>
                         <td class="text-center fw-bold">${phien.da_diem_danh} / ${currentSiSo}</td>
                         <td class="${trangThaiClass}">${trangThaiText}</td>
+                        <td onclick="event.stopPropagation()">
+                            <button class="btn btn-sm btn-warning me-1" onclick="openEditModal(${phien.ma_phien})" title="Chỉnh sửa">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            ${btnXoa}
+                        </td>
                     </tr>
                 `;
             });
@@ -268,23 +363,71 @@
             document.getElementById('inputGhiChu').value = '';
             document.getElementById('selectLoaiPhien').value = 'GiaoVien';
             document.getElementById('selectLoaiPhien').dispatchEvent(new Event('change'));
+            document.getElementById('checkYeuCauMatKhau').checked = false;
+            document.getElementById('matKhauFields').style.display = 'none';
+            document.getElementById('inputMatKhau').value = '';
             document.getElementById('notificationModalTaoPhien').style.display = 'none';
             modalTao.show();     
         }
 
-        // 3. Submit Tạo Phiên (Xử lý 2 luồng)
+        // 3. Submit Tạo Phiên (Xử lý 2 luồng + mật khẩu)
         async function submitTaoPhien() {
             const btn = document.getElementById('btnSubmitTaoPhien');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang xử lý...';
             
-            const formData = new FormData(document.getElementById('formTaoPhien'));
+            const formData = new FormData();
             formData.append('ma_lop', currentMaLop);
-            formData.append('tieu_de', document.getElementById('inputTieuDe').value);
-            formData.append('loai_phien', document.getElementById('selectLoaiPhien').value);
-            formData.append('thoi_gian_mo', document.getElementById('inputThoiGianMo').value);
-            formData.append('thoi_gian_dong', document.getElementById('inputThoiGianDong').value);
-            formData.append('ghi_chu', document.getElementById('inputGhiChu').value);
+            
+            const tieuDe = document.getElementById('inputTieuDe').value.trim();
+            const ghiChu = document.getElementById('inputGhiChu').value.trim();
+            const loaiPhien = document.getElementById('selectLoaiPhien').value;
+            
+            // Lấy thời gian (CHỈ gửi nếu không rỗng)
+            const thoiGianMo = document.getElementById('inputThoiGianMo').value.trim();
+            const thoiGianDong = document.getElementById('inputThoiGianDong').value.trim();
+            
+            if (!tieuDe) {
+                const noti = document.getElementById('notificationModalTaoPhien');
+                noti.className = 'alert alert-danger';
+                noti.textContent = 'Vui lòng nhập tiêu đề phiên!';
+                noti.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = loaiPhien === 'HocSinh' ? 'Tạo Phiên Tự Động' : 'Bắt Đầu Điểm Danh Thủ Công >>';
+                return;
+            }
+            
+            formData.append('tieu_de', tieuDe);
+            formData.append('ghi_chu', ghiChu);
+            formData.append('loai_phien', loaiPhien);
+            
+            // CHỈ gửi thời gian nếu không rỗng
+            if (thoiGianMo) {
+                formData.append('thoi_gian_mo', thoiGianMo);
+            }
+            if (thoiGianDong) {
+                formData.append('thoi_gian_dong', thoiGianDong);
+            }
+            
+            // Thêm mật khẩu (chỉ khi chế độ HocSinh)
+            if (loaiPhien === 'HocSinh') {
+                const yeuCauMatKhau = document.getElementById('checkYeuCauMatKhau').checked;
+                formData.append('yeu_cau_mat_khau', yeuCauMatKhau ? 'true' : 'false');
+                
+                if (yeuCauMatKhau) {
+                    const matKhau = document.getElementById('inputMatKhau').value.trim();
+                    if (!matKhau) {
+                        const noti = document.getElementById('notificationModalTaoPhien');
+                        noti.className = 'alert alert-danger';
+                        noti.textContent = 'Vui lòng nhập mật khẩu khi bật yêu cầu mật khẩu!';
+                        noti.style.display = 'block';
+                        btn.disabled = false;
+                        btn.textContent = 'Tạo Phiên Tự Động';
+                        return;
+                    }
+                    formData.append('mat_khau', matKhau);
+                }
+            }
             
             try {
                 const res = await fetch(BASE_URL + '/giaovien/taoPhienApi', { method: 'POST', body: formData });
@@ -300,7 +443,7 @@
                     } else {
                         // LUỒNG 2: HS TỰ ĐIỂM DANH
                         notification.className = 'alert alert-success';
-                        notification.textContent = 'Đã tạo phiên điểm danh tự động cho học sinh!';
+                        notification.textContent = data.message;
                         notification.style.display = 'block';
                         setTimeout(() => notification.style.display = 'none', 3000);
                         await refreshHistoryTable(); // Tải lại lịch sử
@@ -569,6 +712,177 @@
                 modalNotification.textContent = 'Lỗi: ' + err.message;
                 modalNotification.style.display = 'block';
                 btn.disabled = false;
+            }
+        }
+
+        // ========== CHỨC NĂNG SỬA PHIÊN ==========
+        const modalSua = new bootstrap.Modal(document.getElementById('modalSuaPhien'));
+
+        // Sự kiện cho checkbox mật khẩu trong modal sửa
+        document.getElementById('editCheckYeuCauMatKhau').addEventListener('change', function() {
+            const editMatKhauFields = document.getElementById('editMatKhauFields');
+            editMatKhauFields.style.display = this.checked ? 'block' : 'none';
+            if (!this.checked) {
+                document.getElementById('editMatKhau').value = '';
+            }
+        });
+
+        async function openEditModal(maPhien) {
+            document.getElementById('editMaPhien').value = maPhien;
+            document.getElementById('notificationModalSuaPhien').style.display = 'none';
+
+            // Tìm phiên trong lịch sử
+            const phien = preloadedHistory.find(p => p.ma_phien == maPhien);
+            if (!phien) {
+                alert('Không tìm thấy thông tin phiên!');
+                return;
+            }
+
+            console.log('📝 Dữ liệu phiên:', phien); // DEBUG
+
+            // Điền dữ liệu vào form
+            document.getElementById('editTieuDe').value = phien.tieu_de || '';
+            document.getElementById('editGhiChu').value = phien.ghi_chu || '';
+            
+            // Hiển thị loại phiên (không cho sửa)
+            const loaiText = phien.loai_phien == 'GiaoVien' ? 'Giáo viên điểm danh thủ công' : 'Học sinh tự điểm danh';
+            document.getElementById('editLoaiPhienText').textContent = loaiText;
+
+            // Hiển thị phần thời gian nếu là HocSinh
+            const editHenGioFields = document.getElementById('editHenGioFields');
+            if (phien.loai_phien == 'HocSinh') {
+                editHenGioFields.style.display = 'block';
+                
+                // ✅ FIX: Convert MySQL datetime sang datetime-local format
+                // MySQL format: "2025-12-07 02:00:00" → Input cần: "2025-12-07T02:00"
+                if (phien.thoi_gian_mo) {
+                    const tgMo = phien.thoi_gian_mo.replace(' ', 'T').substring(0, 16);
+                    console.log('⏰ Thời gian mở:', phien.thoi_gian_mo, '→', tgMo);
+                    document.getElementById('editThoiGianMo').value = tgMo;
+                }
+                if (phien.thoi_gian_dong) {
+                    const tgDong = phien.thoi_gian_dong.replace(' ', 'T').substring(0, 16);
+                    console.log('⏰ Thời gian đóng:', phien.thoi_gian_dong, '→', tgDong);
+                    document.getElementById('editThoiGianDong').value = tgDong;
+                }
+                
+                // Checkbox mật khẩu
+                const yeuCauMK = phien.yeu_cau_mat_khau == 1;
+                document.getElementById('editCheckYeuCauMatKhau').checked = yeuCauMK;
+                document.getElementById('editMatKhauFields').style.display = yeuCauMK ? 'block' : 'none';
+                document.getElementById('editMatKhau').value = ''; // Không hiện mật khẩu cũ
+            } else {
+                editHenGioFields.style.display = 'none';
+            }
+
+            modalSua.show();
+        }
+
+        async function submitSuaPhien() {
+            const btn = document.getElementById('btnSubmitSuaPhien');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang lưu...';
+
+            const maPhien = document.getElementById('editMaPhien').value;
+            const tieuDe = document.getElementById('editTieuDe').value.trim();
+            const ghiChu = document.getElementById('editGhiChu').value.trim();
+
+            if (!tieuDe) {
+                const noti = document.getElementById('notificationModalSuaPhien');
+                noti.className = 'alert alert-danger';
+                noti.textContent = 'Vui lòng nhập tiêu đề!';
+                noti.style.display = 'block';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-save"></i> Lưu Thay Đổi';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('ma_phien', maPhien);
+            formData.append('tieu_de', tieuDe);
+            formData.append('ghi_chu', ghiChu);
+
+            // Tìm phiên để biết loại
+            const phien = preloadedHistory.find(p => p.ma_phien == maPhien);
+            if (phien && phien.loai_phien == 'HocSinh') {
+                const thoiGianMo = document.getElementById('editThoiGianMo').value.trim();
+                const thoiGianDong = document.getElementById('editThoiGianDong').value.trim();
+                
+                if (thoiGianMo) formData.append('thoi_gian_mo', thoiGianMo);
+                if (thoiGianDong) formData.append('thoi_gian_dong', thoiGianDong);
+
+                const yeuCauMatKhau = document.getElementById('editCheckYeuCauMatKhau').checked;
+                formData.append('yeu_cau_mat_khau', yeuCauMatKhau ? 'true' : 'false');
+
+                if (yeuCauMatKhau) {
+                    const matKhau = document.getElementById('editMatKhau').value.trim();
+                    if (matKhau) { // Chỉ gửi nếu người dùng nhập mật khẩu mới
+                        formData.append('mat_khau', matKhau);
+                    }
+                }
+            }
+
+            try {
+                const res = await fetch(BASE_URL + '/giaovien/capNhatPhienApi', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (data.success) {
+                    const noti = document.getElementById('notificationModalSuaPhien');
+                    noti.className = 'alert alert-success';
+                    noti.textContent = 'Cập nhật thành công!';
+                    noti.style.display = 'block';
+
+                    // Tải lại lịch sử
+                    await refreshHistoryTable();
+
+                    setTimeout(() => {
+                        modalSua.hide();
+                        noti.style.display = 'none';
+                    }, 1500);
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (err) {
+                const noti = document.getElementById('notificationModalSuaPhien');
+                noti.className = 'alert alert-danger';
+                noti.textContent = 'Lỗi: ' + err.message;
+                noti.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-save"></i> Lưu Thay Đổi';
+            }
+        }
+
+        // ========== CHỨC NĂNG XÓA PHIÊN ==========
+        async function xoaPhien(maPhien) {
+            console.log('🗑️ Đang xóa phiên:', maPhien); // DEBUG
+            
+            if (!confirm('⚠️ Bạn có chắc muốn XÓA phiên điểm danh này không?\n\n(Chỉ xóa được nếu chưa có học sinh nào điểm danh)')) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('ma_phien', maPhien);
+
+            try {
+                const url = BASE_URL + '/giaovien/xoaPhienApi';
+                console.log('📡 Gửi request đến:', url);
+                
+                const res = await fetch(url, { method: 'POST', body: formData });
+                console.log('📥 Response status:', res.status);
+                
+                const data = await res.json();
+                console.log('📦 Response data:', data);
+
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    await refreshHistoryTable();
+                } else {
+                    alert('❌ ' + data.message);
+                }
+            } catch (err) {
+                console.error('❌ Lỗi xóa phiên:', err);
+                alert('❌ Lỗi: ' + err.message);
             }
         }
 

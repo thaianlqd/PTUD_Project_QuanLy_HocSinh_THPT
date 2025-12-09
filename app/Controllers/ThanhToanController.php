@@ -51,26 +51,25 @@ class ThanhToanController extends Controller
     // Trang danh sách hóa đơn
     public function index()
     {
-        $this->checkAuth(); // <-- SỬA LỖI: Thêm kiểm tra ở đây
+        $this->checkAuth();
 
         try {
+            // Lấy danh sách
             $hoa_don_chua_tt = $this->thanhToanModel->getHoaDonChuaThanhToan($this->ma_phu_huynh);
             $hoa_don_da_tt = $this->thanhToanModel->getHoaDonDaThanhToan($this->ma_phu_huynh);
             $hoa_don_cho_xac_nhan = $this->thanhToanModel->getHoaDonChoXacNhanTaiTruong($this->ma_phu_huynh);
 
-            // thêm flag quá hạn
+            // --- XỬ LÝ LOGIC QUÁ HẠN TẠI ĐÂY ---
+            // Duyệt qua mảng để gán cờ 'qua_han'
             if (is_array($hoa_don_chua_tt)) {
                 foreach ($hoa_don_chua_tt as &$hd) {
+                    // Logic: Nếu ngày hết hạn < giờ hiện tại => Quá hạn
+                    // Model trả về true/false, ta gán thẳng vào mảng
                     $hd['qua_han'] = $this->thanhToanModel->kiemTraQuaHan($hd['ma_hoa_don']);
                 }
-                unset($hd);
+                unset($hd); // Hủy tham chiếu
             }
-            if (is_array($hoa_don_cho_xac_nhan)) {
-                foreach ($hoa_don_cho_xac_nhan as &$hd) {
-                    $hd['qua_han'] = $this->thanhToanModel->kiemTraQuaHan($hd['ma_hoa_don']);
-                }
-                unset($hd);
-            }
+            // ------------------------------------
 
             $data = [
                 'user_name' => $_SESSION['user_name'] ?? 'Phụ Huynh',
@@ -84,9 +83,8 @@ class ThanhToanController extends Controller
             $content = $this->loadView('PhuHuynh/thanh_toan_hoc_phi', $data);
             echo $content;
         } catch (Exception $e) {
-            // Log và trả về view lỗi nếu cần
-            error_log("[ThanhToanController@index] Lỗi: " . $e->getMessage());
-            die("Đã có lỗi trong khi tải dữ liệu. Vui lòng thử lại sau.");
+            error_log("Lỗi index: " . $e->getMessage());
+            die("Lỗi tải trang.");
         }
     }
 
@@ -224,18 +222,104 @@ class ThanhToanController extends Controller
     }
 
     // In phiếu (dựa trên session)
+    // public function inPhieu()
+    // {
+    //     $this->checkAuth(); // <-- SỬA LỖI: Thêm kiểm tra ở đây
+
+    //     $ma_hoa_don = filter_input(INPUT_GET, 'ma_hoa_don', FILTER_VALIDATE_INT);
+    //     if (!$ma_hoa_don || !isset($_SESSION['phieu_thong_bao']) || $_SESSION['phieu_thong_bao']['ma_hoa_don'] != $ma_hoa_don) {
+    //         header('Location: ' . BASE_URL . '/thanhtoan/index');
+    //         exit;
+    //     }
+
+    //     $data = $_SESSION['phieu_thong_bao'];
+    //     unset($_SESSION['phieu_thong_bao']); // chỉ in 1 lần
+    //     $content = $this->loadView('PhuHuynh/phieu_thong_bao', $data);
+    //     echo $content;
+    // }
+    // public function inPhieu()
+    // {
+    //     $this->checkAuth();
+
+    //     $ma_hoa_don = filter_input(INPUT_GET, 'ma_hoa_don', FILTER_VALIDATE_INT);
+    //     if (!$ma_hoa_don) die("Mã hóa đơn không hợp lệ");
+
+    //     // 1. Lấy chi tiết hóa đơn từ DB (phải đảm bảo đúng của phụ huynh này)
+    //     $hoa_don = $this->thanhToanModel->getHoaDonChiTiet($ma_hoa_don, $this->ma_phu_huynh);
+
+    //     // 2. Chỉ cho in nếu Đã Thanh Toán hoặc đang Chờ xác nhận tiền mặt
+    //     if (!$hoa_don || ($hoa_don['trang_thai_hoa_don'] !== 'DaThanhToan' && $hoa_don['trang_thai_tam'] !== 'ChoThanhToanTaiTruong')) {
+    //         die("Hóa đơn này chưa được thanh toán hoặc không tồn tại.");
+    //     }
+
+    //     // 3. Chuẩn bị dữ liệu hiển thị (Mapping từ DB sang View)
+    //     // Tạo số thứ tự phiếu giả lập từ mã HĐ
+    //     $stt_phieu = date('Ymd', strtotime($hoa_don['ngay_lap_hoa_don'])) . str_pad($ma_hoa_don, 4, '0', STR_PAD_LEFT);
+        
+    //     // Format số tiền
+    //     $so_tien_sach = preg_replace('/[^0-9]/', '', (string)$hoa_don['thanh_tien']);
+    //     $so_tien_formatted = number_format((int)$so_tien_sach, 0, ',', '.');
+
+    //     $data = [
+    //         'ma_hoa_don'    => $ma_hoa_don,
+    //         'stt_phieu'     => $stt_phieu,
+    //         'ten_phu_huynh' => $_SESSION['user_name'] ?? 'Phụ huynh',
+    //         'ten_con'       => $hoa_don['ten_hoc_sinh'] ?? 'Học sinh', // Nếu model chưa join bảng học sinh thì bác check lại query
+    //         'noi_dung'      => $hoa_don['ghi_chu'],
+    //         'so_tien'       => $so_tien_formatted,
+    //         'thoi_han'      => isset($hoa_don['ngay_het_han']) ? date('d/m/Y', strtotime($hoa_don['ngay_het_han'])) : '',
+    //         'dia_diem'      => 'Hệ thống thanh toán trực tuyến', // Sửa lại chút vì online
+    //         'ngay_tao'      => date('d/m/Y H:i:s')
+    //     ];
+        
+    //     // Nếu thanh toán tiền mặt thì đổi địa điểm
+    //     if ($hoa_don['hinh_thuc_thanh_toan'] == 'TienMat' || $hoa_don['trang_thai_tam'] == 'ChoThanhToanTaiTruong') {
+    //          $data['dia_diem'] = 'Phòng Tài vụ - Tầng 1, Trường THPT';
+    //     }
+
+    //     $content = $this->loadView('PhuHuynh/phieu_thong_bao', $data);
+    //     echo $content;
+    // }
     public function inPhieu()
     {
-        $this->checkAuth(); // <-- SỬA LỖI: Thêm kiểm tra ở đây
+        $this->checkAuth();
 
         $ma_hoa_don = filter_input(INPUT_GET, 'ma_hoa_don', FILTER_VALIDATE_INT);
-        if (!$ma_hoa_don || !isset($_SESSION['phieu_thong_bao']) || $_SESSION['phieu_thong_bao']['ma_hoa_don'] != $ma_hoa_don) {
-            header('Location: ' . BASE_URL . '/thanhtoan/index');
-            exit;
+        if (!$ma_hoa_don) die("Mã hóa đơn không hợp lệ");
+
+        $hoa_don = $this->thanhToanModel->getHoaDonChiTiet($ma_hoa_don, $this->ma_phu_huynh);
+
+        if (!$hoa_don || ($hoa_don['trang_thai_hoa_don'] !== 'DaThanhToan' && $hoa_don['trang_thai_tam'] !== 'ChoThanhToanTaiTruong')) {
+            die("Hóa đơn này chưa được thanh toán hoặc không tồn tại.");
         }
 
-        $data = $_SESSION['phieu_thong_bao'];
-        unset($_SESSION['phieu_thong_bao']); // chỉ in 1 lần
+        $stt_phieu = date('Ymd', strtotime($hoa_don['ngay_lap_hoa_don'])) . str_pad($ma_hoa_don, 4, '0', STR_PAD_LEFT);
+        
+        // --- [SỬA LỖI 20 TRIỆU TẠI ĐÂY] ---
+        // Cách cũ bị sai do xóa dấu chấm thập phân: preg_replace...
+        
+        // Cách mới: Ép kiểu float chuẩn chỉ
+        $val = floatval($hoa_don['thanh_tien']); 
+        $so_tien_formatted = number_format($val, 0, ',', '.');
+        // ----------------------------------
+
+        $data = [
+            'ma_hoa_don'    => $ma_hoa_don,
+            'stt_phieu'     => $stt_phieu,
+            'ten_phu_huynh' => $_SESSION['user_name'] ?? 'Phụ huynh',
+            // ... (các phần dưới giữ nguyên)
+            'ten_con'       => $hoa_don['ten_hoc_sinh'] ?? 'Học sinh',
+            'noi_dung'      => $hoa_don['ghi_chu'],
+            'so_tien'       => $so_tien_formatted, // Đã sửa
+            'thoi_han'      => isset($hoa_don['ngay_het_han']) ? date('d/m/Y', strtotime($hoa_don['ngay_het_han'])) : '',
+            'dia_diem'      => 'Hệ thống thanh toán trực tuyến',
+            'ngay_tao'      => date('d/m/Y H:i:s')
+        ];
+        
+        if ($hoa_don['hinh_thuc_thanh_toan'] == 'TienMat' || $hoa_don['trang_thai_tam'] == 'ChoThanhToanTaiTruong') {
+             $data['dia_diem'] = 'Phòng Tài vụ - Tầng 1, Trường THPT';
+        }
+
         $content = $this->loadView('PhuHuynh/phieu_thong_bao', $data);
         echo $content;
     }
@@ -305,30 +389,153 @@ class ThanhToanController extends Controller
      * Trang trả về khi user quay lại (return URL)
      * ===== SỬA LỖI: HÀM NÀY KHÔNG ĐƯỢC CHECKAUTH =====
      */
+    // public function ketQua()
+    // {
+    //     // Lấy query string gốc
+    //     $queryString = $_SERVER['QUERY_STRING'] ?? '';
+    //     parse_str($queryString, $params);
+
+    //     // Nếu không có params từ query, thử $_GET
+    //     if (empty($params) && !empty($_GET)) {
+    //         $params = $_GET;
+    //     }
+
+    //     if (isset($params['url'])) {
+    //         unset($params['url']);
+    //     }
+
+    //     // Chỉ xác thực chữ ký, không vội cập nhật DB (IPN sẽ cập nhật chính thức)
+    //     $result = VNPAYHelper::xacThucIPN($this->vnp_HashSecret, $params);
+
+    //     if ($result['success']) {
+    //         $_SESSION['flash_message'] = ['type' => 'success', 'message' => 'Thanh toán thành công! Hệ thống đang xử lý, vui lòng chờ cập nhật.'];
+    //     } else {
+    //         $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Thanh toán thất bại, bị hủy hoặc chữ ký không hợp lệ.'];
+    //     }
+
+    //     header('Location: ' . rtrim(BASE_URL, '/') . '/thanhtoan/index');
+    //     exit;
+    // }
+    // public function ketQua()
+    // {
+    //     $queryString = $_SERVER['QUERY_STRING'] ?? '';
+    //     parse_str($queryString, $params);
+    //     if (empty($params) && !empty($_GET)) $params = $_GET;
+    //     if (isset($params['url'])) unset($params['url']);
+
+    //     $result = VNPAYHelper::xacThucIPN($this->vnp_HashSecret, $params);
+
+    //     if ($result['success']) {
+    //         $vnp_TxnRef = $params['vnp_TxnRef'] ?? '';
+    //         $parts = explode('_', $vnp_TxnRef);
+    //         $ma_hoa_don = $parts[0];
+    //         $ma_giao_dich = $params['vnp_TransactionNo'] ?? 'VNPAY_REF';
+    //         $so_tien = ($params['vnp_Amount'] ?? 0) / 100;
+
+    //         // Gọi Model update
+    //         $updateDB = $this->thanhToanModel->xacNhanThanhToan(
+    //             $ma_hoa_don, 
+    //             $ma_giao_dich, 
+    //             'VNPAY', 
+    //             $so_tien
+    //         );
+
+    //         if ($updateDB['success']) {
+    //             // Trường hợp chuẩn: Cập nhật thành công
+    //             $_SESSION['flash_message'] = ['type' => 'success', 'message' => 'Thanh toán VNPAY thành công!'];
+    //         } else {
+    //             // Trường hợp đã thanh toán rồi (do reload trang)
+    //             if (strpos($updateDB['message'], 'đã được thanh toán') !== false) {
+    //                  $_SESSION['flash_message'] = ['type' => 'info', 'message' => 'Giao dịch đã được ghi nhận thành công.'];
+    //             } else {
+    //                 // Lỗi khác (sai tiền, lỗi DB...)
+    //                  $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Lỗi: ' . $updateDB['message']];
+    //             }
+    //         }
+
+    //     } else {
+    //         $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Lỗi xác thực chữ ký VNPAY.'];
+    //     }
+
+    //     header('Location: ' . rtrim(BASE_URL, '/') . '/thanhtoan/index');
+    //     exit;
+    // }
     public function ketQua()
     {
-        // Lấy query string gốc
+        // 1. Lấy dữ liệu trả về từ VNPAY
         $queryString = $_SERVER['QUERY_STRING'] ?? '';
         parse_str($queryString, $params);
-
-        // Nếu không có params từ query, thử $_GET
+        
+        // Fallback nếu query string rỗng
         if (empty($params) && !empty($_GET)) {
             $params = $_GET;
         }
-
+        
+        // Loại bỏ param 'url' nếu có (do htaccess/router thêm vào)
         if (isset($params['url'])) {
             unset($params['url']);
         }
 
-        // Chỉ xác thực chữ ký, không vội cập nhật DB (IPN sẽ cập nhật chính thức)
+        // 2. Xác thực chữ ký bảo mật
         $result = VNPAYHelper::xacThucIPN($this->vnp_HashSecret, $params);
 
         if ($result['success']) {
-            $_SESSION['flash_message'] = ['type' => 'success', 'message' => 'Thanh toán thành công! Hệ thống đang xử lý, vui lòng chờ cập nhật.'];
+            // --- Lấy thông tin giao dịch ---
+            $vnp_TxnRef = $params['vnp_TxnRef'] ?? '';
+            $parts = explode('_', $vnp_TxnRef);
+            $ma_hoa_don = $parts[0]; // ID hóa đơn gốc
+            
+            $ma_giao_dich = $params['vnp_TransactionNo'] ?? 'VNPAY_UNKNOWN';
+            $so_tien = ($params['vnp_Amount'] ?? 0) / 100; // VNPAY nhân 100 nên phải chia lại
+
+            // 3. Cập nhật vào Database (Ghi rõ 'VNPAY')
+            $updateDB = $this->thanhToanModel->xacNhanThanhToan(
+                $ma_hoa_don, 
+                $ma_giao_dich, 
+                'VNPAY', 
+                $so_tien
+            );
+
+            if ($updateDB['success']) {
+                // ==> TRƯỜNG HỢP 1: Cập nhật thành công lần đầu
+                $_SESSION['flash_message'] = [
+                    'type' => 'success', 
+                    'message' => 'Thanh toán VNPAY thành công! Đang mở phiếu in...'
+                ];
+                
+                // [QUAN TRỌNG] Lưu ID vào session để bên View tự bật tab in
+                $_SESSION['print_invoice_id'] = $ma_hoa_don; 
+                
+            } else {
+                // ==> TRƯỜNG HỢP 2: Có lỗi (hoặc đã thanh toán rồi do refresh trang)
+                
+                // Kiểm tra xem có phải lỗi do "Đã thanh toán trước đó" không
+                if (strpos($updateDB['message'], 'đã được thanh toán') !== false) {
+                     $_SESSION['flash_message'] = [
+                         'type' => 'info', 
+                         'message' => 'Giao dịch đã được ghi nhận trước đó.'
+                     ];
+                     
+                     // [QUAN TRỌNG] Vẫn cho in phiếu lại nếu user lỡ refresh
+                     $_SESSION['print_invoice_id'] = $ma_hoa_don;
+                } else {
+                    // Lỗi thật sự (sai tiền, lỗi DB...)
+                    $_SESSION['flash_message'] = [
+                        'type' => 'danger', 
+                        'message' => 'Lỗi cập nhật: ' . $updateDB['message']
+                    ];
+                }
+            }
+
         } else {
-            $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Thanh toán thất bại, bị hủy hoặc chữ ký không hợp lệ.'];
+            // Lỗi chữ ký (Hack hoặc sai key)
+            $_SESSION['flash_message'] = [
+                'type' => 'danger', 
+                'message' => 'Lỗi xác thực chữ ký VNPAY. Giao dịch không hợp lệ.'
+            ];
         }
 
+        // 4. Quay về trang danh sách
         header('Location: ' . rtrim(BASE_URL, '/') . '/thanhtoan/index');
         exit;
     }

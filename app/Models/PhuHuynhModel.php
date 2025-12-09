@@ -98,70 +98,73 @@ class PhuHuynhModel {
     }
 
     /**
-     * Lấy bảng điểm trung bình các môn (của con)
+     * ✅ Lấy bảng điểm trung bình các môn (của con)
      */
     public function getBangDiem($ma_phu_huynh) {
         $ma_hs = $this->getMaHocSinhCuaPhuHuynh($ma_phu_huynh);
-        if (!$ma_hs) return [];
-
-        // Lấy mã 'ket_qua_hoc_tap' của HS đó
-        $stmt_kqht = $this->db->prepare("SELECT ma_ket_qua_hoc_tap FROM ket_qua_hoc_tap WHERE ma_nguoi_dung = ? LIMIT 1");
-        $stmt_kqht->execute([$ma_hs]);
-        $ma_kqht = $stmt_kqht->fetchColumn();
-        if (!$ma_kqht) return [];
         
-        // Lấy tất cả điểm của mã KQHT đó
+        error_log("getBangDiem - ma_phu_huynh: $ma_phu_huynh, ma_hs: " . ($ma_hs ?? 'NULL'));
+        
+        if (!$ma_hs) {
+            error_log("getBangDiem - Không tìm thấy ma_hoc_sinh!");
+            return [];
+        }
+
+        // ✅ Query từ bảng diem_mon_hoc_hoc_ky
         $sql = "SELECT 
                     mh.ten_mon_hoc,
-                    ds.diem_so,
-                    ds.loai_diem
-                FROM diem_so ds
-                JOIN mon_hoc mh ON ds.ma_mon_hoc = mh.ma_mon_hoc
-                WHERE ds.ma_ket_qua_hoc_tap = ?
-                ORDER BY mh.ten_mon_hoc";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$ma_kqht]);
+                    d.diem_mieng,
+                    d.diem_15phut,
+                    d.diem_1tiet,
+                    d.diem_gua_ky,
+                    d.diem_cuoi_ky,
+                    d.diem_tb_mon_hk,
+                    d.xep_loai_mon,
+                    d.ma_hoc_ky
+                FROM diem_mon_hoc_hoc_ky d
+                JOIN mon_hoc mh ON d.ma_mon_hoc = mh.ma_mon_hoc
+                WHERE d.ma_hoc_sinh = ?
+                ORDER BY d.ma_hoc_ky, mh.ten_mon_hoc";
         
-        // Gộp điểm theo từng môn
-        $bang_diem = [];
-        foreach ($stmt->fetchAll() as $row) {
-            $mon = $row['ten_mon_hoc'];
-            if (!isset($bang_diem[$mon])) {
-                $bang_diem[$mon] = [
-                    'DiemMieng' => [], 
-                    'Diem15Phut' => [], 
-                    'Diem1Tiet' => [], 
-                    'DiemHocKy' => [], 
-                    'TB' => 0
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_hs]);
+            $results = $stmt->fetchAll();
+            
+            error_log("getBangDiem - Số dòng điểm: " . count($results));
+            if (count($results) > 0) {
+                error_log("getBangDiem - Dòng đầu: " . json_encode($results[0]));
+            }
+            
+            // Gộp điểm theo từng môn
+            $bang_diem = [];
+            foreach ($results as $row) {
+                $mon = $row['ten_mon_hoc'];
+                $hoc_ky = $row['ma_hoc_ky']; // ✅ HK1 hoặc HK2
+                
+                if (!isset($bang_diem[$mon])) {
+                    $bang_diem[$mon] = [];
+                }
+                
+                $bang_diem[$mon][$hoc_ky] = [
+                    'DiemMieng' => $row['diem_mieng'] ?? 0,
+                    'Diem15Phut' => $row['diem_15phut'] ?? 0,
+                    'Diem1Tiet' => $row['diem_1tiet'] ?? 0,
+                    'DiemGiuaKy' => $row['diem_gua_ky'] ?? 0,
+                    'DiemCuoiKy' => $row['diem_cuoi_ky'] ?? 0,
+                    'TB' => $row['diem_tb_mon_hk'] ?? 0,           // ✅ SỬA
+                    'XepLoai' => $row['xep_loai_mon'] ?? 'ChuaDat' // ✅ SỬA
                 ];
             }
-            $bang_diem[$mon][$row['loai_diem']][] = $row['diem_so'];
+            
+            error_log("getBangDiem - Kết quả cuối: " . json_encode($bang_diem));
+            
+            return $bang_diem;
+            
+        } catch (PDOException $e) {
+            error_log("Lỗi getBangDiem: " . $e->getMessage());
+            return [];
         }
-        
-        // Tính điểm trung bình
-        foreach ($bang_diem as $mon => &$diem) {
-            $tong = 0; 
-            $so_luong = 0;
-            if (!empty($diem['DiemMieng'])) { 
-                $tong += array_sum($diem['DiemMieng']); 
-                $so_luong += count($diem['DiemMieng']); 
-            }
-            if (!empty($diem['Diem15Phut'])) { 
-                $tong += array_sum($diem['Diem15Phut']); 
-                $so_luong += count($diem['Diem15Phut']); 
-            }
-            if (!empty($diem['Diem1Tiet'])) { 
-                $tong += array_sum($diem['Diem1Tiet']) * 2; 
-                $so_luong += count($diem['Diem1Tiet']) * 2; 
-            }
-            if (!empty($diem['DiemHocKy'])) { 
-                $tong += array_sum($diem['DiemHocKy']) * 3; 
-                $so_luong += count($diem['DiemHocKy']) * 3; 
-            }
-            $diem['TB'] = ($so_luong > 0) ? round($tong / $so_luong, 1) : 0;
-        }
-
-        return $bang_diem;
     }
 
     public function getTenTruongCuaCon($ma_phu_huynh) {

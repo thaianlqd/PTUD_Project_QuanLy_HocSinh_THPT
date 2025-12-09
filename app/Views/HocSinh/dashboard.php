@@ -68,7 +68,11 @@
         <li class="nav-item"><a class="nav-link" href="<?= BASE_URL ?>/baitap/index"><i class="bi bi-journal-text me-2"></i> Bài Tập & Nộp Bài</a></li>
         <li class="nav-item"><a class="nav-link" href="<?= BASE_URL ?>/hocsinh/diemdanh"><i class="bi bi-calendar-check me-2"></i> Điểm Danh</a></li>
         <li class="nav-item"><a class="nav-link" href="#diem-so"><i class="bi bi-bar-chart-line-fill me-2"></i> Bảng Điểm</a></li>
-        <li class="nav-item"><a class="nav-link" href="#lich-hoc"><i class="bi bi-calendar-week me-2"></i> Thời Khóa Biểu</a></li>
+        <li class="nav-item">
+            <a class="nav-link" href="<?= BASE_URL ?>/hocsinhTkb/index">
+                <i class="bi bi-calendar-week me-2"></i> Thời Khóa Biểu
+            </a>
+        </li>
         <li class="nav-item mt-auto p-3 pt-0">
             <a class="nav-link text-danger bg-danger bg-opacity-10" href="<?= BASE_URL ?>/auth/logout">
                 <i class="bi bi-box-arrow-right me-2"></i> Đăng Xuất

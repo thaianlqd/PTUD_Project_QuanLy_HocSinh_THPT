@@ -42,7 +42,11 @@
             <li class="nav-item"><a class="nav-link tuyen-sinh" href="<?php echo BASE_URL; ?>/quantri/quanlytuyensinh"><i class="bi bi-mortarboard"></i>Quản Lý Tuyển Sinh</a></li>
             <li class="nav-item"><a class="nav-link" href="#ql-to-hop-lop"><i class="bi bi-bookmark-star"></i>Tổ Hợp Môn Lớp</a></li>
             <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/quantri/quanlygiaovien"><i class="bi bi-people"></i>Quản Lý GV</a></li>
-            <li class="nav-item"><a class="nav-link" href="#ql-lop-hoc"><i class="bi bi-house-door"></i>Quản Lý Lớp</a></li>
+            <li class="nav-item">
+                <a class="nav-link" href="<?php echo BASE_URL; ?>/LopHoc">
+                    <i class="bi bi-house-door"></i>Quản Lý Lớp
+                </a>
+            </li>
             <li class="nav-item"><a class="nav-link" href="#ql-hoc-sinh"><i class="bi bi-person-badge"></i>Quản Lý HS</a></li>
             <li class="nav-item mt-auto"><a class="nav-link text-danger" href="<?php echo BASE_URL; ?>/auth/logout"><i class="bi bi-box-arrow-right"></i>Đăng Xuất</a></li>
         </ul>
@@ -254,7 +258,7 @@
                     <div class="card h-100">
                         <div class="card-body stat-card d-flex flex-column">
                             <i class="bi bi-mortarboard text-primary fs-1 mb-3"></i>
-                            <h5 class="fw-bold text-dark">Quản Lý Tuyển Sinh</h5>
+                            <h5 class="fw-bold text-dark">Quản Lý Tuyển Sinh (này của thành an - admin của toàn hệ thống)</h5>
                             <p class="card-text text-muted flex-grow-1">
                                 Nhập điểm thi vào, xét lọc ảo chuyên ngành. Xét tuyển học sinh vào các lớp. Quản lý hồ sơ tuyển sinh.
                             </p>
@@ -273,9 +277,9 @@
                             <p class="card-text text-muted flex-grow-1">
                                 Tạo, chỉnh sửa thông tin lớp học. Quản lý sĩ số, khối, năm học. Phân công giáo viên chủ nhiệm.
                             </p>
-                            <button class="btn btn-outline-warning mt-auto align-self-stretch btn-disabled" style="cursor: not-allowed; opacity: 0.6;">
-                                <i class="bi bi-hourglass-split me-2"></i>Sắp có
-                            </button>
+                            <a href="<?php echo BASE_URL; ?>/LopHoc" class="btn btn-outline-warning mt-auto align-self-stretch">
+                                <i class="bi bi-arrow-right me-2"></i>Quản Lý
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -288,9 +292,11 @@
                             <p class="card-text text-muted flex-grow-1">
                                 Thêm, sửa, xóa thông tin học sinh. Xếp lớp, chuyển lớp học sinh. Quản lý trạng thái (Đang học, Nghỉ, Chuyển trường).
                             </p>
-                            <button class="btn btn-outline-danger mt-auto align-self-stretch btn-disabled" style="cursor: not-allowed; opacity: 0.6;">
-                                <i class="bi bi-hourglass-split me-2"></i>Sắp có
-                            </button>
+                            
+                            <a href="<?php echo BASE_URL; ?>/quantri/quanlyhocsink" class="btn btn-outline-danger mt-auto align-self-stretch">
+                                <i class="bi bi-arrow-right me-2"></i>Quản Lý
+                            </a>
+
                         </div>
                     </div>
                 </div>
