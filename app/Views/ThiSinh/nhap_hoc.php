@@ -714,14 +714,116 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             `).join('');
         }
 
+        // function renderMonHoc(mon_hoc) {
+        //     const container = document.getElementById('danh-sach-mon');
+        //     let html = '';
+
+        //     // --- 1. Môn Bắt Buộc (Giữ nguyên hiển thị Badge) ---
+        //     if (mon_hoc.bat_buoc && mon_hoc.bat_buoc.length > 0) {
+        //         html += `
+        //             <div class="subject-group">
+        //                 <div class="group-title">📌 Môn Bắt Buộc (${mon_hoc.bat_buoc.length} môn)</div>
+        //                 <div class="d-flex flex-wrap gap-2 mb-3">
+        //         `;
+        //         mon_hoc.bat_buoc.forEach(subject => {
+        //             html += `<span class="badge bg-secondary p-2" style="font-size: 14px;">${subject.ten_mon_hoc}</span>`;
+        //         });
+        //         html += `</div></div>`;
+        //     }
+
+        //     // --- 2. Các nhóm Tự Chọn (SỬA: Radio -> Checkbox) ---
+        //     const electiveGroups = {
+        //         'tu_chon_khtn': { title: '🔬 Tự Chọn - KHTN', subjects: mon_hoc.tu_chon_khtn || [] },
+        //         'tu_chon_khxh': { title: '📖 Tự Chọn - KHXH', subjects: mon_hoc.tu_chon_khxh || [] },
+        //         'tu_chon_cn_nt': { title: '🎨 Tự Chọn - CN-NT', subjects: mon_hoc.tu_chon_cn_nt || [] }
+        //     };
+
+        //     Object.entries(electiveGroups).forEach(([key, group]) => {
+        //         if (group.subjects.length > 0) {
+        //             html += `<div class="subject-group">
+        //                 <div class="group-title">${group.title} (Chọn ít nhất 1)</div>`;
+
+        //             group.subjects.forEach(subject => {
+        //                 html += `
+        //                     <div class="subject-item">
+        //                         <input class="form-check-input" type="checkbox" name="mon_tu_chon" 
+        //                                id="mon_${subject.ma_mon_hoc}" 
+        //                                value="${subject.ma_mon_hoc}" 
+        //                                data-group="${key}">
+        //                         <label class="form-check-label ms-2" for="mon_${subject.ma_mon_hoc}">${subject.ten_mon_hoc}</label>
+        //                     </div>
+        //                 `;
+        //             });
+
+        //             html += '</div>';
+        //         }
+        //     });
+
+        //     container.innerHTML = html;
+
+        //     // Add event listeners cho Checkbox
+        //     document.querySelectorAll('input[name="mon_tu_chon"]').forEach(checkbox => {
+        //         checkbox.addEventListener('change', function() {
+        //             updateSubjectSelection();
+        //         });
+        //     });
+
+        //     updateSubjectSelection(); 
+        // }
         function renderMonHoc(mon_hoc) {
             const container = document.getElementById('danh-sach-mon');
             let html = '';
 
-            // --- 1. Môn Bắt Buộc (Giữ nguyên hiển thị Badge) ---
+            // --- 1. THÊM PHẦN GỢI Ý COMBO TẠI ĐÂY ---
+            html += `
+                <div class="alert alert-warning mb-4">
+                    <h5 class="alert-heading fw-bold mb-2">📌 DANH SÁCH TỔ HỢP MÔN NHÀ TRƯỜNG ĐANG ĐÀO TẠO</h5>
+                    <p class="mb-2">Học sinh vui lòng chọn đúng <strong>4 môn</strong> theo một trong các công thức dưới đây để đảm bảo có lớp học:</p>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="card h-100 border-primary bg-light">
+                                <div class="card-header bg-primary text-white fw-bold">Combo 1 (Tự nhiên 1)</div>
+                                <ul class="list-group list-group-flush small">
+                                    <li class="list-group-item">🔹 Vật lí</li>
+                                    <li class="list-group-item">🔹 Hóa học</li>
+                                    <li class="list-group-item">🔸 GD Kinh tế & PL</li>
+                                    <li class="list-group-item">🔻 Tin học</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="card h-100 border-success bg-light">
+                                <div class="card-header bg-success text-white fw-bold">Combo 2 (Tự nhiên 2)</div>
+                                <ul class="list-group list-group-flush small">
+                                    <li class="list-group-item">🔹 Hóa học</li>
+                                    <li class="list-group-item">🔹 Sinh học</li>
+                                    <li class="list-group-item">🔸 Địa lí</li>
+                                    <li class="list-group-item">🔻 Tin học</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="card h-100 border-warning bg-light">
+                                <div class="card-header bg-warning text-dark fw-bold">Combo 3 (Xã hội - CN)</div>
+                                <ul class="list-group list-group-flush small">
+                                    <li class="list-group-item">🔹 Vật lí</li>
+                                    <li class="list-group-item">🔸 Địa lí</li>
+                                    <li class="list-group-item">🔸 GD Kinh tế & PL</li>
+                                    <li class="list-group-item">🔻 Công nghệ</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // --- 2. Tiếp tục render Môn Bắt Buộc & Tự Chọn như cũ ---
             if (mon_hoc.bat_buoc && mon_hoc.bat_buoc.length > 0) {
                 html += `
-                    <div class="subject-group">
+                    <div class="subject-group mt-4">
                         <div class="group-title">📌 Môn Bắt Buộc (${mon_hoc.bat_buoc.length} môn)</div>
                         <div class="d-flex flex-wrap gap-2 mb-3">
                 `;
@@ -731,7 +833,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                 html += `</div></div>`;
             }
 
-            // --- 2. Các nhóm Tự Chọn (SỬA: Radio -> Checkbox) ---
+            // Render các nhóm Tự Chọn (Checkbox)
             const electiveGroups = {
                 'tu_chon_khtn': { title: '🔬 Tự Chọn - KHTN', subjects: mon_hoc.tu_chon_khtn || [] },
                 'tu_chon_khxh': { title: '📖 Tự Chọn - KHXH', subjects: mon_hoc.tu_chon_khxh || [] },
@@ -741,7 +843,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             Object.entries(electiveGroups).forEach(([key, group]) => {
                 if (group.subjects.length > 0) {
                     html += `<div class="subject-group">
-                        <div class="group-title">${group.title} (Chọn ít nhất 1)</div>`;
+                        <div class="group-title">${group.title}</div>`;
 
                     group.subjects.forEach(subject => {
                         html += `
@@ -754,21 +856,20 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                             </div>
                         `;
                     });
-
                     html += '</div>';
                 }
             });
 
             container.innerHTML = html;
 
-            // Add event listeners cho Checkbox
+            // Add Listeners
             document.querySelectorAll('input[name="mon_tu_chon"]').forEach(checkbox => {
                 checkbox.addEventListener('change', function() {
                     updateSubjectSelection();
                 });
             });
 
-            updateSubjectSelection(); 
+            updateSubjectSelection();
         }
 
         
@@ -1039,38 +1140,32 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             const container = document.getElementById('danh-sach-lop');
 
             if (!danh_sach || danh_sach.length === 0) {
-                container.innerHTML = '<div class="alert alert-warning">Không có lớp nào khả dụng</div>';
+                container.innerHTML = '<div class="alert alert-warning">Hiện chưa có lớp nào phù hợp với tổ hợp này.</div>';
                 document.getElementById('btn-next').disabled = true;
                 return;
             }
 
-            let html = '';
-            danh_sach.forEach(lop => {
-                const available = lop.si_so < 50;
-                html += `
-                    <div class="class-item ${available ? '' : 'disabled'}" data-ma-lop="${lop.ma_lop}" 
-                         ${available ? '' : 'style="opacity: 0.5; pointer-events: none;"'}>
-                        <div class="class-info">
-                            <div>
-                                <div class="class-name">${lop.ten_lop}</div>
-                                <small class="text-muted">GVCN: ${lop.ten_giao_vien}</small>
-                            </div>
-                            <span class="class-capacity ${available ? 'available' : ''}">
-                                ${lop.si_so}/50 học sinh
-                            </span>
-                        </div>
+            // Tạo danh sách tên lớp
+            const tenLops = danh_sach.map(lop => `<strong>${lop.ten_lop}</strong>`).join(', ');
+
+            let html = `
+                <div class="alert alert-success">
+                    <h5 class="alert-heading"><i class="bi bi-check-circle-fill"></i> Có lớp phù hợp!</h5>
+                    <p>Dựa trên tổ hợp môn bạn chọn, bạn sẽ được xếp vào một trong các lớp sau:</p>
+                    <div class="p-3 bg-white rounded shadow-sm border">
+                        <span class="fs-5 text-primary">${tenLops}</span>
                     </div>
-                `;
-            });
+                    <hr>
+                    <p class="mb-0 small text-muted">
+                        * Lưu ý: Việc xếp lớp cụ thể sẽ do <strong>Ban Giám Hiệu</strong> nhà trường quyết định sau khi bạn xác nhận nhập học.
+                    </p>
+                </div>
+            `;
 
             container.innerHTML = html;
 
-            // Add event listeners
-            document.querySelectorAll('.class-item:not(.disabled)').forEach(item => {
-                item.addEventListener('click', function() {
-                    selectClass(this);
-                });
-            });
+            // Mở nút tiếp tục luôn (không cần chờ user chọn lớp nữa)
+            document.getElementById('btn-next').disabled = false;
         }
 
         function selectClass(element) {
@@ -1124,22 +1219,51 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
         function prepareConfirmation() {
             document.getElementById('confirm-truong').textContent = selectedSchool.ten_truong;
-            document.getElementById('confirm-tohop').textContent = selectedToHop;
+            
+            // Hiện tên tổ hợp (nếu có lưu) hoặc hiện số môn
+            const soMon = document.getElementById('subject-count').textContent;
+            document.getElementById('confirm-mon').textContent = `${soMon} môn đã chọn`;
 
-            const monCount = selectedSubjects.length;
-            document.getElementById('confirm-mon').textContent = `${monCount} môn học`;
-
-            document.getElementById('confirm-lop').textContent = selectedClass.ten_lop;
+            // Chỗ này sửa thành thông báo chờ xếp lớp
+            document.getElementById('confirm-lop').innerHTML = '<span class="badge bg-warning text-dark">Đang chờ nhà trường xếp lớp</span>';
+            
+            // Ẩn dòng Tổ hợp môn nếu không cần thiết hoặc để mặc định
+            document.getElementById('confirm-tohop').textContent = "Theo nguyện vọng đã chọn";
         }
 
         // ===== SAVE CHỌN MÔN =====
+        // async function saveChonMon() {
+        //     try {
+        //         const response = await fetch(`${BASE_URL}/ThisinhNhaphoc/saveChonMonApi`, {
+        //             method: 'POST',
+        //             headers: { 'Content-Type': 'application/json' },
+        //             body: JSON.stringify({
+        //                 // ma_to_hop_mon: selectedToHop,  <-- XÓA DÒNG NÀY ĐI
+        //                 danh_sach_ma_mon: selectedSubjects
+        //             })
+        //         });
+
+        //         const data = await response.json();
+
+        //         if (!data.success) {
+        //             alert('Lỗi: ' + data.message);
+        //             return false;
+        //         }
+
+        //         return true;
+        //     } catch (error) {
+        //         console.error('Error:', error);
+        //         alert('Có lỗi xảy ra');
+        //         return false;
+        //     }
+        // }
         async function saveChonMon() {
             try {
                 const response = await fetch(`${BASE_URL}/ThisinhNhaphoc/saveChonMonApi`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        // ma_to_hop_mon: selectedToHop,  <-- XÓA DÒNG NÀY ĐI
+                        // FIX: Không gửi ma_to_hop_mon nữa, chỉ gửi danh sách môn
                         danh_sach_ma_mon: selectedSubjects
                     })
                 });
@@ -1167,7 +1291,8 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         ma_truong: selectedSchool.ma_truong,
-                        ma_lop: selectedClass.ma_lop
+                        // ma_lop: selectedClass.ma_lop
+                        ma_to_hop_mon: selectedToHop
                     })
                 });
 
@@ -1231,10 +1356,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     goToStep(3);
                 }
             } else if (currentStep === 3) {
-                if (!selectedClass) {
-                    alert('Vui lòng chọn lớp');
-                    return;
-                }
+                // if (!selectedClass) {
+                //     alert('Vui lòng chọn lớp');
+                //     return;
+                // }
                 goToStep(4);
             }
         });

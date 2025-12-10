@@ -244,33 +244,72 @@ class DashboardController extends Controller {
                 break;
             
             case 'ThiSinh':
-                $tsModel = $this->loadModel('ThiSinhModel');
+                // =============================================================
+                // [AUTO SWITCH] TỰ ĐỘNG CHUYỂN ĐỔI: THÍ SINH -> HỌC SINH
+                // =============================================================
                 
-                // 1. Thông tin
+                // 1. Load Model Học Sinh để kiểm tra
+                $hsModelCheck = $this->loadModel('HocSinhModel');
+                
+                // 2. Kiểm tra: Nếu thí sinh này đã có ID trong bảng 'hoc_sinh' (tức là đã được xếp lớp)
+                if ($hsModelCheck && $hsModelCheck->checkIsHocSinh($user_id)) {
+                    
+                    // A. Cập nhật Role trong Database vĩnh viễn (để lần sau đăng nhập đúng role luôn)
+                    // Hàm updateRole này bác nhớ thêm vào UserModel như hướng dẫn ở Bước 1 nhé
+                    if ($this->userModel) {
+                        $this->userModel->updateRole($user_id, 'HocSinh');
+                    }
+
+                    // B. Cập nhật Session hiện tại ngay lập tức
+                    $_SESSION['user_role'] = 'HocSinh';
+                    
+                    // C. (Tùy chọn) Xóa các session rác của thí sinh nếu cần
+                    // unset($_SESSION['some_old_key']);
+
+                    // D. Reload lại trang Dashboard (Lúc này nó sẽ nhảy vào case 'HocSinh')
+                    header('Location: ' . BASE_URL . '/dashboard');
+                    exit;
+                }
+                
+                // =============================================================
+                // NẾU VẪN LÀ THÍ SINH (CHƯA XẾP LỚP) THÌ CHẠY TIẾP CODE DƯỚI
+                // =============================================================
+
+                $tsModel = $this->loadModel('ThiSinhModel');
+                if (!$tsModel) { die("Lỗi: Không tìm thấy ThiSinhModel"); }
+                
+                // 1. Thông tin cá nhân
                 $data['info'] = $tsModel->getThongTinCaNhan($user_id);
                 
-                // 2. Nguyện vọng
+                // 2. Danh sách nguyện vọng
                 $data['nguyen_vong'] = $tsModel->getDanhSachNguyenVong($user_id);
                 $data['nv_count'] = count($data['nguyen_vong']);
                 
                 // 3. Điểm thi
                 $data['diem'] = $tsModel->getDiemThi($user_id);
                 
-                // 4. Kết quả
+                // 4. Kết quả tuyển sinh
                 $ketQua = $tsModel->getKetQuaTuyenSinh($user_id);
-                $data['ket_qua'] = $ketQua; // null nếu chưa có, hoặc mảng nếu đã có
+                $data['ket_qua'] = $ketQua;
                 
-                // Xử lý text hiển thị nhanh
+                // Xử lý hiển thị trạng thái (Text & Màu sắc)
                 if ($ketQua) {
                     if ($ketQua['trang_thai'] == 'Dau') {
-                        $data['kq_text'] = 'Đậu - ' . $ketQua['truong_trung_tuyen'];
+                        $data['kq_text'] = 'Đậu - ' . htmlspecialchars($ketQua['truong_trung_tuyen']);
                         $data['kq_class'] = 'text-success';
                         
-                        // Status xác nhận
+                        // Trạng thái xác nhận nhập học
                         $xn = $ketQua['trang_thai_xac_nhan'];
-                        if($xn == 'Xac_nhan_nhap_hoc') $data['xn_text'] = 'Đã Xác Nhận';
-                        elseif($xn == 'Tu_choi_nhap_hoc') $data['xn_text'] = 'Đã Từ Chối';
-                        else $data['xn_text'] = 'Chờ Xác Nhận';
+                        if($xn == 'Xac_nhan_nhap_hoc') {
+                            $data['xn_text'] = 'Đã Xác Nhận';
+                            $data['xn_class'] = 'text-success fw-bold';
+                        } elseif($xn == 'Tu_choi_nhap_hoc') {
+                            $data['xn_text'] = 'Đã Từ Chối';
+                            $data['xn_class'] = 'text-danger fw-bold';
+                        } else {
+                            $data['xn_text'] = 'Chờ Xác Nhận';
+                            $data['xn_class'] = 'text-warning fw-bold';
+                        }
                     } else {
                         $data['kq_text'] = 'Trượt';
                         $data['kq_class'] = 'text-danger';
@@ -282,8 +321,7 @@ class DashboardController extends Controller {
                     $data['xn_text'] = '---';
                 }
 
-                // Load View Thí Sinh
-                // Lưu ý: Đường dẫn phải đúng file View bên dưới
+                // Load View Dashboard dành cho Thí sinh
                 echo $this->loadView('ThiSinh/dashboard', $data);
                 break;
 

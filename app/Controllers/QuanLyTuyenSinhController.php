@@ -127,10 +127,30 @@ class QuanLyTuyenSinhController { // Chạy độc lập, không cần extends C
     }
 
     // API 5: Chạy thuật toán Lọc Ảo (Reset & Tính lại)
+    // public function runLocAoApi() {
+    //     try {
+    //         $this->model->runLocAo();
+    //         $this->sendJson(['success' => true, 'message' => 'Đã chạy lọc ảo thành công! Kết quả mới đã được tạo.']);
+    //     } catch (Exception $e) {
+    //         $this->sendJson(['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()]);
+    //     }
+    // }
+    // API 5: Chạy thuật toán Lọc Ảo
     public function runLocAoApi() {
         try {
-            $this->model->runLocAo();
-            $this->sendJson(['success' => true, 'message' => 'Đã chạy lọc ảo thành công! Kết quả mới đã được tạo.']);
+            // Lấy tham số mode từ body (json)
+            $input = json_decode(file_get_contents('php://input'), true);
+            $mode = $input['mode'] ?? 'reset'; // Mặc định là reset nếu không truyền
+
+            $resetAll = ($mode === 'reset'); // True nếu reset, False nếu update
+
+            $this->model->runLocAo($resetAll);
+            
+            $msg = $resetAll 
+                ? 'Đã chạy Lọc ảo mới (Reset toàn bộ) thành công!' 
+                : 'Đã cập nhật Lọc ảo (Giữ nguyên các hồ sơ đã xác nhận) thành công!';
+
+            $this->sendJson(['success' => true, 'message' => $msg]);
         } catch (Exception $e) {
             $this->sendJson(['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()]);
         }
@@ -210,6 +230,62 @@ class QuanLyTuyenSinhController { // Chạy độc lập, không cần extends C
             echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     }
+
+
+    // API 11: Lấy danh sách thí sinh chờ xếp lớp theo Tổ hợp môn
+    public function getThiSinhChoXepLopApi() {
+        $input = json_decode(file_get_contents('php://input'), true);
+        if ($input && isset($input['ma_truong']) && isset($input['ma_to_hop'])) {
+            $data = $this->model->getThiSinhChoXepLop($input['ma_truong'], $input['ma_to_hop']);
+            $this->sendJson(['success' => true, 'data' => $data]);
+        }
+        $this->sendJson(['success' => false, 'message' => 'Thiếu thông tin']);
+    }
+
+    // API 11: Lấy danh sách học sinh chờ xếp lớp
+    public function getHocSinhChoXepLopApi() {
+        $input = json_decode(file_get_contents('php://input'), true);
+        if ($input && isset($input['ma_truong'])) {
+            $data = $this->model->getHocSinhChoXepLopByTruong($input['ma_truong']);
+            $this->sendJson(['success' => true, 'data' => $data]);
+        }
+        $this->sendJson(['success' => false, 'message' => 'Thiếu mã trường']);
+    }
+
+    // API 12: Thực hiện xếp lớp
+    public function thucHienXepLopApi() {
+        $input = json_decode(file_get_contents('php://input'), true);
+        if ($input && isset($input['ma_lop']) && isset($input['danh_sach_ma_hoc_sinh'])) {
+            try {
+                $count = $this->model->thucHienXepLop($input['ma_lop'], $input['danh_sach_ma_hoc_sinh']);
+                $this->sendJson(['success' => true, 'message' => "Đã xếp thành công $count học sinh vào lớp!"]);
+            } catch (Exception $e) {
+                $this->sendJson(['success' => false, 'message' => $e->getMessage()]);
+            }
+        }
+        $this->sendJson(['success' => false, 'message' => 'Dữ liệu không hợp lệ']);
+    }
+
+    // API: Phân lớp tự động
+    public function autoPhanLopApi() {
+        $input = json_decode(file_get_contents('php://input'), true);
+        if (isset($input['ma_truong']) && isset($input['danh_sach_hs'])) {
+            $result = $this->model->autoPhanLop($input['ma_truong'], $input['danh_sach_hs']);
+            $this->sendJson($result);
+        }
+        $this->sendJson(['success' => false, 'message' => 'Thiếu dữ liệu']);
+    }
+
+    // API 13: Lấy danh sách học sinh trong lớp
+    public function getDsHocSinhTrongLopApi() {
+        $input = json_decode(file_get_contents('php://input'), true);
+        if ($input && isset($input['ma_lop'])) {
+            $data = $this->model->getDsHocSinhTrongLop($input['ma_lop']);
+            $this->sendJson(['success' => true, 'data' => $data]);
+        }
+        $this->sendJson(['success' => false, 'message' => 'Thiếu mã lớp']);
+    }
+
 
     
 }

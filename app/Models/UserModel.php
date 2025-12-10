@@ -280,5 +280,15 @@ class UserModel {
         }
         return $stmt->fetchAll();
     }
+
+    // Cập nhật vai trò người dùng (Dùng khi chuyển từ ThiSinh -> HocSinh)
+    public function updateRole($user_id, $new_role) {
+        $sql = "UPDATE tai_khoan tk 
+                JOIN nguoi_dung nd ON tk.ma_tai_khoan = nd.ma_tai_khoan 
+                SET tk.vai_tro = ? 
+                WHERE nd.ma_nguoi_dung = ?";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([$new_role, $user_id]);
+    }
 }
 ?>

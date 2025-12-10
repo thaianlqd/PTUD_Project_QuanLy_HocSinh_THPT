@@ -205,6 +205,51 @@ class ThisinhNhaphocController {
     }
 
     // ====== API: LƯU CHỌN MÔN TẠM THỜI ======
+    // public function saveChonMonApi() {
+    //     header('Content-Type: application/json');
+    //     if (session_status() === PHP_SESSION_NONE) session_start();
+        
+    //     if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] ?? '') !== 'ThiSinh') {
+    //         echo json_encode(['success' => false, 'message' => 'Không có quyền truy cập']);
+    //         exit;
+    //     }
+
+    //     try {
+    //         $input = json_decode(file_get_contents('php://input'), true);
+            
+    //         // --- SỬA 1: Chỉ kiểm tra danh_sach_ma_mon, BỎ kiểm tra ma_to_hop_mon ---
+    //         if (!isset($input['danh_sach_ma_mon'])) {
+    //             echo json_encode([
+    //                 'success' => false,
+    //                 'message' => 'Thiếu tham số danh_sach_ma_mon'
+    //             ]);
+    //             exit;
+    //         }
+
+    //         $user_id = $_SESSION['user_id'];
+    //         $danh_sach_ma_mon = $input['danh_sach_ma_mon']; 
+
+    //         // --- SỬA 2: Gọi hàm validate mà KHÔNG CẦN tham số thứ 2 ---
+    //         $validate = $this->model->validateChonMon($danh_sach_ma_mon);
+            
+    //         if (!$validate['valid']) {
+    //             echo json_encode(['success' => false, 'message' => $validate['message']]);
+    //             exit;
+    //         }
+
+    //         // Lưu chọn môn
+    //         $result = $this->model->saveChonMon($user_id, $danh_sach_ma_mon);
+
+    //         if ($result) {
+    //             echo json_encode(['success' => true, 'message' => 'Lưu môn học thành công']);
+    //         } else {
+    //             echo json_encode(['success' => false, 'message' => 'Không thể lưu môn học']);
+    //         }
+    //     } catch (Exception $e) {
+    //         echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
+    //     }
+    // }
+    // ====== API: LƯU CHỌN MÔN TẠM THỜI (ĐÃ FIX) ======
     public function saveChonMonApi() {
         header('Content-Type: application/json');
         if (session_status() === PHP_SESSION_NONE) session_start();
@@ -217,7 +262,7 @@ class ThisinhNhaphocController {
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             
-            // --- SỬA 1: Chỉ kiểm tra danh_sach_ma_mon, BỎ kiểm tra ma_to_hop_mon ---
+            // --- FIX: Chỉ kiểm tra danh_sach_ma_mon, KHÔNG kiểm tra ma_to_hop_mon ---
             if (!isset($input['danh_sach_ma_mon'])) {
                 echo json_encode([
                     'success' => false,
@@ -229,11 +274,14 @@ class ThisinhNhaphocController {
             $user_id = $_SESSION['user_id'];
             $danh_sach_ma_mon = $input['danh_sach_ma_mon']; 
 
-            // --- SỬA 2: Gọi hàm validate mà KHÔNG CẦN tham số thứ 2 ---
+            // Gọi hàm validate (Model cũng cần sửa tương ứng, xem bên dưới)
             $validate = $this->model->validateChonMon($danh_sach_ma_mon);
             
             if (!$validate['valid']) {
-                echo json_encode(['success' => false, 'message' => $validate['message']]);
+                echo json_encode([
+                    'success' => false,
+                    'message' => $validate['message']
+                ]);
                 exit;
             }
 
@@ -241,14 +289,26 @@ class ThisinhNhaphocController {
             $result = $this->model->saveChonMon($user_id, $danh_sach_ma_mon);
 
             if ($result) {
-                echo json_encode(['success' => true, 'message' => 'Lưu môn học thành công']);
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Lưu môn học thành công'
+                ]);
             } else {
-                echo json_encode(['success' => false, 'message' => 'Không thể lưu môn học']);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Không thể lưu môn học'
+                ]);
             }
         } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ]);
         }
     }
+
+
+
     // ====== API: LẤY MÔN HỌC ĐÃ CHỌN ======
     public function getChonMonDaSaveApi() {
         header('Content-Type: application/json');
@@ -279,55 +339,55 @@ class ThisinhNhaphocController {
     }
 
     // ====== API: XÁC NHẬN NHẬP HỌC ======
+    // public function xacNhanNhapHocApi() {
+    //     header('Content-Type: application/json');
+    //     if (session_status() === PHP_SESSION_NONE) session_start();
+    //     if (!isset($_SESSION['user_id'])) { echo json_encode(['success'=>false]); exit; }
+
+    //     try {
+    //         $input = json_decode(file_get_contents('php://input'), true);
+    //         $user_id = $_SESSION['user_id'];
+            
+    //         // Chỉ cần mã trường (và mã tổ hợp nếu muốn lưu lại để admin tham khảo)
+    //         if (!isset($input['ma_truong'])) {
+    //             echo json_encode(['success' => false, 'message' => 'Thiếu mã trường']); exit;
+    //         }
+
+    //         // Gọi Model (Truyền null cho ma_lop)
+    //         $result = $this->model->xacNhanNhapHoc($user_id, $input['ma_truong'], null);
+            
+    //         echo json_encode($result);
+    //     } catch (Exception $e) {
+    //         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    //     }
+    // }
     public function xacNhanNhapHocApi() {
         header('Content-Type: application/json');
         if (session_status() === PHP_SESSION_NONE) session_start();
-        
-        if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] ?? '') !== 'ThiSinh') {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Không có quyền truy cập'
-            ]);
-            exit;
-        }
+        if (!isset($_SESSION['user_id'])) { echo json_encode(['success'=>false, 'message' => 'Hết phiên đăng nhập']); exit; }
 
         try {
             $input = json_decode(file_get_contents('php://input'), true);
+            $user_id = $_SESSION['user_id'];
             
-            if (!isset($input['ma_truong']) || !isset($input['ma_lop'])) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Thiếu tham số ma_truong hoặc ma_lop'
-                ]);
+            // --- SỬA Ở ĐÂY: CHỈ BẮT BUỘC MA_TRUONG ---
+            if (!isset($input['ma_truong'])) {
+                echo json_encode(['success' => false, 'message' => 'Thiếu mã trường']); 
                 exit;
             }
 
-            $user_id = $_SESSION['user_id'];
-            $ma_truong = $input['ma_truong'];
-            $ma_lop = $input['ma_lop'];
+            // Ma to hop mon: Có thì lấy, không có thì để NULL (Không bắt buộc nữa)
+            $ma_to_hop = isset($input['ma_to_hop_mon']) ? $input['ma_to_hop_mon'] : null;
 
-            // Xác nhận nhập học (transaction)
-            $result = $this->model->xacNhanNhapHoc($user_id, $ma_truong, $ma_lop);
-
-            if ($result) {
-                echo json_encode([
-                    'success' => true,
-                    'message' => 'Xác nhận nhập học thành công'
-                ]);
-            } else {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Không thể xác nhận nhập học'
-                ]);
-            }
+            // Gọi Model: Truyền null cho ma_lop (vì chưa xếp lớp)
+            $result = $this->model->xacNhanNhapHoc($user_id, $input['ma_truong'], null, $ma_to_hop);
+            
+            echo json_encode($result);
         } catch (Exception $e) {
-            echo json_encode([
-                'success' => false,
-                'message' => 'Lỗi: ' . $e->getMessage()
-            ]);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
     }
-
+    
     // ====== API: TỪ CHỐI NHẬP HỌC ======
     public function tuChoiNhapHocApi() {
         header('Content-Type: application/json');

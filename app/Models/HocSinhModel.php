@@ -323,5 +323,16 @@ class HocSinhModel {
             return 0;
         }
     }
+
+    // Kiểm tra xem user_id này đã có trong bảng hoc_sinh chưa
+    // Kiểm tra xem user_id này đã tồn tại trong bảng hoc_sinh chưa
+    public function checkIsHocSinh($user_id) {
+        $sql = "SELECT COUNT(*) as total FROM hoc_sinh WHERE ma_hoc_sinh = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$user_id]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return ($result['total'] > 0);
+    }
+
 }
 ?>

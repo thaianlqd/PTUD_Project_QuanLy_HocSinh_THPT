@@ -327,55 +327,80 @@ class ThiSinhModel_NhapHoc {
      * @param int $ma_lop
      * @return array ['success' => bool, 'message' => string, 'ma_nhap_hoc' => int]
      */
-    public function xacNhanNhapHoc($ma_nguoi_dung, $ma_truong, $ma_lop) {
+    /**
+     * 6. Xác nhận nhập học: Insert vào phieu_dang_ky_nhap_hoc + Update sĩ số lớp
+     */
+    // Thêm tham số $ma_to_hop_mon
+    // public function xacNhanNhapHoc($ma_nguoi_dung, $ma_truong, $ma_lop = null, $ma_to_hop_mon = null) {
+    //     try {
+    //         $this->db->beginTransaction();
+
+    //         // 1. Insert phieu_dang_ky_nhap_hoc (Đã thêm cột ma_to_hop_mon)
+    //         $sqlInsert = "INSERT INTO phieu_dang_ky_nhap_hoc 
+    //                       (ma_nguoi_dung, ma_truong, ma_lop, ma_to_hop_mon, ngay_nhap_hoc, tinh_trang_nhap_hoc) 
+    //                       VALUES (?, ?, ?, ?, NOW(), 'Dang_nhap_hoc')";
+            
+    //         $stmtInsert = $this->db->prepare($sqlInsert);
+    //         $stmtInsert->execute([$ma_nguoi_dung, $ma_truong, $ma_lop, $ma_to_hop_mon]); 
+    //         $maNhapHoc = $this->db->lastInsertId();
+
+    //         // 2. Update trạng thái xác nhận trong ket_qua_thi_tuyen_sinh
+    //         // (Dùng subquery để lấy đúng ma_diem_thi)
+    //         $sqlUpdateKQ = "UPDATE ket_qua_thi_tuyen_sinh 
+    //                         SET trang_thai_xac_nhan = 'Xac_nhan_nhap_hoc', ngay_xac_nhan = NOW()
+    //                         WHERE ma_diem_thi = (SELECT ma_diem_thi FROM diem_thi_tuyen_sinh WHERE ma_nguoi_dung = ? LIMIT 1) 
+    //                         AND ma_truong_trung_tuyen = ?";
+            
+    //         $stmtUpdateKQ = $this->db->prepare($sqlUpdateKQ);
+    //         $stmtUpdateKQ->execute([$ma_nguoi_dung, $ma_truong]);
+
+    //         $this->db->commit();
+    //         return [
+    //             'success' => true,
+    //             'message' => 'Xác nhận nhập học thành công! Nhà trường sẽ xếp lớp sau.',
+    //             'ma_nhap_hoc' => $maNhapHoc
+    //         ];
+    //     } catch (Exception $e) {
+    //         $this->db->rollBack();
+    //         return ['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()];
+    //     }
+    // }
+    public function xacNhanNhapHoc($ma_nguoi_dung, $ma_truong, $ma_lop = null, $ma_to_hop_mon = null) {
         try {
             $this->db->beginTransaction();
 
-            // 1. Kiểm tra lớp còn slot không
-            $sqlCheckLop = "SELECT si_so FROM lop_hoc WHERE ma_lop = ? AND si_so < 50 FOR UPDATE";
-            $stmtCheck = $this->db->prepare($sqlCheckLop);
-            $stmtCheck->execute([$ma_lop]);
-            $lop = $stmtCheck->fetch();
+            // --- BƯỚC 1: XÓA PHIẾU CŨ (QUAN TRỌNG) ---
+            // Để đảm bảo nếu học sinh bấm lại hoặc đăng ký lại thì phiếu cũ sẽ mất, chỉ giữ phiếu mới nhất
+            $sqlDelete = "DELETE FROM phieu_dang_ky_nhap_hoc WHERE ma_nguoi_dung = ? AND ma_truong = ?";
+            $stmtDelete = $this->db->prepare($sqlDelete);
+            $stmtDelete->execute([$ma_nguoi_dung, $ma_truong]);
 
-            if (!$lop) {
-                throw new Exception("Lớp không tồn tại hoặc đã đầy!");
-            }
-
-            // 2. Insert phieu_dang_ky_nhap_hoc
+            // --- BƯỚC 2: TẠO PHIẾU MỚI ---
             $sqlInsert = "INSERT INTO phieu_dang_ky_nhap_hoc 
-                         (ma_nguoi_dung, ma_truong, ma_lop, ngay_nhap_hoc, tinh_trang_nhap_hoc) 
-                         VALUES (?, ?, ?, NOW(), 'Dang_nhap_hoc')";
+                          (ma_nguoi_dung, ma_truong, ma_lop, ma_to_hop_mon, ngay_nhap_hoc, tinh_trang_nhap_hoc) 
+                          VALUES (?, ?, ?, ?, NOW(), 'Dang_nhap_hoc')";
+            
             $stmtInsert = $this->db->prepare($sqlInsert);
-            $stmtInsert->execute([$ma_nguoi_dung, $ma_truong, $ma_lop]);
+            $stmtInsert->execute([$ma_nguoi_dung, $ma_truong, $ma_lop, $ma_to_hop_mon]); 
             $maNhapHoc = $this->db->lastInsertId();
 
-            // 3. Update sĩ số lớp (si_so + 1)
-            $sqlUpdateSiSo = "UPDATE lop_hoc SET si_so = si_so + 1 WHERE ma_lop = ?";
-            $stmtUpdateSiSo = $this->db->prepare($sqlUpdateSiSo);
-            $stmtUpdateSiSo->execute([$ma_lop]);
-
-            // 4. Update trạng thái xác nhận trong ket_qua_thi_tuyen_sinh
+            // --- BƯỚC 3: UPDATE TRẠNG THÁI KẾT QUẢ ---
             $sqlUpdateKQ = "UPDATE ket_qua_thi_tuyen_sinh 
-                           SET trang_thai_xac_nhan = 'Xac_nhan_nhap_hoc', ngay_xac_nhan = NOW()
-                           WHERE ma_nguoi_dung = ? AND ma_truong_trung_tuyen = ?";
+                            SET trang_thai_xac_nhan = 'Xac_nhan_nhap_hoc', ngay_xac_nhan = NOW()
+                            WHERE ma_diem_thi = (SELECT ma_diem_thi FROM diem_thi_tuyen_sinh WHERE ma_nguoi_dung = ? LIMIT 1) 
+                            AND ma_truong_trung_tuyen = ?";
             $stmtUpdateKQ = $this->db->prepare($sqlUpdateKQ);
             $stmtUpdateKQ->execute([$ma_nguoi_dung, $ma_truong]);
 
             $this->db->commit();
-            error_log("✓ xacNhanNhapHoc: User $ma_nguoi_dung confirmed for school $ma_truong, class $ma_lop");
-
             return [
                 'success' => true,
-                'message' => 'Xác nhận nhập học thành công!',
+                'message' => 'Xác nhận nhập học thành công! Nhà trường sẽ xếp lớp sau.',
                 'ma_nhap_hoc' => $maNhapHoc
             ];
         } catch (Exception $e) {
             $this->db->rollBack();
-            error_log("✗ Error xacNhanNhapHoc: " . $e->getMessage());
-            return [
-                'success' => false,
-                'message' => 'Lỗi: ' . $e->getMessage()
-            ];
+            return ['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()];
         }
     }
 
@@ -385,17 +410,57 @@ class ThiSinhModel_NhapHoc {
      * @param int $ma_truong
      * @return bool
      */
+    // public function tuChoiNhapHoc($ma_nguoi_dung, $ma_truong) {
+    //     try {
+    //         $sql = "UPDATE ket_qua_thi_tuyen_sinh 
+    //                SET trang_thai_xac_nhan = 'Tu_choi_nhap_hoc', ngay_xac_nhan = NOW()
+    //                WHERE ma_nguoi_dung = ? AND ma_truong_trung_tuyen = ?";
+    //         $stmt = $this->db->prepare($sql);
+    //         $result = $stmt->execute([$ma_nguoi_dung, $ma_truong]);
+
+    //         error_log("✓ tuChoiNhapHoc: User $ma_nguoi_dung rejected school $ma_truong");
+    //         return $result;
+    //     } catch (Exception $e) {
+    //         error_log("✗ Error tuChoiNhapHoc: " . $e->getMessage());
+    //         return false;
+    //     }
+    // }
+    /**
+     * 7. Từ chối nhập học: Update trạng thái từ chối (ĐÃ SỬA LỖI SQL)
+     * @param int $ma_nguoi_dung
+     * @param int $ma_truong
+     * @return bool
+     */
     public function tuChoiNhapHoc($ma_nguoi_dung, $ma_truong) {
         try {
-            $sql = "UPDATE ket_qua_thi_tuyen_sinh 
-                   SET trang_thai_xac_nhan = 'Tu_choi_nhap_hoc', ngay_xac_nhan = NOW()
-                   WHERE ma_nguoi_dung = ? AND ma_truong_trung_tuyen = ?";
-            $stmt = $this->db->prepare($sql);
-            $result = $stmt->execute([$ma_nguoi_dung, $ma_truong]);
+            $this->db->beginTransaction();
 
-            error_log("✓ tuChoiNhapHoc: User $ma_nguoi_dung rejected school $ma_truong");
-            return $result;
+            // SỬA SQL: Dùng subquery để tìm ma_diem_thi từ ma_nguoi_dung
+            $sql = "UPDATE ket_qua_thi_tuyen_sinh 
+                    SET trang_thai_xac_nhan = 'Tu_choi_nhap_hoc', ngay_xac_nhan = NOW()
+                    WHERE ma_diem_thi = (
+                        SELECT ma_diem_thi 
+                        FROM diem_thi_tuyen_sinh 
+                        WHERE ma_nguoi_dung = ? 
+                        LIMIT 1
+                    ) 
+                    AND ma_truong_trung_tuyen = ?";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_nguoi_dung, $ma_truong]);
+            
+            // KIỂM TRA: Phải có ít nhất 1 dòng bị thay đổi thì mới return true
+            $count = $stmt->rowCount();
+            
+            $this->db->commit();
+
+            if ($count > 0) {
+                return true; // Thành công thật
+            } else {
+                return false; // Không tìm thấy hồ sơ để update
+            }
         } catch (Exception $e) {
+            $this->db->rollBack();
             error_log("✗ Error tuChoiNhapHoc: " . $e->getMessage());
             return false;
         }
@@ -443,25 +508,69 @@ class ThiSinhModel_NhapHoc {
      * (Đã xóa tham số $ma_to_hop_mon vì không dùng đến)
      * @return array ['valid' => bool, 'message' => string]
      */
-    public function validateChonMon($danh_sach_ma_mon) { // <-- SỬA DÒNG NÀY (Xóa tham số thứ 2)
+    // public function validateChonMon($danh_sach_ma_mon) { // <-- SỬA DÒNG NÀY (Xóa tham số thứ 2)
+    //     try {
+    //         // Kiểm tra tổng 4 môn
+    //         if (count($danh_sach_ma_mon) !== 4) {
+    //             return ['valid' => false, 'message' => 'Phải chọn đúng 4 môn tự chọn!'];
+    //         }
+
+    //         // ... (Phần logic kiểm tra nhóm KHTN/KHXH/CNNT giữ nguyên không đổi) ...
+    //         $sql = "SELECT ma_mon_hoc, loai_mon FROM mon_hoc WHERE ma_mon_hoc IN (" . implode(',', $danh_sach_ma_mon) . ")";
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute();
+    //         $monChon = $stmt->fetchAll();
+
+    //         $khtn = 0; $khxh = 0; $cnnt = 0;
+
+    //         foreach ($monChon as $mon) {
+    //             if (strpos($mon['loai_mon'], 'KHTN') !== false) $khtn++;
+    //             elseif (strpos($mon['loai_mon'], 'KHXH') !== false) $khxh++;
+    //             elseif (strpos($mon['loai_mon'], 'CN-NT') !== false) $cnnt++;
+    //         }
+
+    //         // Kiểm tra mỗi nhóm ≥ 1
+    //         if ($khtn < 1 || $khxh < 1 || $cnnt < 1) {
+    //             return ['valid' => false, 'message' => 'Mỗi nhóm phải chọn ít nhất 1 môn!'];
+    //         }
+
+    //         return ['valid' => true, 'message' => 'Lựa chọn môn hợp lệ!'];
+    //     } catch (Exception $e) {
+    //         error_log("Error validateChonMon: " . $e->getMessage());
+    //         return ['valid' => false, 'message' => 'Lỗi kiểm tra: ' . $e->getMessage()];
+    //     }
+    // }
+    /**
+     * 9. Validate chọn môn (ĐÃ FIX: Bỏ tham số ma_to_hop_mon)
+     */
+    public function validateChonMon($danh_sach_ma_mon) {
         try {
             // Kiểm tra tổng 4 môn
             if (count($danh_sach_ma_mon) !== 4) {
                 return ['valid' => false, 'message' => 'Phải chọn đúng 4 môn tự chọn!'];
             }
 
-            // ... (Phần logic kiểm tra nhóm KHTN/KHXH/CNNT giữ nguyên không đổi) ...
-            $sql = "SELECT ma_mon_hoc, loai_mon FROM mon_hoc WHERE ma_mon_hoc IN (" . implode(',', $danh_sach_ma_mon) . ")";
+            // Lấy thông tin môn học để kiểm tra loại
+            // Xử lý mảng an toàn cho SQL
+            $ids = implode(',', array_map('intval', $danh_sach_ma_mon));
+            
+            $sql = "SELECT ma_mon_hoc, loai_mon FROM mon_hoc WHERE ma_mon_hoc IN ($ids)";
             $stmt = $this->db->prepare($sql);
             $stmt->execute();
             $monChon = $stmt->fetchAll();
 
-            $khtn = 0; $khxh = 0; $cnnt = 0;
+            $khtn = 0;
+            $khxh = 0;
+            $cnnt = 0;
 
             foreach ($monChon as $mon) {
-                if (strpos($mon['loai_mon'], 'KHTN') !== false) $khtn++;
-                elseif (strpos($mon['loai_mon'], 'KHXH') !== false) $khxh++;
-                elseif (strpos($mon['loai_mon'], 'CN-NT') !== false) $cnnt++;
+                if (strpos($mon['loai_mon'], 'KHTN') !== false) {
+                    $khtn++;
+                } elseif (strpos($mon['loai_mon'], 'KHXH') !== false) {
+                    $khxh++;
+                } elseif (strpos($mon['loai_mon'], 'CN-NT') !== false) {
+                    $cnnt++;
+                }
             }
 
             // Kiểm tra mỗi nhóm ≥ 1
@@ -520,5 +629,7 @@ class ThiSinhModel_NhapHoc {
             return null;
         }
     }
+
+    
 }
 ?>
