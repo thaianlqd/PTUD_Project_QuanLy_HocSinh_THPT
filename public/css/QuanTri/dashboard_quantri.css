@@ -486,60 +486,32 @@
 
     /* Bổ sung quy tắc để viền Card đổi màu theo Icon/Button tương ứng */
     
-    /* 1. QUẢN LÝ TÀI KHOẢN & QUẢN LÝ GIÁO VIÊN (Success - Đã có sẵn hiệu ứng) */
-    .func-card:nth-child(1) .card,
-    .func-card:nth-child(3) .card {
-        border-color: var(--success);
-    }
-    
-    .func-card:nth-child(1) .card:hover,
-    .func-card:nth-child(3) .card:hover {
-        border-color: var(--success);
-    }
+    /* DÙNG > (child combinator) để select card trực tiếp con của func-card */
+    .func-card:nth-child(1) > .card { border: 2px solid var(--success) !important; }
+    .func-card:nth-child(1) > .card:hover { border-color: var(--success) !important; }
 
-    /* 2. XẾP THỜI KHÓA BIỂU (Info - Cần fix) */
-    .func-card:nth-child(2) .card {
-        border-color: var(--info);
-    }
-    
-    .func-card:nth-child(2) .card:hover {
-        border-color: var(--info);
-    }
+    .func-card:nth-child(2) > .card { border: 2px solid var(--info) !important; }
+    .func-card:nth-child(2) > .card:hover { border-color: var(--info) !important; }
 
-    /* 3. QUẢN LÝ TUYỂN SINH (Primary - Đã có sẵn hiệu ứng) */
-    .func-card:nth-child(4) .card {
-        border-color: var(--primary);
-    }
-    
-    .func-card:nth-child(4) .card:hover {
-        border-color: var(--primary);
-    }
+    .func-card:nth-child(3) > .card { border: 2px solid var(--success) !important; }
+    .func-card:nth-child(3) > .card:hover { border-color: var(--success) !important; }
 
-    /* 4. QUẢN LÝ LỚP (Warning - Chưa kích hoạt) */
-    .func-card:nth-child(5) .card {
-        border-color: var(--warning);
-    }
+    .func-card:nth-child(4) > .card { border: 2px solid var(--primary) !important; }
+    .func-card:nth-child(4) > .card:hover { border-color: var(--primary) !important; }
 
-    .func-card:nth-child(5) .card:hover {
-        border-color: var(--warning);
-    }
+    .func-card:nth-child(5) > .card { border: 2px solid var(--warning) !important; }
+    .func-card:nth-child(5) > .card:hover { border-color: var(--warning) !important; }
 
-    /* 5. QUẢN LÝ HỌC SINH (Danger - Chưa kích hoạt) */
-    .func-card:nth-child(6) .card {
-        border-color: var(--danger);
-    }
+    .func-card:nth-child(6) > .card { border: 2px solid var(--danger) !important; }
+    .func-card:nth-child(6) > .card:hover { border-color: var(--danger) !important; }
 
-    .func-card:nth-child(6) .card:hover {
-        border-color: var(--danger);
-    }
-
-    /* Tùy chỉnh cho nút bị vô hiệu hóa để khớp với viền Card */
-    .func-card .btn-disabled {
-        border-color: var(--border) !important; /* Giữ màu viền xám cho nút */
-        color: var(--text-muted) !important;
-        background-color: var(--lighter) !important;
-        opacity: 0.8; /* Giảm độ mờ */
-    }
+    /* Button viền theo màu card tương ứng */
+    .func-card:nth-child(1) .btn { border: 1px solid var(--success) !important; background: transparent !important; }
+    .func-card:nth-child(2) .btn { border: 1px solid var(--info) !important; background: transparent !important; }
+    .func-card:nth-child(3) .btn { border: 1px solid var(--success) !important; background: transparent !important; }
+    .func-card:nth-child(4) .btn { border: 1px solid var(--primary) !important; background: transparent !important; }
+    .func-card:nth-child(5) .btn { border: 1px solid var(--warning) !important; background: transparent !important; }
+    .func-card:nth-child(6) .btn { border: 1px solid var(--danger) !important; background: transparent !important; }
 
     /* ========== BUTTONS ========== */
     .btn {
