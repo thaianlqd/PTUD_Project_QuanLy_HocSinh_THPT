@@ -40,12 +40,14 @@ class DashboardController extends Controller {
                 $data['tk_role_data'] = $this->userModel->getTkByRole($school_id);
                 $data['si_so_khoi'] = $this->userModel->getSiSoKhoi($school_id); 
                 $data['users_list'] = $this->userModel->getAllUsers(10, $school_id);
+                // $data['truong_count'] = $this->userModel->getTotalTruong();
                 
                 // echo $this->loadView('QuanTri/dashboard', $data);
                 // --- ĐIỂM KHÁC BIỆT Ở ĐÂY ---
                 if ($school_id === null) {
                     // === 1. LÀ SUPER ADMIN (SỞ GIÁO DỤC) ===
                     // Bác có thể lấy thêm danh sách các trường để hiển thị
+                    $data['truong_count'] = $this->userModel->getTotalTruong(); 
                     // $data['list_truong'] = $this->userModel->getAllSchools(); (Cần viết thêm hàm này nếu muốn)
                     
                     echo $this->loadView('SuperAdmin/dashboard', $data);

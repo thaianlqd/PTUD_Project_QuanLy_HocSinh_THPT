@@ -191,9 +191,20 @@
             <?php if($data['is_gvcn']): ?>
             <div class="tab-pane fade <?php echo (!$data['is_bgh']) ? 'show active' : ''; ?>" id="tab-cn">
                 
-                <div class="d-flex justify-content-between align-items-center mb-4">
+                <!-- <div class="d-flex justify-content-between align-items-center mb-4">
                     <h5 class="fw-bold text-success"><i class="bi bi-people-fill me-2"></i>Quản Lý Lớp <?php echo $data['cn_info']['ten_lop']; ?></h5>
                     <button class="btn btn-success btn-sm shadow-sm"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Xuất Báo Cáo Lớp</button>
+                </div> -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold text-success"><i class="bi bi-people-fill me-2"></i>Quản Lý Lớp <?php echo $data['cn_info']['ten_lop']; ?></h5>
+                    
+                    <div>
+                        <a href="<?php echo BASE_URL; ?>/giaovienchunhiem/duyetdon" class="btn btn-warning btn-sm shadow-sm me-2 text-dark fw-bold">
+                            <i class="bi bi-envelope-paper me-2"></i>Duyệt Đơn Phép
+                        </a>
+
+                        <button class="btn btn-success btn-sm shadow-sm"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Xuất Báo Cáo Lớp</button>
+                    </div>
                 </div>
 
                 <div class="row g-4 mb-4">

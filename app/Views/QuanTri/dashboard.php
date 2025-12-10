@@ -39,15 +39,13 @@
             <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/dashboard"><i class="bi bi-speedometer2"></i>Tổng Quan</a></li>
             <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/quantri/quanlytaikhoan"><i class="bi bi-person-gear"></i>Quản Lý Tài Khoản</a></li>
             <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/tkb/xeptkb"><i class="bi bi-calendar-check"></i>Xếp Thời Khóa Biểu</a></li>
-            <li class="nav-item"><a class="nav-link tuyen-sinh" href="<?php echo BASE_URL; ?>/quantri/quanlytuyensinh"><i class="bi bi-mortarboard"></i>Quản Lý Tuyển Sinh</a></li>
-            <li class="nav-item"><a class="nav-link" href="#ql-to-hop-lop"><i class="bi bi-bookmark-star"></i>Tổ Hợp Môn Lớp</a></li>
             <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/quantri/quanlygiaovien"><i class="bi bi-people"></i>Quản Lý GV</a></li>
             <li class="nav-item">
                 <a class="nav-link" href="<?php echo BASE_URL; ?>/LopHoc">
                     <i class="bi bi-house-door"></i>Quản Lý Lớp
                 </a>
             </li>
-            <li class="nav-item"><a class="nav-link" href="#ql-hoc-sinh"><i class="bi bi-person-badge"></i>Quản Lý HS</a></li>
+            <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/quantri/quanlyhocsink"><i class="bi bi-person-badge"></i>Quản Lý HS</a></li>
             <li class="nav-item mt-auto"><a class="nav-link text-danger" href="<?php echo BASE_URL; ?>/auth/logout"><i class="bi bi-box-arrow-right"></i>Đăng Xuất</a></li>
         </ul>
     </div>
@@ -254,22 +252,7 @@
                     </div>
                 </div>
 
-                <div class="col-lg-4 col-md-6 func-card">
-                    <div class="card h-100">
-                        <div class="card-body stat-card d-flex flex-column">
-                            <i class="bi bi-mortarboard text-primary fs-1 mb-3"></i>
-                            <h5 class="fw-bold text-dark">Quản Lý Tuyển Sinh (này của thành an - admin của toàn hệ thống)</h5>
-                            <p class="card-text text-muted flex-grow-1">
-                                Nhập điểm thi vào, xét lọc ảo chuyên ngành. Xét tuyển học sinh vào các lớp. Quản lý hồ sơ tuyển sinh.
-                            </p>
-                            <a href="<?php echo BASE_URL; ?>/quantri/quanlytuyensinh" class="btn btn-outline-primary mt-auto align-self-stretch">
-                                <i class="bi bi-arrow-right me-2"></i>Vào
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-lg-4 col-md-6 func-card">
+                <div class="col-lg-4 col-md-6 func-card offset-lg-2">
                     <div class="card h-100">
                         <div class="card-body stat-card d-flex flex-column">
                             <i class="bi bi-house-door text-warning fs-1 mb-3"></i>

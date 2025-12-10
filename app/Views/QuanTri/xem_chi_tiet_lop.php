@@ -31,8 +31,8 @@
                 <small class="text-muted">Xem thông tin chi tiết lớp và danh sách giáo viên giảng dạy</small>
             </div>
             <div class="d-flex gap-2">
-                <a href="<?php echo BASE_URL; ?>/LopHoc/edit?id=<?php echo $data['lop']['ma_lop']; ?>" class="btn btn-warning btn-action">
-                    <i class="bi bi-pencil-square"></i> Sửa Lớp
+                <a href="<?php echo BASE_URL; ?>/dashboard" class="btn btn-outline-secondary btn-action">
+                    <i class="bi bi-speedometer2"></i> Dashboard
                 </a>
                 <a href="<?php echo BASE_URL; ?>/LopHoc" class="btn btn-outline-secondary btn-action">
                     <i class="bi bi-arrow-left"></i> Quay Lại
@@ -162,11 +162,30 @@
             <!-- SIDEBAR: THỐNG KÊ NHANH -->
             <div class="col-lg-4">
                 <!-- Card: Tổng Số Môn -->
-                <div class="card card-custom mb-3">
+                <!-- <div class="card card-custom mb-3">
                     <div class="card-body p-4 text-center">
                         <i class="bi bi-book-fill fs-1 text-primary mb-3" style="display: block;"></i>
                         <h5 class="text-muted mb-1">Tổng Số Môn Học</h5>
                         <h2 class="text-primary fw-bold"><?php echo count($data['phan_cong']); ?></h2>
+                    </div>
+                </div> -->
+                <div class="card card-custom mb-3">
+                    <div class="card-body p-4 text-center">
+                        <i class="bi bi-book-fill fs-1 text-primary mb-3" style="display: block;"></i>
+                        <h5 class="text-muted mb-1">Tổng Số Môn Học</h5>
+                        <h2 class="text-primary fw-bold">
+                            <?php 
+                                // Đếm môn unique (loại trùng lặp)
+                                $unique_mon = [];
+                                foreach ($data['phan_cong'] as $pc) {
+                                    $ma_mon = $pc['ma_mon_hoc'] ?? $pc['ma_mon']; // Tùy key trong DB
+                                    if (!in_array($ma_mon, $unique_mon)) {
+                                        $unique_mon[] = $ma_mon;
+                                    }
+                                }
+                                echo count($unique_mon);
+                            ?>
+                        </h2>
                     </div>
                 </div>
 
@@ -227,19 +246,6 @@
             </div>
         </div>
 
-        <!-- ACTION BUTTONS -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="d-flex gap-2 justify-content-center">
-                    <a href="<?php echo BASE_URL; ?>/LopHoc/edit?id=<?php echo $data['lop']['ma_lop']; ?>" class="btn btn-warning btn-lg btn-action">
-                        <i class="bi bi-pencil-square"></i> Sửa Lớp
-                    </a>
-                    <a href="<?php echo BASE_URL; ?>/LopHoc" class="btn btn-secondary btn-lg btn-action">
-                        <i class="bi bi-arrow-left"></i> Quay Lại Danh Sách
-                    </a>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

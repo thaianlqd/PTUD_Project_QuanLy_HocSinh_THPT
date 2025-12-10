@@ -290,5 +290,27 @@ class UserModel {
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([$new_role, $user_id]);
     }
+
+
+    public function getTotalTruong() {
+        if ($this->db === null) return 0;
+        
+        try {
+            $sql = "SELECT COUNT(*) as total 
+                    FROM truong_thpt";
+            
+            $stmt = $this->db->query($sql);
+            $result = $stmt->fetch();
+            
+            return (int)($result['total'] ?? 0);
+            
+        } catch (Exception $e) {
+            error_log("getTotalTruong Error: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+
+
 }
 ?>

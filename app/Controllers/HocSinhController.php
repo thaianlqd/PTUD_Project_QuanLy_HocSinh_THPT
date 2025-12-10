@@ -8,6 +8,7 @@ class HocSinhController extends Controller {
     private $diemDanhHSModel;
     private $ma_hoc_sinh;
     private $ma_lop;
+    
 
     public function __construct() {
         // 1. KIỂM TRA QUYỀN & ID
@@ -30,6 +31,77 @@ class HocSinhController extends Controller {
         $this->ma_hoc_sinh = $_SESSION['user_id'];
         $this->ma_lop = $_SESSION['ma_lop'];
         $this->diemDanhHSModel = $this->loadModel('DiemDanhHSModel'); 
+    }
+
+    // Thêm vào trong class HocSinhController
+
+    /**
+     * TRANG DASHBOARD (Trang chủ của học sinh)
+     * URL: /hocsinh/index
+     */
+    public function index() {
+        // 1. Load Model
+        $hsModel = $this->loadModel('HocSinhModel');
+
+        // 2. Lấy thông tin từ Session
+        $ma_hs  = $this->ma_hoc_sinh;
+        $ma_lop = $this->ma_lop;
+
+        // 3. Lấy dữ liệu từ Model
+        // - Thông tin cá nhân
+        $student_info = $hsModel->getThongTinHS($ma_hs);
+        
+        // - Thống kê bài tập (để hiện số bài chưa làm)
+        $bai_tap_stats = $hsModel->getStatsBaiTap($ma_hs, $ma_lop);
+        
+        // - Lịch học tuần này
+        $lich_hoc = $hsModel->getLichHocTuan($ma_lop);
+        
+        // - Bảng điểm chi tiết (Cái bạn vừa thêm ở Bước 1)
+        $bang_diem = $hsModel->getBangDiem($ma_hs);
+
+        // 4. Đóng gói dữ liệu để gửi sang View
+        $data = [
+            'user_name'     => $_SESSION['user_name'] ?? 'Học sinh',
+            'student_info'  => $student_info,
+            'bai_chua_nop'  => $bai_tap_stats['chua_nop'], // Dùng cho số đỏ đỏ trên dashboard
+            'lich_tuan_count' => count($lich_hoc),         // Đếm số tiết học
+            'lich_hoc_tuan' => $lich_hoc,
+            'bang_diem'     => $bang_diem,                 // QUAN TRỌNG: Dữ liệu này sẽ đổ vào bảng
+            'school_name'   => $_SESSION['school_name'] ?? 'THPT Manager'
+        ];
+
+        // 5. Gọi View
+        // Lưu ý: Đảm bảo bạn đã có file views/HocSinh/dashboard.php
+        $this->loadView('HocSinh/dashboard', $data);
+    }
+
+    // Trong class HocSinhController
+
+    /**
+     * TRANG BẢNG ĐIỂM CHI TIẾT
+     * URL: /hocsinh/bangdiem
+     */
+    public function bangdiem() {
+        // 1. Load Model
+        $hsModel = $this->loadModel('HocSinhModel');
+
+        // 2. Lấy thông tin
+        $ma_hs = $this->ma_hoc_sinh;
+        $student_info = $hsModel->getThongTinHS($ma_hs);
+        $bang_diem = $hsModel->getBangDiem($ma_hs);
+
+        // 3. Đóng gói dữ liệu
+        $data = [
+            'user_name'    => $_SESSION['user_name'] ?? 'Học sinh',
+            'school_name'  => $_SESSION['school_name'] ?? 'THPT Manager',
+            'student_info' => $student_info,
+            'bang_diem'    => $bang_diem
+        ];
+
+        // 4. Gọi View (PHẢI CÓ ECHO)
+        $content = $this->loadView('HocSinh/diem_so', $data);
+        echo $content; // <--- Thêm dòng này mới hiện view ra được
     }
 
     /**

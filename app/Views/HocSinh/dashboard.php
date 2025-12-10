@@ -67,7 +67,11 @@
         <li class="nav-item"><a class="nav-link active" href="#"><i class="bi bi-grid-fill me-2"></i> Tổng Quan</a></li>
         <li class="nav-item"><a class="nav-link" href="<?= BASE_URL ?>/baitap/index"><i class="bi bi-journal-text me-2"></i> Bài Tập & Nộp Bài</a></li>
         <li class="nav-item"><a class="nav-link" href="<?= BASE_URL ?>/hocsinh/diemdanh"><i class="bi bi-calendar-check me-2"></i> Điểm Danh</a></li>
-        <li class="nav-item"><a class="nav-link" href="#diem-so"><i class="bi bi-bar-chart-line-fill me-2"></i> Bảng Điểm</a></li>
+        <li class="nav-item">
+            <a class="nav-link" href="<?= BASE_URL ?>/hocsinh/bangdiem">
+                <i class="bi bi-bar-chart-line-fill me-2"></i> Bảng Điểm
+            </a>
+        </li>
         <li class="nav-item">
             <a class="nav-link" href="<?= BASE_URL ?>/hocsinhTkb/index">
                 <i class="bi bi-calendar-week me-2"></i> Thời Khóa Biểu
@@ -216,7 +220,24 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <?php $lich = $data['lich_hoc_tuan'] ?? []; ?>
+                            <?php 
+                            $lich = $data['lich_hoc_tuan'] ?? []; 
+                            
+                            // Sắp xếp theo thứ trước, rồi đến tiết
+                            if (!empty($lich)) {
+                                usort($lich, function($a, $b) {
+                                    // Chuyển "Thứ 2" -> 2, "Thứ 3" -> 3...
+                                    $thu_a = (int)filter_var($a['thu'], FILTER_SANITIZE_NUMBER_INT);
+                                    $thu_b = (int)filter_var($b['thu'], FILTER_SANITIZE_NUMBER_INT);
+                                    
+                                    if ($thu_a == $thu_b) {
+                                        return ($a['tiet'] ?? 0) <=> ($b['tiet'] ?? 0); // Sắp theo tiết
+                                    }
+                                    return $thu_a <=> $thu_b; // Sắp theo thứ
+                                });
+                            }
+                            ?>
+                            
                             <?php if (empty($lich)): ?>
                                 <tr><td colspan="6" class="text-center py-5 text-muted">
                                     <img src="https://cdn-icons-png.flaticon.com/512/7486/7486754.png" width="50" class="opacity-50 mb-2" alt="Không có lịch">

@@ -301,7 +301,9 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="text-muted text-uppercase mb-2">Trường Trực Thuộc</h6>
-                            <h2 class="mb-0 fw-bold text-info">5</h2> 
+                            <h2 class="mb-0 fw-bold text-info">
+                                <?php echo number_format($data['truong_count'] ?? 0); ?>
+                            </h2>
                         </div>
                         <i class="bi bi-buildings text-info opacity-25" style="font-size: 3rem;"></i>
                     </div>

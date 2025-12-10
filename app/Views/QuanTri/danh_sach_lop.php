@@ -17,9 +17,14 @@
                 <h2 class="mb-1"><i class="bi bi-house-door-fill text-primary"></i> Quản Lý Lớp Học</h2>
                 <p class="text-muted mb-0">Tổng số lớp: <strong class="text-primary"><?php echo $data['total_lop']; ?></strong></p>
             </div>
-            <a href="<?php echo BASE_URL; ?>/LopHoc/create" class="btn btn-primary btn-lg">
-                <i class="bi bi-plus-circle-fill"></i> Thêm Lớp Mới
-            </a>
+            <div class="d-flex gap-2">
+                <a href="<?php echo BASE_URL; ?>/dashboard" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-speedometer2"></i> Dashboard
+                </a>
+                <a href="<?php echo BASE_URL; ?>/LopHoc/create" class="btn btn-primary btn-lg">
+                    <i class="bi bi-plus-circle-fill"></i> Thêm Lớp Mới
+                </a>
+            </div>
         </div>
 
         <!-- Table -->

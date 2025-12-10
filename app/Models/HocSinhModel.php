@@ -33,6 +33,59 @@ class HocSinhModel {
         }
     }
 
+    // Thêm vào trong class HocSinhModel
+
+public function getBangDiem($hs_id) {
+    // Lấy chi tiết điểm các môn, sắp xếp theo học kỳ và tên môn
+    $sql = "SELECT 
+                mh.ten_mon_hoc,
+                d.diem_mieng,
+                d.diem_15phut,
+                d.diem_1tiet,
+                d.diem_gua_ky,
+                d.diem_cuoi_ky,
+                d.diem_tb_mon_hk,
+                d.xep_loai_mon,
+                d.ma_hoc_ky
+            FROM diem_mon_hoc_hoc_ky d
+            JOIN mon_hoc mh ON d.ma_mon_hoc = mh.ma_mon_hoc
+            WHERE d.ma_hoc_sinh = ?
+            ORDER BY d.ma_hoc_ky, mh.ten_mon_hoc";
+    
+    try {
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$hs_id]);
+        $results = $stmt->fetchAll();
+        
+        // Xử lý mảng: Gom nhóm theo Môn -> Học Kỳ
+        $bang_diem = [];
+        foreach ($results as $row) {
+            $mon = $row['ten_mon_hoc'];
+            $hoc_ky = $row['ma_hoc_ky']; // Ví dụ: HK1
+            
+            if (!isset($bang_diem[$mon])) {
+                $bang_diem[$mon] = [];
+            }
+            
+            $bang_diem[$mon][$hoc_ky] = [
+                'DiemMieng'   => $row['diem_mieng'],
+                'Diem15Phut'  => $row['diem_15phut'],
+                'Diem1Tiet'   => $row['diem_1tiet'],
+                'DiemGiuaKy'  => $row['diem_gua_ky'],
+                'DiemCuoiKy'  => $row['diem_cuoi_ky'],
+                'TB'          => $row['diem_tb_mon_hk'],
+                'XepLoai'     => $row['xep_loai_mon']
+            ];
+        }
+        
+        return $bang_diem;
+        
+    } catch (PDOException $e) {
+        error_log("Lỗi getBangDiem HS: " . $e->getMessage());
+        return [];
+    }
+}
+
     // 1. LẤY THÔNG TIN HỌC SINH CHÍNH (dùng cho Dashboard)
     public function getThongTinHS($user_id) {
         $sql = "SELECT 
@@ -333,6 +386,9 @@ class HocSinhModel {
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return ($result['total'] > 0);
     }
+
+
+
 
 }
 ?>

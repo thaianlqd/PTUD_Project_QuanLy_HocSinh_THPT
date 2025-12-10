@@ -78,5 +78,42 @@ class GiaoVienChuNhiemModel {
         }
         return $data;
     }
+
+    // ... (Code cũ giữ nguyên) ...
+
+    /**
+     * [MỚI] Lấy danh sách đơn xin phép của lớp chủ nhiệm
+     */
+    public function getDanhSachDonXinPhep($ma_lop) {
+        // JOIN 3 bảng: Phieu -> HocSinh -> NguoiDung (để lấy tên)
+        $sql = "SELECT 
+                    p.*,
+                    nd.ho_ten AS ten_hoc_sinh
+                FROM phieu_xin_nghi_hoc p
+                JOIN hoc_sinh hs ON p.ma_nguoi_dung = hs.ma_hoc_sinh
+                JOIN nguoi_dung nd ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
+                WHERE hs.ma_lop = ?
+                -- Sắp xếp: Chờ duyệt lên đầu, sau đó đến ngày gửi mới nhất
+                ORDER BY FIELD(p.trang_thai_don, 'ChoDuyet', 'DaDuyet', 'TuChoi'), p.ngay_lam_don DESC";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$ma_lop]);
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * [MỚI] Cập nhật trạng thái đơn (Duyệt/Từ chối)
+     */
+    public function duyetDonXinPhep($ma_phieu, $trang_thai) { // trang_thai: 'DaDuyet' hoặc 'TuChoi'
+        try {
+            $sql = "UPDATE phieu_xin_nghi_hoc SET trang_thai_don = ? WHERE ma_phieu = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$trang_thai, $ma_phieu]);
+            return true;
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+    
 }
 ?>
