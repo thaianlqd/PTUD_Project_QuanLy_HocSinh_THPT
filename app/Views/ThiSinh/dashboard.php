@@ -64,7 +64,7 @@
       <li class="nav-item"><a class="nav-link" href="#overview"><i class="bi bi-speedometer2 me-2"></i>Tổng Quan</a></li>
       <li class="nav-item"><a class="nav-link" href="#thong-tin-thi"><i class="bi bi-file-earmark-text me-2"></i>Thông Tin Thi</a></li>
       <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/ThiSinh/nguyenVong"><i class="bi bi-flag me-2"></i>Quản Lý Nguyện Vọng</a></li>
-      <li class="nav-item"><a class="nav-link" href="#nhap-hoc"><i class="bi bi-journal-check me-2"></i>Đăng Ký Nhập Học</a></li>
+      <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/ThisinhNhaphoc/nhapHoc"><i class="bi bi-journal-check me-2"></i>Đăng Ký Nhập Học</a></li>
       <li class="nav-item mt-auto p-3 border-top"><a class="nav-link text-danger" href="<?php echo BASE_URL; ?>/auth/logout"><i class="bi bi-box-arrow-right me-2"></i>Đăng Xuất</a></li>
     </ul>
   </div>
@@ -237,7 +237,9 @@
               <h5 class="fw-bold mt-2">Xác Nhận Nhập Học Trực Tuyến</h5>
               <p class="text-muted small">Nếu bạn đã trúng tuyển, vui lòng xác nhận nhập học trước ngày 15/06.</p>
               <?php if(isset($data['ket_qua']['trang_thai']) && $data['ket_qua']['trang_thai'] == 'Dau'): ?>
-                  <button class="btn btn-primary mt-2">Tiến hành Xác Nhận</button>
+                  <a href="<?php echo BASE_URL; ?>/ThisinhNhaphoc/nhapHoc" class="btn btn-primary mt-2">
+                      <i class="bi bi-arrow-right-circle me-2"></i>Tiến hành Xác Nhận
+                  </a>
               <?php else: ?>
                   <button class="btn btn-secondary mt-2" disabled>Chưa mở / Chưa trúng tuyển</button>
               <?php endif; ?>
