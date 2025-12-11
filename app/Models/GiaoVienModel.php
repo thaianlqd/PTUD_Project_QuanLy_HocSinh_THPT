@@ -662,6 +662,7 @@ class GiaoVienModel {
         if ($this->db === null) return [];
         $ma_hoc_ky = $this->normalizeHocKy($ma_hoc_ky);
 
+        // ✅ FIX: Lấy cả tiết môn học + tiết GVCN (chào cờ, sinh hoạt)
         $sql = "SELECT 
                     t.ma_tkb_chi_tiet,
                     t.thu,

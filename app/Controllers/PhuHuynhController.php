@@ -35,9 +35,7 @@ class PhuHuynhController {
     public function dashboard() {
         // A. LẤY DỮ LIỆU TỪ MODEL
 
-        echo "<div style='position:absolute;top:0;left:0;z-index:9999;background:yellow;padding:10px;'>";
-        echo "SESSION User ID: " . ($_SESSION['user_id'] ?? 'NULL');
-        echo "</div>";
+        
 
         $hoc_sinh_info = $this->phModel->getHocSinhInfo($this->ma_phu_huynh);
         $school_name   = $this->phModel->getTenTruongCuaCon($this->ma_phu_huynh);

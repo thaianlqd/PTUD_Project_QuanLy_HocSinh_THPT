@@ -7,37 +7,245 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6; }
-        .sidebar { width: 280px; position: fixed; height: 100vh; background: white; z-index: 1000; box-shadow: 4px 0 15px rgba(0,0,0,0.05); overflow-y: auto; }
-        .main-content { margin-left: 280px; padding: 30px; }
-        .header-card { background: white; border-radius: 15px; padding: 25px; box-shadow: 0 5px 15px rgba(0,0,0,0.03); margin-bottom: 30px; }
-        .header-card h5 { color: #fd7e14; font-weight: bold; }
-        .stat-card { background: white; border-radius: 12px; padding: 15px; border-left: 4px solid #fd7e14; margin-bottom: 15px; }
-        .stat-card h6 { color: #333; font-weight: 600; margin-bottom: 5px; }
-        .stat-card .value { font-size: 1.8rem; font-weight: bold; color: #fd7e14; }
-        .table-tkb { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.03); margin-bottom: 30px; }
-        .table-tkb table { margin-bottom: 0; }
-        .table-tkb thead th { background: #f8f9fa; color: #333; font-weight: 600; border: none; padding: 12px; text-align: center; }
-        .table-tkb tbody td { padding: 12px; border-bottom: 1px solid #e9ecef; text-align: center; vertical-align: middle; height: 70px; }
-        .table-tkb tbody tr:hover { background-color: #f8f9fa; }
-        .buoi-sang { background: #eef7ff; border-left: 4px solid #2196F3; }
-        .buoi-chieu { background: #fff7ed; border-left: 4px solid #ff9800; }
-        .mon-cell { font-weight: 700; color: #1f2937; }
-        .lop-cell { color: #6b7280; font-size: 0.85rem; }
-        .phong-cell { display: inline-block; background: #e8f5e9; padding: 4px 8px; border-radius: 999px; font-size: 0.78rem; color: #0f5132; border: 1px solid #b7e4c7; }
-        .gio-cell { color: #4b5563; font-size: 0.85rem; line-height: 1.2; white-space: nowrap; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+        font-family: 'Segoe UI', Roboto, sans-serif; 
+        background-color: #f3f4f6; 
+    }
+    .sidebar { 
+        width: 280px; 
+        position: fixed; 
+        height: 100vh; 
+        background: white; 
+        z-index: 1000; 
+        box-shadow: 4px 0 15px rgba(0,0,0,0.05); 
+        overflow-y: auto; 
+    }
+    .main-content { 
+        margin-left: 280px; 
+        padding: 30px; 
+    }
+    .header-card { 
+        background: white; 
+        border-radius: 15px; 
+        padding: 25px; 
+        box-shadow: 0 5px 15px rgba(0,0,0,0.03); 
+        margin-bottom: 30px; 
+    }
+    .header-card h5 { 
+        color: #fd7e14; 
+        font-weight: bold; 
+    }
+    .stat-card { 
+        background: white; 
+        border-radius: 12px; 
+        padding: 15px; 
+        border-left: 4px solid #fd7e14; 
+        margin-bottom: 15px; 
+    }
+    .stat-card h6 { 
+        color: #333; 
+        font-weight: 600; 
+        margin-bottom: 5px; 
+    }
+    .stat-card .value { 
+        font-size: 1.8rem; 
+        font-weight: bold; 
+        color: #fd7e14; 
+    }
+
+    /* ====================== BẢNG THỜI KHÓA BIỂU ====================== */
+    .table-tkb { 
+        background: white; 
+        border-radius: 12px; 
+        padding: 20px; 
+        box-shadow: 0 5px 15px rgba(0,0,0,0.03); 
+        margin-bottom: 30px; 
+        overflow: hidden;
+    }
+    .table-tkb table { 
+        margin-bottom: 0; 
+        width: 100%;
+        table-layout: fixed; /* ✅ Bắt buộc các cột chia đều width */
+    }
+    .table-tkb thead th { 
+        background: #f8f9fa; 
+        color: #333; 
+        font-weight: 600; 
+        border: none; 
+        padding: 12px; 
+        text-align: center; 
+        vertical-align: middle;
+    }
+    
+    /* ✅ Set width cố định cho cột Tiết (đã gộp với Giờ) */
+    .table-tkb thead th:nth-child(1),
+    .table-tkb tbody td:nth-child(1) {
+        width: 80px;
+    }
+    
+    /* ✅ Các cột Thứ 2-CN sẽ tự động chia đều phần còn lại */
+    .table-tkb thead th:nth-child(n+2),
+    .table-tkb tbody td:nth-child(n+2) {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    /* Dòng phân cách buổi học */
+    .buoi-header {
+        background: linear-gradient(135deg, #fd7e14 0%, #ff9800 100%);
+        color: white;
+        font-weight: bold;
+        text-align: center;
+        padding: 8px;
+        font-size: 0.95rem;
+    }
+
+    /* Quan trọng: Sửa lỗi lệch lạc, to nhỏ */
+    .table-tkb tbody td {
+        padding: 10px 8px;
+        border-bottom: 1px solid #e9ecef;
+        text-align: center;
+        vertical-align: middle !important;
+        height: auto !important;      /* Bỏ height cố định 70px */
+        min-height: 92px;             /* Đủ chỗ cho 3 dòng + phòng */
+        position: relative;
+        line-height: 1.4;
+    }
+    .table-tkb tbody tr:hover { 
+        background-color: #f8f9fa; 
+    }
+
+    /* Nền buổi sáng / chiều */
+    .buoi-sang { 
+        background: #eef7ff; 
+        border-left: 4px solid #2196F3; 
+    }
+    .buoi-chieu { 
+        background: #fff7ed; 
+        border-left: 4px solid #ff9800; 
+    }
+
+    /* Nội dung trong ô có tiết dạy */
+    .mon-cell { 
+        font-weight: 700; 
+        color: #1f2937; 
+        font-size: 0.95rem;
+        display: block;
+        margin-bottom: 3px;
+    }
+    .lop-cell { 
+        color: #6b7280; 
+        font-size: 0.83rem;
+        display: block;
+        margin-bottom: 5px;
+    }
+    .phong-cell { 
+        display: inline-block; 
+            background: #e8f5e9; 
+            padding: 4px 9px; 
+            border-radius: 999px; 
+            font-size: 0.78rem; 
+            color: #0f5132; 
+            border: 1px solid #b7e4c7;
+            font-weight: 500;
+        }
+
+        /* Giờ học trong cột tiết */
+        .tiet-number { 
+            font-weight: bold;
+            font-size: 1.1rem;
+            display: block;
+            margin-bottom: 3px;
+        }
+        .gio-cell { 
+            color: #6b7280; 
+            font-size: 0.75rem; 
+            line-height: 1.2; 
+            white-space: nowrap; 
+        }
+
+        /* Ô trống: căn giữa dấu gạch ngang */
+        .table-tkb tbody td:empty::after,
+        .table-tkb tbody td .text-muted {
+            content: "–";
+            color: #adb5bd;
+            font-size: 1.4rem;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .table-tkb tbody td .text-muted {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            color: #adb5bd;
+        }
+
+        /* Các phần còn lại giữ nguyên */
         .spinner-border { color: #fd7e14; }
-        .nav-link { color: #666; text-decoration: none; padding: 12px 16px; display: flex; align-items: center; gap: 10px; transition: all 0.3s; }
-        .nav-link:hover { background: #f3f4f6; color: #fd7e14; }
-        .nav-link.active { color: #fd7e14; border-left: 4px solid #fd7e14; background: #fff8f0; font-weight: 600; }
-        .sidebar-header { padding: 20px; text-align: center; background: linear-gradient(135deg, #fd7e14 0%, #b35200 100%); color: white; border-radius: 0 0 15px 0; }
-        .sidebar-header img { width: 70px; margin-bottom: 10px; border: 3px solid white; border-radius: 50%; }
-        .sidebar-header h6 { font-weight: bold; margin-bottom: 5px; }
-        .btn-hoc-ky { margin: 5px; }
+        .nav-link { 
+            color: #666; 
+            text-decoration: none; 
+            padding: 12px 16px; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            transition: all 0.3s; 
+        }
+        .nav-link:hover { 
+            background: #f3f4f6; 
+            color: #fd7e14; 
+        }
+        .nav-link.active { 
+            color: #fd7e14; 
+            border-left: 4px solid #fd7e14; 
+            background: #fff8f0; 
+            font-weight: 600; 
+        }
+        .sidebar-header { 
+            padding: 20px; 
+            text-align: center; 
+            background: linear-gradient(135deg, #fd7e14 0%, #b35200 100%); 
+            color: white; 
+        }
+        .sidebar-header img { 
+            width: 70px; 
+            margin-bottom: 10px; 
+            border: 3px solid white; 
+            border-radius: 50%; 
+        }
+        .sidebar-header h6 { 
+            font-weight: bold; 
+            margin-bottom: 5px; 
+        }
+        .btn-hoc-ky { 
+            margin: 5px; 
+        }
+
         @media (max-width: 991px) { 
-            .sidebar { transform: translateX(-100%); transition: 0.3s; } 
-            .main-content { margin-left: 0; } 
+            .sidebar { 
+                transform: translateX(-100%); 
+                transition: 0.3s; 
+            } 
+            .main-content { 
+                margin-left: 0; 
+            } 
+        }
+
+        .empty-cell {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.8rem;
+            color: #adb5bd;
+            font-weight: 300;
         }
     </style>
 </head>
@@ -51,7 +259,7 @@
             <small>Giáo Viên Bộ Môn</small>
         </div>
         <nav class="nav flex-column mt-3 px-2">
-            <a class="nav-link" href="<?php echo BASE_URL; ?>/giaovien"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+            <a class="nav-link" href="<?php echo BASE_URL; ?>/dashboard"><i class="bi bi-grid-fill me-2"></i>Dashboard</a>
             <a class="nav-link active" href="#"><i class="bi bi-calendar-week"></i> Lịch Dạy</a>
             <a class="nav-link" href="<?php echo BASE_URL; ?>/giaovien/diemdanh"><i class="bi bi-upc-scan"></i> Điểm Danh</a>
             <a class="nav-link" href="<?php echo BASE_URL; ?>/giaovien/baitap"><i class="bi bi-journal-text"></i> Bài Tập</a>
@@ -76,20 +284,29 @@
         </div>
 
         <!-- CHỌN LỚP -->
-        <div class="stat-card">
-            <label class="form-label fw-bold mb-2">Chọn Lớp</label>
-            <select class="form-select" id="selectLop" onchange="loadTkbByLop()">
-                <option value="">-- Chọn lớp để xem --</option>
-                <?php if (!empty($data['lop_list'])): ?>
-                    <?php foreach ($data['lop_list'] as $lop): ?>
-                        <option value="<?php echo $lop['ma_lop']; ?>">
-                            <?php echo htmlspecialchars($lop['ten_lop']) . ' (Sĩ số: ' . $lop['si_so'] . ')'; ?>
-                        </option>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <option disabled>Không có lớp nào</option>
-                <?php endif; ?>
-            </select>
+        <div class="stat-card d-flex align-items-center gap-3 flex-wrap">
+            <div class="flex-grow-1">
+                <label class="form-label fw-bold mb-2">Chọn Lớp</label>
+                <select class="form-select" id="selectLop" onchange="onChangeLop()" <?php echo isset($data['lop_list']) && empty($data['lop_list']) ? 'disabled' : ''; ?> disabled>
+                    <option value="">-- Chọn lớp để xem --</option>
+                    <?php if (!empty($data['lop_list'])): ?>
+                        <?php foreach ($data['lop_list'] as $lop): ?>
+                            <option value="<?php echo $lop['ma_lop']; ?>">
+                                <?php echo htmlspecialchars($lop['ten_lop']) . ' (Sĩ số: ' . $lop['si_so'] . ')'; ?>
+                            </option>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <option disabled>Không có lớp nào</option>
+                    <?php endif; ?>
+                </select>
+            </div>
+            <div class="text-end">
+                <label class="form-label fw-bold mb-2 d-block">Chế độ</label>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="toggleAll" onchange="toggleAllMode()" checked>
+                    <label class="form-check-label" for="toggleAll">Xem tất cả lớp</label>
+                </div>
+            </div>
         </div>
 
         <!-- THỐNG KÊ -->
@@ -147,7 +364,8 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let currentHocKy = '1';  // ✅ Đổi: 'HK1' → '1'
+        let currentHocKy = '1';
+        let viewAll = true;
 
         function changeHocKy(hk) {
             // Map HK1 → '1', HK2 → '2'
@@ -158,7 +376,22 @@
             document.getElementById('btnHK1').classList.toggle('btn-outline-warning', hk !== 'HK1');
             document.getElementById('btnHK2').classList.toggle('btn-warning', hk === 'HK2');
             document.getElementById('btnHK2').classList.toggle('btn-outline-warning', hk !== 'HK2');
-            loadTkbByLop();
+            loadData();
+        }
+
+        function toggleAllMode() {
+            viewAll = document.getElementById('toggleAll').checked;
+            document.getElementById('selectLop').disabled = viewAll;
+            loadData();
+        }
+
+        function onChangeLop() {
+            if (!viewAll) loadData();
+        }
+
+        function loadData() {
+            if (viewAll) return loadTkbAll();
+            return loadTkbByLop();
         }
 
         function loadTkbByLop() {
@@ -200,6 +433,35 @@
             });
         }
 
+        function loadTkbAll() {
+            document.getElementById('loadingSpinner').style.display = 'block';
+            document.getElementById('tkbContent').style.display = 'none';
+
+            fetch('<?php echo BASE_URL; ?>/giaovien/xemtkballapi', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    ma_hoc_ky: currentHocKy
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('loadingSpinner').style.display = 'none';
+                if (!data.success) {
+                    alert('Lỗi: ' + data.message);
+                    return;
+                }
+
+                renderTkbTableAll(data.data, data.tiet_hoc, data.ma_hoc_ky);
+                document.getElementById('tkbContent').style.display = 'block';
+            })
+            .catch(err => {
+                document.getElementById('loadingSpinner').style.display = 'none';
+                console.error('Lỗi:', err);
+                alert('Lỗi kết nối: ' + err.message);
+            });
+        }
+
         function renderTkbTable(tkbData, tietHoc, lopInfo, maHocKy) {
             // ✅ FIX: Convert số thành chuỗi (2 → 'Thu2')
             const thuMap = {
@@ -208,7 +470,8 @@
                 '4': 'Thu4',
                 '5': 'Thu5',
                 '6': 'Thu6',
-                '7': 'Thu7'
+                '7': 'Thu7',
+                '8': 'CN'
             };
 
             // Nhóm dữ liệu theo (Thứ, Tiết)
@@ -232,14 +495,14 @@
                     <table class="table table-bordered">
                         <thead>
                             <tr>
-                                <th style="width: 80px;">Tiết</th>
-                                <th style="width: 80px;">Giờ</th>
+                                <th>Tiết</th>
                                 <th>Thứ 2</th>
                                 <th>Thứ 3</th>
                                 <th>Thứ 4</th>
                                 <th>Thứ 5</th>
                                 <th>Thứ 6</th>
                                 <th>Thứ 7</th>
+                                <th>Chủ Nhật</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -247,28 +510,48 @@
 
             const maxTiet = 7;
             for (let tiet = 1; tiet <= maxTiet; tiet++) {
+                // Thêm dòng phân cách buổi
+                if (tiet === 1) {
+                    html += `<tr><td colspan="8" class="buoi-header">☀️ Buổi Sáng</td></tr>`;
+                } else if (tiet === 5) {
+                    html += `<tr><td colspan="8" class="buoi-header">🌙 Buổi Chiều</td></tr>`;
+                }
+                
                 const tietInfo = tietHoc.find(t => t.so_tiet == tiet) || {};
                 const buoiClass = tiet <= 4 ? 'buoi-sang' : 'buoi-chieu';
                 
                 html += `<tr class="${buoiClass}">
-                    <td class="fw-bold">${tiet}</td>
-                    <td class="gio-cell">
-                        <small>${tietInfo.gio_bat_dau || '--'}<br>${tietInfo.gio_ket_thuc || '--'}</small>
+                    <td>
+                        <span class="tiet-number">${tiet}</span>
+                        <small class="gio-cell">${tietInfo.gio_bat_dau || '--'}<br>${tietInfo.gio_ket_thuc || '--'}</small>
                     </td>`;
 
-                const thuArray = ['Thu2', 'Thu3', 'Thu4', 'Thu5', 'Thu6', 'Thu7'];
+                const thuArray = ['Thu2', 'Thu3', 'Thu4', 'Thu5', 'Thu6', 'Thu7', 'CN'];
                 thuArray.forEach(thu => {
                     const key = thu + '_' + tiet;
                     const item = tkbGrouped[key];
                     
-                    if (item) {
+                    // ✅ Hardcode Chào cờ & Sinh hoạt cho Thứ 2, tiết 1-2
+                    if (thu === 'Thu2' && tiet === 1) {
+                        html += `<td>
+                            <div class="mon-cell">Chào cờ</div>
+                            <small class="lop-cell">${lopInfo.ten_lop}</small><br>
+                            <span class="phong-cell">Sân trường</span>
+                        </td>`;
+                    } else if (thu === 'Thu2' && tiet === 2) {
+                        html += `<td>
+                            <div class="mon-cell">Sinh hoạt lớp</div>
+                            <small class="lop-cell">${lopInfo.ten_lop}</small><br>
+                            <span class="phong-cell">Phòng học</span>
+                        </td>`;
+                    } else if (item) {
                         html += `<td>
                             <div class="mon-cell">${item.mon}</div>
                             <small class="lop-cell">${item.lop}</small><br>
                             <span class="phong-cell">${item.phong || 'N/A'}</span>
                         </td>`;
                     } else {
-                        html += `<td class="text-muted">-</td>`;
+                        html += `<td><span class="empty-cell">–</span></td>`;
                     }
                 });
 
@@ -283,6 +566,111 @@
 
             document.getElementById('tkbContent').innerHTML = html;
         }
+
+        function renderTkbTableAll(tkbData, tietHoc, maHocKy) {
+            const thuMap = {
+                '2': 'Thu2',
+                '3': 'Thu3', 
+                '4': 'Thu4',
+                '5': 'Thu5',
+                '6': 'Thu6',
+                '7': 'Thu7',
+                '8': 'CN'
+            };
+
+            const tkbGrouped = {};
+            tkbData.forEach(item => {
+                const thuKey = thuMap[item.thu] || item.thu;
+                const key = thuKey + '_' + item.tiet;
+                tkbGrouped[key] = item;
+            });
+
+            const hkDisplay = maHocKy == '1' ? 'HK1' : 'HK2';
+
+            let html = `
+                <h6 class="fw-bold mb-3">Lịch dạy tất cả lớp - Học Kỳ: <span class="text-warning">${hkDisplay}</span></h6>
+                <div style="overflow-x: auto;">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Tiết</th>
+                                <th>Thứ 2</th>
+                                <th>Thứ 3</th>
+                                <th>Thứ 4</th>
+                                <th>Thứ 5</th>
+                                <th>Thứ 6</th>
+                                <th>Thứ 7</th>
+                                <th>Chủ Nhật</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            const maxTiet = 7;
+            for (let tiet = 1; tiet <= maxTiet; tiet++) {
+                // Thêm dòng phân cách buổi
+                if (tiet === 1) {
+                    html += `<tr><td colspan="8" class="buoi-header">☀️ Buổi Sáng</td></tr>`;
+                } else if (tiet === 5) {
+                    html += `<tr><td colspan="8" class="buoi-header">🌙 Buổi Chiều</td></tr>`;
+                }
+                
+                const tietInfo = tietHoc.find(t => t.so_tiet == tiet) || {};
+                const buoiClass = tiet <= 4 ? 'buoi-sang' : 'buoi-chieu';
+                
+                html += `<tr class="${buoiClass}">
+                    <td>
+                        <span class="tiet-number">${tiet}</span>
+                        <small class="gio-cell">${tietInfo.gio_bat_dau || '--'}<br>${tietInfo.gio_ket_thuc || '--'}</small>
+                    </td>`;
+
+                const thuArray = ['Thu2', 'Thu3', 'Thu4', 'Thu5', 'Thu6', 'Thu7', 'CN'];
+                thuArray.forEach(thu => {
+                    const key = thu + '_' + tiet;
+                    const item = tkbGrouped[key];
+                    
+                    // ✅ Hardcode Chào cờ & Sinh hoạt cho Thứ 2, tiết 1-2 (tất cả lớp)
+                    if (thu === 'Thu2' && tiet === 1) {
+                        html += `<td>
+                            <div class="mon-cell">Chào cờ</div>
+                            <small class="lop-cell">Tất cả lớp</small><br>
+                            <span class="phong-cell">Sân trường</span>
+                        </td>`;
+                    } else if (thu === 'Thu2' && tiet === 2) {
+                        html += `<td>
+                            <div class="mon-cell">Sinh hoạt lớp</div>
+                            <small class="lop-cell">Lớp chủ nhiệm</small><br>
+                            <span class="phong-cell">Phòng học</span>
+                        </td>`;
+                    } else if (item) {
+                        html += `<td>
+                            <div class="mon-cell">${item.mon}</div>
+                            <small class="lop-cell">${item.lop}</small><br>
+                            <span class="phong-cell">${item.phong || 'N/A'}</span>
+                        </td>`;
+                    } else {
+                        html += `<td><span class="empty-cell">–</span></td>`;
+                    }
+                });
+
+                html += `</tr>`;
+            }
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            document.getElementById('tkbContent').innerHTML = html;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Mặc định bật chế độ xem tất cả khi vào trang
+            document.getElementById('toggleAll').checked = true;
+            document.getElementById('selectLop').disabled = true;
+            loadData();
+        });
     </script>
 
 </body>

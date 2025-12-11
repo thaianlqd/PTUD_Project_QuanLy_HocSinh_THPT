@@ -55,6 +55,7 @@ class GiaoVienController extends Controller {
     // ----- CÁC HÀM BÀI TẬP -----
     
     public function index() { $this->baitap(); }
+
     
     /**
      * HÀM CŨ: Hiển thị trang CHỌN LỚP
