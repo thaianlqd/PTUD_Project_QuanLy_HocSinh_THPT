@@ -470,10 +470,10 @@
                  }
             }
 
-            // Nếu tạm nghỉ thì không bắt buộc chọn phân công
+            // Nếu tạm nghỉ thì không bắt buộc chọn phân công (nhưng vẫn cho phép chọn)
             if (loaiTietHienTai === 'tam_nghi') {
                 maPhanCongSelect.removeAttribute('required');
-                maPhanCongSelect.disabled = true;
+                maPhanCongSelect.disabled = false; // ✅ VẪN CHO PHÉP CHỌN
             } else {
                 maPhanCongSelect.setAttribute('required', 'required');
                 maPhanCongSelect.disabled = false;
@@ -482,14 +482,19 @@
             // ✅ XỬ LÝ KHI USER THAY ĐỔI LOẠI TIẾT TRONG MODAL
             loaiTietSelect.addEventListener('change', function() {
                 if (this.value === 'tam_nghi') {
-                    // Tạm nghỉ: disable select, bỏ required, không cần chọn môn-GV
-                    maPhanCongSelect.disabled = true;
+                    // Tạm nghỉ: bỏ required, NHƯNG VẪN CHO PHÉP CHỌN
+                    maPhanCongSelect.disabled = false; // ✅ VẪN ENABLE
                     maPhanCongSelect.removeAttribute('required');
-                    maPhanCongSelect.innerHTML = '<option value="">-- Không cần chọn (Tạm nghỉ) --</option>';
+                    // ✅ Nếu chưa load danh sách, gọi API
+                    if (maPhanCongSelect.options.length <= 1) {
+                        const thuVal = document.getElementById('thu_hidden').value;
+                        const tietVal = document.getElementById('tiet_hidden').value;
+                        loadDanhSachMonHocGV(thuVal, tietVal, maPhanCongHienTai);
+                    }
                     modalError.style.display = 'none';
                     saveButton.disabled = false;
                 } else {
-                    // Học/Thi: enable select, bắt buộc chọn, reload API
+                    // Học/Thi: bắt buộc chọn, reload API
                     maPhanCongSelect.disabled = false;
                     maPhanCongSelect.setAttribute('required', 'required');
                     maPhanCongSelect.innerHTML = '<option value="">Đang tải lại...</option>';
@@ -563,14 +568,9 @@
                 }
             }
 
-            // Fetch dynamic data (dùng hàm loadDanhSachMonHocGV)
-            if (!isFixed && loaiTietHienTai !== 'tam_nghi') {
+            // Fetch dynamic data - ✅ LUÔN GỌI API (kể cả tạm nghỉ)
+            if (!isFixed) {
                 await loadDanhSachMonHocGV(thu, tiet, maPhanCongHienTai);
-                modalFormContent.style.display = 'block';
-                modalLoading.style.display = 'none';
-            } else if (loaiTietHienTai === 'tam_nghi') {
-                maPhanCongSelect.innerHTML = '<option value="">-- Không cần chọn (Tạm nghỉ) --</option>';
-                saveButton.disabled = false;
                 modalFormContent.style.display = 'block';
                 modalLoading.style.display = 'none';
             } else {

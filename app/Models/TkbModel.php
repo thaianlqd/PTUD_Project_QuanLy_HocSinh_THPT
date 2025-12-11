@@ -85,48 +85,7 @@ class TkbModel {
      * Lấy toàn bộ chi tiết TKB của 1 lớp (THEO HỌC KỲ)
      * <-- ĐÃ SỬA: Thêm $ma_hoc_ky
      */
-    // public function getChiTietTkbLop($ma_lop, $ma_hoc_ky) {
-    //     if ($this->db === null) return [];
-
-    //     $sql = "SELECT
-    //                 t.thu,
-    //                 t.tiet,
-    //                 m.ten_mon_hoc,
-    //                 nd.ho_ten AS ten_giao_vien,
-    //                 COALESCE(ph_tkb.ten_phong, ph_mon.ten_phong, ph_lop.ten_phong) AS ten_phong_hoc,
-    //                 COALESCE(t.ma_phong_hoc, ph_mon.ma_phong, l.ma_phong_hoc_chinh) AS ma_phong_hoc_thuc_te,
-    //                 bpc.ma_phan_cong
-    //             FROM tkb_chi_tiet t
-    //             JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
-    //             JOIN mon_hoc m ON bpc.ma_mon_hoc = m.ma_mon_hoc
-    //             JOIN giao_vien gv ON bpc.ma_giao_vien = gv.ma_giao_vien
-    //             JOIN nguoi_dung nd ON gv.ma_giao_vien = nd.ma_nguoi_dung
-    //             JOIN lop_hoc l ON t.ma_lop = l.ma_lop
-    //             LEFT JOIN phong_hoc ph_tkb ON t.ma_phong_hoc = ph_tkb.ma_phong
-    //             LEFT JOIN phong_hoc ph_mon ON m.yeu_cau_phong_dac_biet <> 'None' AND ph_mon.loai_phong = m.yeu_cau_phong_dac_biet
-    //             LEFT JOIN phong_hoc ph_lop ON l.ma_phong_hoc_chinh = ph_lop.ma_phong
-    //             WHERE t.ma_lop = ? AND t.ma_hoc_ky = ?"; // <-- ĐÃ SỬA: Thêm ma_hoc_ky
-
-    //     try {
-    //         $stmt = $this->db->prepare($sql);
-    //         $stmt->execute([$ma_lop, $ma_hoc_ky]); // <-- ĐÃ SỬA: Thêm ma_hoc_ky
-
-    //         $tkb_data = [];
-    //         foreach ($stmt->fetchAll() as $row) {
-    //             $tkb_data[$row['thu']][$row['tiet']] = [
-    //                 'mon' => $row['ten_mon_hoc'],
-    //                 'gv' => $row['ten_giao_vien'],
-    //                 'phong' => $row['ten_phong_hoc'],
-    //                 'ma_phong' => $row['ma_phong_hoc_thuc_te'],
-    //                 'ma_phan_cong' => $row['ma_phan_cong']
-    //             ];
-    //         }
-    //         return $tkb_data;
-    //     } catch (PDOException $e) {
-    //         error_log("Lỗi getChiTietTkbLop: " . $e->getMessage());
-    //         return [];
-    //     }
-    // }
+    
     public function getChiTietTkbLop($ma_lop, $ma_hoc_ky) {
         if ($this->db === null) return [];
         $sql = "SELECT
@@ -179,28 +138,20 @@ class TkbModel {
         ];
 
         try {
-            // 1. Thông tin chung (Lớp, Phòng, GVCN) - Giữ nguyên
-            $sql_info = "SELECT
-                            l.ten_lop,
-                            p.ten_phong AS ten_phong_chinh,
-                            nd.ho_ten AS ten_gvcn
-                         FROM lop_hoc l
-                         LEFT JOIN phong_hoc p ON l.ma_phong_hoc_chinh = p.ma_phong
-                         LEFT JOIN bang_phan_cong bpc_cn ON bpc_cn.ma_lop = l.ma_lop AND bpc_cn.ma_mon_hoc IN (18, 19)
-                         LEFT JOIN giao_vien gv ON bpc_cn.ma_giao_vien = gv.ma_giao_vien
-                         LEFT JOIN nguoi_dung nd ON gv.ma_giao_vien = nd.ma_nguoi_dung
-                         WHERE l.ma_lop = ?
-                         LIMIT 1";
+            // 1. Thông tin chung (Lớp, Phòng, GVCN)
+            $sql_info = "SELECT l.ten_lop, p.ten_phong AS ten_phong_chinh, nd.ho_ten AS ten_gvcn
+                        FROM lop_hoc l
+                        LEFT JOIN phong_hoc p ON l.ma_phong_hoc_chinh = p.ma_phong
+                        LEFT JOIN bang_phan_cong bpc_cn ON bpc_cn.ma_lop = l.ma_lop AND bpc_cn.ma_mon_hoc IN (18, 19)
+                        LEFT JOIN giao_vien gv ON bpc_cn.ma_giao_vien = gv.ma_giao_vien
+                        LEFT JOIN nguoi_dung nd ON gv.ma_giao_vien = nd.ma_nguoi_dung
+                        WHERE l.ma_lop = ? LIMIT 1";
             $stmt_info = $this->db->prepare($sql_info);
             $stmt_info->execute([$ma_lop]);
             $info = $stmt_info->fetch();
 
-            // 2. Lấy TOÀN BỘ phân công cho lớp (Giữ nguyên)
-            // (Giả định rằng phân công dùng chung cho cả 2 học kỳ)
-            $sql_phan_cong = "SELECT
-                                bpc.ma_phan_cong,
-                                m.ten_mon_hoc,
-                                bpc.so_tiet_tuan
+            // 2. Lấy toàn bộ phân công cho lớp
+            $sql_phan_cong = "SELECT bpc.ma_phan_cong, m.ten_mon_hoc, bpc.so_tiet_tuan
                             FROM bang_phan_cong bpc
                             JOIN mon_hoc m ON bpc.ma_mon_hoc = m.ma_mon_hoc
                             WHERE bpc.ma_lop = ?";
@@ -208,24 +159,22 @@ class TkbModel {
             $stmt_phan_cong->execute([$ma_lop]);
             $all_phan_cong = $stmt_phan_cong->fetchAll(PDO::FETCH_ASSOC);
 
-            // 3. Lấy số tiết đã xếp cho lớp (THEO HỌC KỲ)
-            // <-- ĐÃ SỬA: Thêm ma_hoc_ky
+            // 3. Lấy số tiết đã xếp (TÍNH CẢ TẠM NGHỈ)
             $sql_da_xep = "SELECT ma_phan_cong, COUNT(*) as count
-                           FROM tkb_chi_tiet
-                           WHERE ma_lop = ? AND ma_hoc_ky = ?
-                           GROUP BY ma_phan_cong";
+                        FROM tkb_chi_tiet
+                        WHERE ma_lop = ? AND ma_hoc_ky = ?
+                        GROUP BY ma_phan_cong";
             $stmt_da_xep = $this->db->prepare($sql_da_xep);
-            $stmt_da_xep->execute([$ma_lop, $ma_hoc_ky]); // <-- ĐÃ SỬA
-            $da_xep_map = $stmt_da_xep->fetchAll(PDO::FETCH_KEY_PAIR); // [ma_phan_cong => count]
+            $stmt_da_xep->execute([$ma_lop, $ma_hoc_ky]);
+            $da_xep_map = $stmt_da_xep->fetchAll(PDO::FETCH_KEY_PAIR);
 
-            // 4. Dùng PHP để nhóm và tổng hợp lại (Giữ nguyên)
+            // 4. Nhóm và tổng hợp theo môn
             $mon_hoc_aggregated = [];
             $tong_da_xep_total = 0;
             $tong_ke_hoach_total = 0;
 
             $phan_cong_grouped_by_mon = [];
             foreach ($all_phan_cong as $pc) {
-                // ... (code nhóm thủ công giữ nguyên) ...
                 $ten_mon = $pc['ten_mon_hoc'];
                 if (!isset($phan_cong_grouped_by_mon[$ten_mon])) {
                     $phan_cong_grouped_by_mon[$ten_mon] = [];
@@ -234,35 +183,29 @@ class TkbModel {
             }
 
             foreach ($phan_cong_grouped_by_mon as $ten_mon => $phan_congs_cua_mon) {
-                // ... (code duyệt và tính toán giữ nguyên) ...
                 $da_xep_mon = 0;
-                $ke_hoach_mon = 0; 
+                $ke_hoach_mon = 0;
                 $ma_phan_cong_list_mon = [];
 
                 if (!empty($phan_congs_cua_mon)) {
                     $ke_hoach_mon = (int)$phan_congs_cua_mon[0]['so_tiet_tuan'];
                 }
 
-                foreach($phan_congs_cua_mon as $pc) {
-                    if (!isset($pc['ma_phan_cong'])) {
-                        error_log("Thiếu key 'ma_phan_cong' trong dữ liệu phân công của môn: $ten_mon");
-                        continue; 
-                    }
+                foreach ($phan_congs_cua_mon as $pc) {
                     $ma_phan_cong = $pc['ma_phan_cong'];
                     $da_xep_pc = $da_xep_map[$ma_phan_cong] ?? 0;
-
                     $da_xep_mon += $da_xep_pc;
                     $ma_phan_cong_list_mon[] = $ma_phan_cong;
                 }
 
-                 $mon_hoc_aggregated[$ten_mon] = [
+                $mon_hoc_aggregated[$ten_mon] = [
                     'da_xep' => $da_xep_mon,
                     'ke_hoach' => $ke_hoach_mon,
                     'ma_phan_cong_list' => $ma_phan_cong_list_mon
-                 ];
+                ];
 
-                 $tong_da_xep_total += $da_xep_mon;
-                 $tong_ke_hoach_total += $ke_hoach_mon;
+                $tong_da_xep_total += $da_xep_mon;
+                $tong_ke_hoach_total += $ke_hoach_mon;
             }
 
             return [
@@ -280,6 +223,89 @@ class TkbModel {
                 'tong_tiet_da_xep' => 0, 'tong_tiet_ke_hoach' => 0,
                 'mon_hoc' => []
             ];
+        }
+    }
+
+
+    public function kiemTraRangBuoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong, $ma_tkb_chi_tiet_dang_sua = null) {
+        if ($this->db === null) return "Lỗi kết nối CSDL.";
+
+        try {
+            // 1. Thông tin phân công
+            $sql_pc = "SELECT bpc.ma_giao_vien, bpc.ma_mon_hoc, bpc.so_tiet_tuan, m.ten_mon_hoc
+                    FROM bang_phan_cong bpc
+                    JOIN mon_hoc m ON bpc.ma_mon_hoc = m.ma_mon_hoc
+                    WHERE bpc.ma_phan_cong = ?";
+            $stmt_pc = $this->db->prepare($sql_pc);
+            $stmt_pc->execute([$ma_phan_cong]);
+            $phan_cong_info = $stmt_pc->fetch();
+
+            if (!$phan_cong_info) return "Không tìm thấy thông tin phân công.";
+
+            $ma_giao_vien = $phan_cong_info['ma_giao_vien'];
+            $ma_mon_hoc = $phan_cong_info['ma_mon_hoc'];
+            $ke_hoach_mon = (int)$phan_cong_info['so_tiet_tuan'];
+            $ten_mon_hoc = $phan_cong_info['ten_mon_hoc'];
+
+            // 2. Xác định phòng học
+            $ma_phong_hoc = $this->xacDinhPhongHoc($ma_phan_cong, $ma_lop);
+
+            // 3. Trùng lịch giáo viên (học kỳ)
+            $sql_gv_ban = "SELECT COUNT(*) FROM tkb_chi_tiet t
+                        JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
+                        WHERE bpc.ma_giao_vien = ? AND t.thu = ? AND t.tiet = ? AND t.ma_hoc_ky = ?
+                        AND t.ma_tkb_chi_tiet <> ?";
+            $stmt_gv_ban = $this->db->prepare($sql_gv_ban);
+            $stmt_gv_ban->execute([$ma_giao_vien, $thu, $tiet, $ma_hoc_ky, $ma_tkb_chi_tiet_dang_sua ?? -1]);
+            if ($stmt_gv_ban->fetchColumn() > 0) {
+                return "Giáo viên đã có lịch dạy vào Thứ $thu, Tiết $tiet (trong học kỳ này).";
+            }
+
+            // 4. Trùng lịch phòng học (học kỳ)
+            if ($ma_phong_hoc !== null) {
+                $sql_phong_ban = "SELECT COUNT(*) FROM tkb_chi_tiet
+                                WHERE ma_phong_hoc = ? AND thu = ? AND tiet = ? AND ma_hoc_ky = ?
+                                AND ma_tkb_chi_tiet <> ?";
+                $stmt_phong_ban = $this->db->prepare($sql_phong_ban);
+                $stmt_phong_ban->execute([$ma_phong_hoc, $thu, $tiet, $ma_hoc_ky, $ma_tkb_chi_tiet_dang_sua ?? -1]);
+                if ($stmt_phong_ban->fetchColumn() > 0) {
+                    $stmt_ten_phong = $this->db->prepare("SELECT ten_phong FROM phong_hoc WHERE ma_phong = ?");
+                    $stmt_ten_phong->execute([$ma_phong_hoc]);
+                    $ten_phong = $stmt_ten_phong->fetchColumn();
+                    return "Phòng học '$ten_phong' đã có lớp khác sử dụng vào Thứ $thu, Tiết $tiet (trong học kỳ này).";
+                }
+            }
+
+            // 5. Kiểm tra vượt số tiết/môn/tuần (TÍNH CẢ TẠM NGHỈ)
+            $sql_da_xep_mon = "SELECT COUNT(*) FROM tkb_chi_tiet
+                            WHERE ma_lop = ? AND ma_phan_cong = ? AND ma_hoc_ky = ?
+                            AND ma_tkb_chi_tiet <> ?";
+            $stmt_da_xep_mon = $this->db->prepare($sql_da_xep_mon);
+            $stmt_da_xep_mon->execute([$ma_lop, $ma_phan_cong, $ma_hoc_ky, $ma_tkb_chi_tiet_dang_sua ?? -1]);
+            $so_tiet_da_xep_mon = (int)$stmt_da_xep_mon->fetchColumn();
+
+            if (($so_tiet_da_xep_mon + 1) > $ke_hoach_mon) {
+                return "Vượt quá số tiết kế hoạch cho môn '$ten_mon_hoc' (Đã xếp $so_tiet_da_xep_mon / $ke_hoach_mon).";
+            }
+
+            // 6. Kiểm tra vượt tổng số tiết/tuần (TÍNH CẢ TẠM NGHỈ)
+            $gioi_han_tuan = 45; 
+            $sql_tong_tiet_tuan = "SELECT COUNT(*) FROM tkb_chi_tiet 
+                                WHERE ma_lop = ? AND ma_hoc_ky = ?
+                                AND ma_tkb_chi_tiet <> ?";
+            $stmt_tong_tiet_tuan = $this->db->prepare($sql_tong_tiet_tuan);
+            $stmt_tong_tiet_tuan->execute([$ma_lop, $ma_hoc_ky, $ma_tkb_chi_tiet_dang_sua ?? -1]);
+            $tong_tiet_da_xep_tuan = (int)$stmt_tong_tiet_tuan->fetchColumn();
+
+            if (($tong_tiet_da_xep_tuan + 1) > $gioi_han_tuan) {
+                return "Vượt quá tổng số tiết tối đa trong tuần (Giới hạn: $gioi_han_tuan tiết).";
+            }
+
+            return true;
+
+        } catch (PDOException $e) {
+            error_log("Lỗi kiemTraRangBuoc: " . $e->getMessage());
+            return "Lỗi hệ thống khi kiểm tra ràng buộc: " . $e->getMessage();
         }
     }
 
@@ -462,37 +488,6 @@ class TkbModel {
      * Lưu 1 tiết học (THEO HỌC KỲ)
      * <-- ĐÃ SỬA: Thêm $ma_hoc_ky
      */
-    // public function luuTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong) {
-    //     if ($this->db === null) return false;
-
-    //     $ma_phong_hoc = $this->xacDinhPhongHoc($ma_phan_cong, $ma_lop);
-
-    //     // <-- ĐÃ SỬA: Thêm ma_hoc_ky vào INSERT
-    //     $sql = "INSERT INTO tkb_chi_tiet (ma_lop, ma_hoc_ky, thu, tiet, ma_phan_cong, ma_phong_hoc)
-    //             VALUES (:ma_lop, :ma_hoc_ky, :thu, :tiet, :ma_phan_cong, :ma_phong_hoc)
-    //             ON DUPLICATE KEY UPDATE
-    //             ma_phan_cong = VALUES(ma_phan_cong),
-    //             ma_phong_hoc = VALUES(ma_phong_hoc)";
-
-    //     try {
-    //         $stmt = $this->db->prepare($sql);
-    //         $stmt->bindParam(':ma_lop', $ma_lop, PDO::PARAM_INT);
-    //         $stmt->bindParam(':ma_hoc_ky', $ma_hoc_ky, PDO::PARAM_INT); // <-- ĐÃ SỬA
-    //         $stmt->bindParam(':thu', $thu, PDO::PARAM_INT);
-    //         $stmt->bindParam(':tiet', $tiet, PDO::PARAM_INT);
-    //         $stmt->bindParam(':ma_phan_cong', $ma_phan_cong, PDO::PARAM_INT);
-            
-    //         if ($ma_phong_hoc === null) {
-    //             $stmt->bindValue(':ma_phong_hoc', null, PDO::PARAM_NULL);
-    //         } else {
-    //             $stmt->bindParam(':ma_phong_hoc', $ma_phong_hoc, PDO::PARAM_INT);
-    //         }
-    //         return $stmt->execute();
-    //     } catch (PDOException $e) {
-    //         error_log("Lỗi luuTietHoc: " . $e->getMessage());
-    //         return false;
-    //     }
-    // }
     public function luuTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong = null, $loai_tiet = 'hoc', $ghi_chu = null) {
         if ($this->db === null) return false;
         $loai_tiet = in_array($loai_tiet, ['hoc','thi','tam_nghi']) ? $loai_tiet : 'hoc';
@@ -516,95 +511,7 @@ class TkbModel {
         }
     }
 
-     /**
-     * Kiểm tra các ràng buộc (THEO HỌC KỲ)
-     * <-- ĐÃ SỬA: Thêm $ma_hoc_ky và cập nhật các câu SQL
-     */
-    public function kiemTraRangBuoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong, $ma_tkb_chi_tiet_dang_sua = null) {
-        if ($this->db === null) return "Lỗi kết nối CSDL.";
-
-        try {
-            // 1. Lấy thông tin phân công (Giữ nguyên)
-            $sql_pc = "SELECT bpc.ma_giao_vien, bpc.ma_mon_hoc, bpc.so_tiet_tuan, m.ten_mon_hoc
-                       FROM bang_phan_cong bpc
-                       JOIN mon_hoc m ON bpc.ma_mon_hoc = m.ma_mon_hoc
-                       WHERE bpc.ma_phan_cong = ?";
-            $stmt_pc = $this->db->prepare($sql_pc);
-            $stmt_pc->execute([$ma_phan_cong]);
-            $phan_cong_info = $stmt_pc->fetch();
-
-            if (!$phan_cong_info) return "Không tìm thấy thông tin phân công.";
-
-            $ma_giao_vien = $phan_cong_info['ma_giao_vien'];
-            $ma_mon_hoc = $phan_cong_info['ma_mon_hoc'];
-            $ke_hoach_mon = (int)$phan_cong_info['so_tiet_tuan'];
-            $ten_mon_hoc = $phan_cong_info['ten_mon_hoc'];
-
-            // 2. Xác định phòng học (Giữ nguyên)
-            $ma_phong_hoc = $this->xacDinhPhongHoc($ma_phan_cong, $ma_lop);
-
-            // 3. Kiểm tra trùng lịch GIÁO VIÊN (THEO HỌC KỲ)
-            // <-- ĐÃ SỬA: Thêm ma_hoc_ky
-            $sql_gv_ban = "SELECT COUNT(*) FROM tkb_chi_tiet t
-                           JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
-                           WHERE bpc.ma_giao_vien = ? AND t.thu = ? AND t.tiet = ? AND t.ma_hoc_ky = ?
-                           AND t.ma_tkb_chi_tiet <> ?";
-            $stmt_gv_ban = $this->db->prepare($sql_gv_ban);
-            $stmt_gv_ban->execute([$ma_giao_vien, $thu, $tiet, $ma_hoc_ky, $ma_tkb_chi_tiet_dang_sua ?? -1]);
-            if ($stmt_gv_ban->fetchColumn() > 0) {
-                return "Giáo viên đã có lịch dạy vào Thứ $thu, Tiết $tiet (trong học kỳ này).";
-            }
-
-            // 4. Kiểm tra trùng lịch PHÒNG HỌC (THEO HỌC KỲ)
-            if ($ma_phong_hoc !== null) {
-                // <-- ĐÃ SỬA: Thêm ma_hoc_ky
-                $sql_phong_ban = "SELECT COUNT(*) FROM tkb_chi_tiet
-                                  WHERE ma_phong_hoc = ? AND thu = ? AND tiet = ? AND ma_hoc_ky = ?
-                                  AND ma_tkb_chi_tiet <> ?";
-                $stmt_phong_ban = $this->db->prepare($sql_phong_ban);
-                $stmt_phong_ban->execute([$ma_phong_hoc, $thu, $tiet, $ma_hoc_ky, $ma_tkb_chi_tiet_dang_sua ?? -1]);
-                if ($stmt_phong_ban->fetchColumn() > 0) {
-                    $stmt_ten_phong = $this->db->prepare("SELECT ten_phong FROM phong_hoc WHERE ma_phong = ?");
-                    $stmt_ten_phong->execute([$ma_phong_hoc]);
-                    $ten_phong = $stmt_ten_phong->fetchColumn();
-                    return "Phòng học '$ten_phong' đã có lớp khác sử dụng vào Thứ $thu, Tiết $tiet (trong học kỳ này).";
-                }
-            }
-
-            // 5. Kiểm tra vượt quá số tiết/môn/tuần (THEO HỌC KỲ)
-            // <-- ĐÃ SỬA: Thêm ma_hoc_ky
-            $sql_da_xep_mon = "SELECT COUNT(*) FROM tkb_chi_tiet
-                               WHERE ma_lop = ? AND ma_phan_cong = ? AND ma_hoc_ky = ?
-                               AND ma_tkb_chi_tiet <> ?";
-            $stmt_da_xep_mon = $this->db->prepare($sql_da_xep_mon);
-            $stmt_da_xep_mon->execute([$ma_lop, $ma_phan_cong, $ma_hoc_ky, $ma_tkb_chi_tiet_dang_sua ?? -1]);
-            $so_tiet_da_xep_mon = (int)$stmt_da_xep_mon->fetchColumn();
-
-            if (($so_tiet_da_xep_mon + 1) > $ke_hoach_mon) {
-                 return "Vượt quá số tiết kế hoạch cho môn '$ten_mon_hoc' (Đã xếp $so_tiet_da_xep_mon / $ke_hoach_mon).";
-            }
-
-            // 6. Kiểm tra vượt quá tổng số tiết/tuần (THEO HỌC KỲ)
-            $gioi_han_tuan = 45; 
-             // <-- ĐÃ SỬA: Thêm ma_hoc_ky
-             $sql_tong_tiet_tuan = "SELECT COUNT(*) FROM tkb_chi_tiet WHERE ma_lop = ? AND ma_hoc_ky = ? AND ma_tkb_chi_tiet <> ?";
-             $stmt_tong_tiet_tuan = $this->db->prepare($sql_tong_tiet_tuan);
-             $stmt_tong_tiet_tuan->execute([$ma_lop, $ma_hoc_ky, $ma_tkb_chi_tiet_dang_sua ?? -1]);
-             $tong_tiet_da_xep_tuan = (int)$stmt_tong_tiet_tuan->fetchColumn();
-
-             if (($tong_tiet_da_xep_tuan + 1) > $gioi_han_tuan) {
-                  return "Vượt quá tổng số tiết tối đa trong tuần (Giới hạn: $gioi_han_tuan tiết).";
-             }
-
-
-            return true;
-
-        } catch (PDOException $e) {
-            error_log("Lỗi kiemTraRangBuoc: " . $e->getMessage());
-            return "Lỗi hệ thống khi kiểm tra ràng buộc: " . $e->getMessage();
-        }
-    }
-
+    
 
     /**
      * Xóa 1 tiết học (THEO HỌC KỲ)

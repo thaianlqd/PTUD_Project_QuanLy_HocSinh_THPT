@@ -343,16 +343,15 @@ class TkbController extends Controller {
 
             // ===== LƯU / CẬP NHẬT TIẾT =====
             if (isset($_POST['save']) && $_POST['save'] == '1') {
+                $ma_phan_cong = filter_input(INPUT_POST, 'ma_phan_cong', FILTER_VALIDATE_INT);
                 $kiemTra = true;
 
-                // Nếu không phải tạm nghỉ → bắt buộc chọn phân công + kiểm tra ràng buộc
+                // ✅ Nếu KHÔNG PHẢI tạm nghỉ → bắt buộc chọn phân công + kiểm tra ràng buộc
                 if ($loai_tiet !== 'tam_nghi') {
-                    $ma_phan_cong = filter_input(INPUT_POST, 'ma_phan_cong', FILTER_VALIDATE_INT);
                     if (!$ma_phan_cong) {
                         $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Vui lòng chọn Môn học/Giáo viên.'];
                         header('Location: ' . $redirect_url); exit;
                     }
-                    // ✅ LẤY ID TIẾT ĐANG SỬA ĐỂ BỎ QUA KIỂM TRA
                     $ma_tkb_chi_tiet_dang_sua = $this->tkbModel->getMaTkbChiTietBySlot($ma_lop, $ma_hoc_ky, $thu, $tiet);
                     $kiemTra = $this->tkbModel->kiemTraRangBuoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong, $ma_tkb_chi_tiet_dang_sua);
                     if ($kiemTra !== true) {
@@ -360,8 +359,8 @@ class TkbController extends Controller {
                         header('Location: ' . $redirect_url); exit;
                     }
                 } else {
-                    // ✅ Tạm nghỉ: không cần phân công, set null rõ ràng
-                    $ma_phan_cong = null;
+                    // ✅ Tạm nghỉ: convert false → null nếu không chọn phân công
+                    $ma_phan_cong = $ma_phan_cong ?: null;
                 }
 
                 // Lưu tiết học
