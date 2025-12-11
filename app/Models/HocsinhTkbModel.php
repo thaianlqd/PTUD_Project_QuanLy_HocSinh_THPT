@@ -50,17 +50,46 @@ class HocsinhTkbModel {
         return $stmt->fetch() ?: null;
     }
 
+    // public function getTkbLop($ma_lop, $ma_hoc_ky) {
+    //     $sql = "SELECT 
+    //                 t.thu, t.tiet, 
+    //                 m.ten_mon_hoc, 
+    //                 nd_gv.ho_ten AS ten_giao_vien,
+    //                 COALESCE(ph.ten_phong, 'P.Học') AS ten_phong
+    //             FROM tkb_chi_tiet t
+    //             JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
+    //             JOIN mon_hoc m ON bpc.ma_mon_hoc = m.ma_mon_hoc
+    //             JOIN giao_vien gv ON bpc.ma_giao_vien = gv.ma_giao_vien
+    //             JOIN nguoi_dung nd_gv ON gv.ma_giao_vien = nd_gv.ma_nguoi_dung
+    //             LEFT JOIN phong_hoc ph ON t.ma_phong_hoc = ph.ma_phong
+    //             WHERE t.ma_lop = ? AND t.ma_hoc_ky = ?";
+        
+    //     $stmt = $this->db->prepare($sql);
+    //     $stmt->execute([$ma_lop, $ma_hoc_ky]);
+        
+    //     $tkb_grid = [];
+    //     while ($row = $stmt->fetch()) {
+    //         $tkb_grid[$row['thu']][$row['tiet']] = [
+    //             'mon' => $row['ten_mon_hoc'],
+    //             'gv'  => $row['ten_giao_vien'],
+    //             'phong' => $row['ten_phong']
+    //         ];
+    //     }
+    //     return $tkb_grid;
+    // }
     public function getTkbLop($ma_lop, $ma_hoc_ky) {
         $sql = "SELECT 
                     t.thu, t.tiet, 
                     m.ten_mon_hoc, 
                     nd_gv.ho_ten AS ten_giao_vien,
-                    COALESCE(ph.ten_phong, 'P.Học') AS ten_phong
+                    COALESCE(ph.ten_phong, 'P.Học') AS ten_phong,
+                    t.loai_tiet,
+                    t.ghi_chu
                 FROM tkb_chi_tiet t
-                JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
-                JOIN mon_hoc m ON bpc.ma_mon_hoc = m.ma_mon_hoc
-                JOIN giao_vien gv ON bpc.ma_giao_vien = gv.ma_giao_vien
-                JOIN nguoi_dung nd_gv ON gv.ma_giao_vien = nd_gv.ma_nguoi_dung
+                LEFT JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
+                LEFT JOIN mon_hoc m ON bpc.ma_mon_hoc = m.ma_mon_hoc
+                LEFT JOIN giao_vien gv ON bpc.ma_giao_vien = gv.ma_giao_vien
+                LEFT JOIN nguoi_dung nd_gv ON gv.ma_giao_vien = nd_gv.ma_nguoi_dung
                 LEFT JOIN phong_hoc ph ON t.ma_phong_hoc = ph.ma_phong
                 WHERE t.ma_lop = ? AND t.ma_hoc_ky = ?";
         
@@ -70,9 +99,11 @@ class HocsinhTkbModel {
         $tkb_grid = [];
         while ($row = $stmt->fetch()) {
             $tkb_grid[$row['thu']][$row['tiet']] = [
-                'mon' => $row['ten_mon_hoc'],
-                'gv'  => $row['ten_giao_vien'],
-                'phong' => $row['ten_phong']
+                'mon'   => $row['ten_mon_hoc'],
+                'gv'    => $row['ten_giao_vien'],
+                'phong' => $row['ten_phong'],
+                'loai_tiet' => $row['loai_tiet'] ?: 'hoc',
+                'ghi_chu'   => $row['ghi_chu'] ?: ''
             ];
         }
         return $tkb_grid;

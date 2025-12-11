@@ -186,58 +186,197 @@ class TkbController extends Controller {
      * URL: /tkb/luuTietHoc (POST)
      * Lưu hoặc xóa 1 tiết học
      */
-    public function luuTietHoc() {
-        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-            $ma_lop = filter_input(INPUT_POST, 'ma_lop', FILTER_VALIDATE_INT);
-            $thu = filter_input(INPUT_POST, 'thu', FILTER_VALIDATE_INT);
-            $tiet = filter_input(INPUT_POST, 'tiet', FILTER_VALIDATE_INT);
-            $ma_hoc_ky = filter_input(INPUT_POST, 'ma_hoc_ky', FILTER_VALIDATE_INT);
+    // public function luuTietHoc() {
+    //     if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    //         $ma_lop = filter_input(INPUT_POST, 'ma_lop', FILTER_VALIDATE_INT);
+    //         $thu = filter_input(INPUT_POST, 'thu', FILTER_VALIDATE_INT);
+    //         $tiet = filter_input(INPUT_POST, 'tiet', FILTER_VALIDATE_INT);
+    //         $ma_hoc_ky = filter_input(INPUT_POST, 'ma_hoc_ky', FILTER_VALIDATE_INT);
 
-            // Tạo link redirect
-            $date_param = $_SESSION['last_date_param'] ?? ''; 
+    //         // Tạo link redirect
+    //         $date_param = $_SESSION['last_date_param'] ?? ''; 
+    //         $redirect_url = BASE_URL . '/tkb/chiTietTkb/' . ($ma_lop ?? '') . $date_param;
+
+    //         if (!$ma_lop || !$thu || !$tiet || !$ma_hoc_ky) {
+    //             $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Dữ liệu không hợp lệ (lớp, học kỳ, thứ, tiết).'];
+    //             header('Location: ' . $redirect_url);
+    //             exit;
+    //         }
+
+    //         if (isset($_POST['delete']) && $_POST['delete'] == '1') {
+    //             $success = $this->tkbModel->xoaTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet);
+    //             $_SESSION['flash_message'] = $success ? ['type' => 'success', 'message' => 'Đã xóa tiết học.'] : ['type' => 'danger', 'message' => 'Xóa thất bại.'];
+    //             header('Location: ' . $redirect_url);
+    //             exit;
+    //         }
+
+    //         if (isset($_POST['save']) && $_POST['save'] == '1') {
+    //             $ma_phan_cong = filter_input(INPUT_POST, 'ma_phan_cong', FILTER_VALIDATE_INT);
+    //             if (!$ma_phan_cong) {
+    //                 $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Vui lòng chọn Môn học.'];
+    //                 header('Location: ' . $redirect_url);
+    //                 exit;
+    //             }
+                
+    //             // Kiểm tra ràng buộc
+    //             $kiemTra = $this->tkbModel->kiemTraRangBuoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong);
+                
+    //             if ($kiemTra !== true) {
+    //                 $_SESSION['flash_message'] = ['type' => 'danger', 'message' => "Không thể lưu: " . $kiemTra];
+    //                 header('Location: ' . $redirect_url);
+    //                 exit;
+    //             }
+
+    //             // Lưu tiết học
+    //             $success = $this->tkbModel->luuTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong);
+    //             $_SESSION['flash_message'] = $success ? ['type' => 'success', 'message' => 'Đã lưu tiết học.'] : ['type' => 'danger', 'message' => 'Lưu thất bại.'];
+    //             header('Location: ' . $redirect_url);
+    //             exit;
+    //         }
+    //     }
+        
+    //     header('Location: ' . BASE_URL . '/tkb/xeptkb');
+    //     exit;
+    // }
+    // public function luuTietHoc() {
+    //     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    //         $ma_lop   = filter_input(INPUT_POST, 'ma_lop', FILTER_VALIDATE_INT);
+    //         $thu      = filter_input(INPUT_POST, 'thu', FILTER_VALIDATE_INT);
+    //         $tiet     = filter_input(INPUT_POST, 'tiet', FILTER_VALIDATE_INT);
+    //         $ma_hoc_ky= filter_input(INPUT_POST, 'ma_hoc_ky', FILTER_VALIDATE_INT);
+
+    //         $loai_tiet = $_POST['loai_tiet'] ?? 'hoc'; // hoc | thi | tam_nghi
+    //         $ghi_chu   = trim($_POST['ghi_chu'] ?? '');
+
+    //         $date_param   = $_SESSION['last_date_param'] ?? '';
+    //         $redirect_url = BASE_URL . '/tkb/chiTietTkb/' . ($ma_lop ?? '') . $date_param;
+
+    //         if (!$ma_lop || !$thu || !$tiet || !$ma_hoc_ky) {
+    //             $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Dữ liệu không hợp lệ (lớp, học kỳ, thứ, tiết).'];
+    //             header('Location: ' . $redirect_url); exit;
+    //         }
+
+    //         // Xóa
+    //         if (isset($_POST['delete']) && $_POST['delete'] == '1') {
+    //             $ok = $this->tkbModel->xoaTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet);
+    //             $_SESSION['flash_message'] = $ok
+    //                 ? ['type' => 'success', 'message' => 'Đã xóa tiết.']
+    //                 : ['type' => 'danger', 'message' => 'Xóa thất bại.'];
+    //             header('Location: ' . $redirect_url); exit;
+    //         }
+
+    //         // Lưu / cập nhật
+    //         if (isset($_POST['save']) && $_POST['save'] == '1') {
+    //             $ma_phan_cong = filter_input(INPUT_POST, 'ma_phan_cong', FILTER_VALIDATE_INT);
+
+    //             // Nếu không phải tạm nghỉ thì bắt buộc chọn phân công + kiểm tra ràng buộc
+    //             if ($loai_tiet !== 'tam_nghi') {
+    //                 if (!$ma_phan_cong) {
+    //                     $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Vui lòng chọn Môn học/Giáo viên.'];
+    //                     header('Location: ' . $redirect_url); exit;
+    //                 }
+    //                 //note: hehe
+    //                 // $kiemTra = $this->tkbModel->kiemTraRangBuoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong);
+    //                 if ($loai_tiet !== 'tam_nghi') {
+    //                     if (!$ma_phan_cong) {
+    //                         $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Vui lòng chọn Môn học/Giáo viên.'];
+    //                         header('Location: ' . $redirect_url); exit;
+    //                     }
+    //                     // ✅ LẤY ID TIẾT ĐANG SỬA ĐỂ BỎ QUA KIỂM TRA
+    //                     $ma_tkb_chi_tiet_dang_sua = $this->tkbModel->getMaTkbChiTietBySlot($ma_lop, $ma_hoc_ky, $thu, $tiet);
+    //                     $kiemTra = $this->tkbModel->kiemTraRangBuoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong, $ma_tkb_chi_tiet_dang_sua);
+    //                     if ($kiemTra !== true) {
+    //                         $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Không thể lưu: ' . $kiemTra];
+    //                         header('Location: ' . $redirect_url); exit;
+    //                     }
+    //                 } else {
+    //                     // Tạm nghỉ: cho phép không chọn phân công
+    //                     $ma_phan_cong = $ma_phan_cong ?: null;
+    //                 }
+    //                 if ($kiemTra !== true) {
+    //                     $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Không thể lưu: ' . $kiemTra];
+    //                     header('Location: ' . $redirect_url); exit;
+    //                 }
+    //             } else {
+    //                 // Tạm nghỉ: cho phép không chọn phân công
+    //                 $ma_phan_cong = $ma_phan_cong ?: null;
+    //             }
+
+    //             $ok = $this->tkbModel->luuTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong, $loai_tiet, $ghi_chu ?: null);
+    //             $_SESSION['flash_message'] = $ok
+    //                 ? ['type' => 'success', 'message' => 'Đã lưu tiết.']
+    //                 : ['type' => 'danger', 'message' => 'Lưu thất bại.'];
+    //             header('Location: ' . $redirect_url); exit;
+    //         }
+    //     }
+
+    //     header('Location: ' . BASE_URL . '/tkb/xeptkb');
+    //     exit;
+    // }
+
+    public function luuTietHoc() {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $ma_lop   = filter_input(INPUT_POST, 'ma_lop', FILTER_VALIDATE_INT);
+            $thu      = filter_input(INPUT_POST, 'thu', FILTER_VALIDATE_INT);
+            $tiet     = filter_input(INPUT_POST, 'tiet', FILTER_VALIDATE_INT);
+            $ma_hoc_ky= filter_input(INPUT_POST, 'ma_hoc_ky', FILTER_VALIDATE_INT);
+
+            $loai_tiet = $_POST['loai_tiet'] ?? 'hoc'; // hoc | thi | tam_nghi
+            $ghi_chu   = trim($_POST['ghi_chu'] ?? '');
+
+            $date_param   = $_SESSION['last_date_param'] ?? '';
             $redirect_url = BASE_URL . '/tkb/chiTietTkb/' . ($ma_lop ?? '') . $date_param;
 
             if (!$ma_lop || !$thu || !$tiet || !$ma_hoc_ky) {
                 $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Dữ liệu không hợp lệ (lớp, học kỳ, thứ, tiết).'];
-                header('Location: ' . $redirect_url);
-                exit;
+                header('Location: ' . $redirect_url); exit;
             }
 
+            // ===== XÓA TIẾT =====
             if (isset($_POST['delete']) && $_POST['delete'] == '1') {
-                $success = $this->tkbModel->xoaTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet);
-                $_SESSION['flash_message'] = $success ? ['type' => 'success', 'message' => 'Đã xóa tiết học.'] : ['type' => 'danger', 'message' => 'Xóa thất bại.'];
-                header('Location: ' . $redirect_url);
-                exit;
+                $ok = $this->tkbModel->xoaTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet);
+                $_SESSION['flash_message'] = $ok
+                    ? ['type' => 'success', 'message' => 'Đã xóa tiết.']
+                    : ['type' => 'danger', 'message' => 'Xóa thất bại.'];
+                header('Location: ' . $redirect_url); exit;
             }
 
+            // ===== LƯU / CẬP NHẬT TIẾT =====
             if (isset($_POST['save']) && $_POST['save'] == '1') {
-                $ma_phan_cong = filter_input(INPUT_POST, 'ma_phan_cong', FILTER_VALIDATE_INT);
-                if (!$ma_phan_cong) {
-                    $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Vui lòng chọn Môn học.'];
-                    header('Location: ' . $redirect_url);
-                    exit;
-                }
-                
-                // Kiểm tra ràng buộc
-                $kiemTra = $this->tkbModel->kiemTraRangBuoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong);
-                
-                if ($kiemTra !== true) {
-                    $_SESSION['flash_message'] = ['type' => 'danger', 'message' => "Không thể lưu: " . $kiemTra];
-                    header('Location: ' . $redirect_url);
-                    exit;
+                $kiemTra = true;
+
+                // Nếu không phải tạm nghỉ → bắt buộc chọn phân công + kiểm tra ràng buộc
+                if ($loai_tiet !== 'tam_nghi') {
+                    $ma_phan_cong = filter_input(INPUT_POST, 'ma_phan_cong', FILTER_VALIDATE_INT);
+                    if (!$ma_phan_cong) {
+                        $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Vui lòng chọn Môn học/Giáo viên.'];
+                        header('Location: ' . $redirect_url); exit;
+                    }
+                    // ✅ LẤY ID TIẾT ĐANG SỬA ĐỂ BỎ QUA KIỂM TRA
+                    $ma_tkb_chi_tiet_dang_sua = $this->tkbModel->getMaTkbChiTietBySlot($ma_lop, $ma_hoc_ky, $thu, $tiet);
+                    $kiemTra = $this->tkbModel->kiemTraRangBuoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong, $ma_tkb_chi_tiet_dang_sua);
+                    if ($kiemTra !== true) {
+                        $_SESSION['flash_message'] = ['type' => 'danger', 'message' => 'Không thể lưu: ' . $kiemTra];
+                        header('Location: ' . $redirect_url); exit;
+                    }
+                } else {
+                    // ✅ Tạm nghỉ: không cần phân công, set null rõ ràng
+                    $ma_phan_cong = null;
                 }
 
                 // Lưu tiết học
-                $success = $this->tkbModel->luuTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong);
-                $_SESSION['flash_message'] = $success ? ['type' => 'success', 'message' => 'Đã lưu tiết học.'] : ['type' => 'danger', 'message' => 'Lưu thất bại.'];
-                header('Location: ' . $redirect_url);
-                exit;
+                $ok = $this->tkbModel->luuTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong, $loai_tiet, $ghi_chu ?: null);
+                $_SESSION['flash_message'] = $ok
+                    ? ['type' => 'success', 'message' => 'Đã lưu tiết.']
+                    : ['type' => 'danger', 'message' => 'Lưu thất bại.'];
+                header('Location: ' . $redirect_url); exit;
             }
         }
-        
+
         header('Location: ' . BASE_URL . '/tkb/xeptkb');
         exit;
     }
+
 
     /**
      * API: /tkb/getDanhSachMonHocGV/{ma_lop}/{thu}/{tiet} (GET)

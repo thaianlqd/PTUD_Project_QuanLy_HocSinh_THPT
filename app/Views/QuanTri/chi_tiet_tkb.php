@@ -65,6 +65,11 @@
             display: flex;
             padding: 10px;
         }
+        /* Màu phân loại tiết */
+        .event-hoc { background-color: #198754; }
+        .event-thi { background-color: #f59e0b; }
+        .event-nghi { background-color: #dc3545; }
+        .event-note { font-size: 0.75rem; opacity: 0.9; }
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
@@ -203,10 +208,28 @@
                                 ?>
                                 <div class="timetable-slot <?php echo ($is_fixed && ($thu == 2 && ($tiet == 1 || $tiet == 2))) ? 'slot-fixed' : ''; ?>">
                                     <?php if ($is_fixed): ?>
-                                        <div class="event-card <?php echo ($thu == 2 && ($tiet == 1 || $tiet == 2)) ? 'bg-secondary' : 'bg-success'; ?>" data-bs-toggle="modal" data-bs-target="#scheduleModal" data-thu="<?php echo $thu; ?>" data-tiet="<?php echo $tiet; ?>" data-ma-phan-cong="<?php echo $fixed_data['ma_phan_cong'] ?? ''; ?>" data-ma-phong-hoc="<?php echo $current_ma_phong; ?>" data-is-fixed="<?php echo ($thu == 2 && ($tiet == 1 || $tiet == 2)) ? '1' : '0'; ?>">
-                                            <div class="event-title"><?php echo htmlspecialchars($fixed_data['mon'] ?? 'N/A'); ?></div>
-                                            <p><i class="bi bi-person-fill"></i> <?php echo htmlspecialchars($fixed_data['gv'] ?? 'N/A'); ?></p>
-                                            <p><i class="bi bi-geo-alt-fill"></i> <?php echo htmlspecialchars($fixed_data['phong'] ?? 'N/A'); ?></p>
+                                        <?php
+                                            $loai = $fixed_data['loai_tiet'] ?? 'hoc';
+                                            $cls = ($thu == 2 && ($tiet == 1 || $tiet == 2)) ? 'bg-secondary' : ($loai === 'thi' ? 'event-thi' : ($loai === 'tam_nghi' ? 'event-nghi' : 'event-hoc'));
+                                            
+                                            // Hiển thị môn/GV thực tế, chỉ dùng placeholder khi NULL
+                                            $mon_display = !empty($fixed_data['mon']) 
+                                                ? htmlspecialchars($fixed_data['mon']) 
+                                                : ($loai === 'tam_nghi' ? 'Tạm nghỉ' : 'N/A');
+                                            $gv_display = !empty($fixed_data['gv']) 
+                                                ? htmlspecialchars($fixed_data['gv']) 
+                                                : ($loai === 'tam_nghi' ? '---' : 'N/A');
+                                            $phong_display = !empty($fixed_data['phong']) 
+                                                ? htmlspecialchars($fixed_data['phong']) 
+                                                : ($loai === 'tam_nghi' ? '---' : 'N/A');
+                                        ?>
+                                        <div class="event-card <?php echo $cls; ?>" data-bs-toggle="modal" data-bs-target="#scheduleModal" data-thu="<?php echo $thu; ?>" data-tiet="<?php echo $tiet; ?>" data-ma-phan-cong="<?php echo $fixed_data['ma_phan_cong'] ?? ''; ?>" data-ma-phong-hoc="<?php echo $current_ma_phong; ?>" data-is-fixed="<?php echo ($thu == 2 && ($tiet == 1 || $tiet == 2)) ? '1' : '0'; ?>" data-loai-tiet="<?php echo $loai; ?>" data-ghi-chu="<?php echo htmlspecialchars($fixed_data['ghi_chu'] ?? ''); ?>">
+                                            <div class="event-title"><?php echo $mon_display; ?></div>
+                                            <p><i class="bi bi-person-fill"></i> <?php echo $gv_display; ?></p>
+                                            <p><i class="bi bi-geo-alt-fill"></i> <?php echo $phong_display; ?></p>
+                                            <?php if (!empty($fixed_data['ghi_chu'])): ?>
+                                                <p class="event-note"><i class="bi bi-info-circle"></i> <?php echo htmlspecialchars($fixed_data['ghi_chu']); ?></p>
+                                            <?php endif; ?>
                                         </div>
                                     <?php else: ?>
                                         <div class="add-event-btn" data-bs-toggle="modal" data-bs-target="#scheduleModal" data-thu="<?php echo $thu; ?>" data-tiet="<?php echo $tiet; ?>" data-is-fixed="0"><i class="bi bi-plus-lg"></i></div>
@@ -226,10 +249,28 @@
                                 ?>
                                 <div class="timetable-slot">
                                     <?php if ($is_fixed): ?>
-                                        <div class="event-card bg-primary" data-bs-toggle="modal" data-bs-target="#scheduleModal" data-thu="<?php echo $thu; ?>" data-tiet="<?php echo $tiet; ?>" data-ma-phan-cong="<?php echo $fixed_data['ma_phan_cong'] ?? ''; ?>" data-ma-phong-hoc="<?php echo $current_ma_phong; ?>" data-is-fixed="0">
-                                            <div class="event-title"><?php echo htmlspecialchars($fixed_data['mon'] ?? 'N/A'); ?></div>
-                                            <p><i class="bi bi-person-fill"></i> <?php echo htmlspecialchars($fixed_data['gv'] ?? 'N/A'); ?></p>
-                                            <p><i class="bi bi-geo-alt-fill"></i> <?php echo htmlspecialchars($fixed_data['phong'] ?? 'N/A'); ?></p>
+                                        <?php
+                                            $loai = $fixed_data['loai_tiet'] ?? 'hoc';
+                                            $cls = $loai === 'thi' ? 'event-thi' : ($loai === 'tam_nghi' ? 'event-nghi' : 'event-hoc');
+                                            
+                                            // Hiển thị môn/GV thực tế, chỉ dùng placeholder khi NULL
+                                            $mon_display = !empty($fixed_data['mon']) 
+                                                ? htmlspecialchars($fixed_data['mon']) 
+                                                : ($loai === 'tam_nghi' ? 'Tạm nghỉ' : 'N/A');
+                                            $gv_display = !empty($fixed_data['gv']) 
+                                                ? htmlspecialchars($fixed_data['gv']) 
+                                                : ($loai === 'tam_nghi' ? '---' : 'N/A');
+                                            $phong_display = !empty($fixed_data['phong']) 
+                                                ? htmlspecialchars($fixed_data['phong']) 
+                                                : ($loai === 'tam_nghi' ? '---' : 'N/A');
+                                        ?>
+                                        <div class="event-card <?php echo $cls; ?>" data-bs-toggle="modal" data-bs-target="#scheduleModal" data-thu="<?php echo $thu; ?>" data-tiet="<?php echo $tiet; ?>" data-ma-phan-cong="<?php echo $fixed_data['ma_phan_cong'] ?? ''; ?>" data-ma-phong-hoc="<?php echo $current_ma_phong; ?>" data-is-fixed="0" data-loai-tiet="<?php echo $loai; ?>" data-ghi-chu="<?php echo htmlspecialchars($fixed_data['ghi_chu'] ?? ''); ?>">
+                                            <div class="event-title"><?php echo $mon_display; ?></div>
+                                            <p><i class="bi bi-person-fill"></i> <?php echo $gv_display; ?></p>
+                                            <p><i class="bi bi-geo-alt-fill"></i> <?php echo $phong_display; ?></p>
+                                            <?php if (!empty($fixed_data['ghi_chu'])): ?>
+                                                <p class="event-note"><i class="bi bi-info-circle"></i> <?php echo htmlspecialchars($fixed_data['ghi_chu']); ?></p>
+                                            <?php endif; ?>
                                         </div>
                                     <?php else: ?>
                                         <div class="add-event-btn" data-bs-toggle="modal" data-bs-target="#scheduleModal" data-thu="<?php echo $thu; ?>" data-tiet="<?php echo $tiet; ?>" data-is-fixed="0"><i class="bi bi-plus-lg"></i></div>
@@ -340,6 +381,18 @@
                                 <select class="form-select shadow-sm" id="ma_phan_cong_select" name="ma_phan_cong" required><option value="">Chọn...</option></select>
                                 <div class="form-text text-muted small">Giáo viên/Phòng bận sẽ bị vô hiệu hóa.</div>
                             </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold"><i class="bi bi-flag-fill text-warning me-2"></i>Loại tiết</label>
+                                <select class="form-select shadow-sm" id="loai_tiet_select" name="loai_tiet">
+                                    <option value="hoc">Tiết học</option>
+                                    <option value="thi">Tiết thi</option>
+                                    <option value="tam_nghi">Tạm nghỉ</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold"><i class="bi bi-chat-left-text text-secondary me-2"></i>Ghi chú</label>
+                                <textarea class="form-control" rows="2" name="ghi_chu" id="ghi_chu_input" placeholder="Lý do bận / nội dung thi..."></textarea>
+                            </div>
                             <div id="modalError" class="alert alert-danger mt-3" style="display: none;"></div>
                         </div>
                     </div>
@@ -362,6 +415,8 @@
         const modalFormContent = document.getElementById('modalFormContent');
         const modalLoading = document.getElementById('modalLoading');
         const maPhanCongSelect = document.getElementById('ma_phan_cong_select');
+        const loaiTietSelect = document.getElementById('loai_tiet_select');
+        const ghiChuInput = document.getElementById('ghi_chu_input');
         const deleteButton = document.getElementById('deleteButton');
         const saveButton = document.getElementById('saveButton');
         const infoThu = document.getElementById('info_thu');
@@ -389,6 +444,8 @@
             const tiet = button.dataset.tiet;
             const maPhanCongHienTai = button.dataset.maPhanCong || '';
             const isFixed = button.dataset.isFixed === '1';
+            const loaiTietHienTai = button.dataset.loaiTiet || 'hoc';
+            const ghiChuHienTai = button.dataset.ghiChu || '';
 
             // Reset Modal state
             modalFormContent.style.display = 'none'; modalLoading.style.display = 'block'; modalError.style.display = 'none';
@@ -397,6 +454,8 @@
 
             document.getElementById('thu_hidden').value = thu; document.getElementById('tiet_hidden').value = tiet;
             infoThu.textContent = thu; infoTiet.textContent = tiet;
+            loaiTietSelect.value = loaiTietHienTai;
+            ghiChuInput.value = ghiChuHienTai;
 
             if (isFixed) {
                 saveButton.disabled = true; deleteButton.style.display = 'none';
@@ -404,64 +463,120 @@
                  modalFormContent.style.display = 'block'; modalLoading.style.display = 'none';
             } else {
                  maPhanCongSelect.disabled = false;
-                 if (maPhanCongHienTai) { deleteButton.style.display = 'block'; }
+                 // ✅ HIỂN THỊ NÚT XÓA: Nếu có tiết (kiểm tra button là event-card)
+                 const hasContent = button.classList.contains('event-card');
+                 if (hasContent) {
+                     deleteButton.style.display = 'block';
+                 }
             }
 
-            // Fetch dynamic data
-            try {
-                // API không cần ma_hoc_ky vì ràng buộc GV/Phòng là real-time
-                const apiUrl = `${BASE_URL}/tkb/getDanhSachMonHocGV/${maLop}/${thu}/${tiet}`;
-                const response = await fetch(apiUrl);
-                if (!response.ok) throw new Error(`Lỗi HTTP ${response.status}: ${apiUrl}`);
-                const raw = await response.text();
-                let dataApi;
+            // Nếu tạm nghỉ thì không bắt buộc chọn phân công
+            if (loaiTietHienTai === 'tam_nghi') {
+                maPhanCongSelect.removeAttribute('required');
+                maPhanCongSelect.disabled = true;
+            } else {
+                maPhanCongSelect.setAttribute('required', 'required');
+                maPhanCongSelect.disabled = false;
+            }
+
+            // ✅ XỬ LÝ KHI USER THAY ĐỔI LOẠI TIẾT TRONG MODAL
+            loaiTietSelect.addEventListener('change', function() {
+                if (this.value === 'tam_nghi') {
+                    // Tạm nghỉ: disable select, bỏ required, không cần chọn môn-GV
+                    maPhanCongSelect.disabled = true;
+                    maPhanCongSelect.removeAttribute('required');
+                    maPhanCongSelect.innerHTML = '<option value="">-- Không cần chọn (Tạm nghỉ) --</option>';
+                    modalError.style.display = 'none';
+                    saveButton.disabled = false;
+                } else {
+                    // Học/Thi: enable select, bắt buộc chọn, reload API
+                    maPhanCongSelect.disabled = false;
+                    maPhanCongSelect.setAttribute('required', 'required');
+                    maPhanCongSelect.innerHTML = '<option value="">Đang tải lại...</option>';
+                    saveButton.disabled = true;
+                    
+                    // Gọi lại API để load danh sách môn-GV
+                    const thuVal = document.getElementById('thu_hidden').value;
+                    const tietVal = document.getElementById('tiet_hidden').value;
+                    loadDanhSachMonHocGV(thuVal, tietVal, maPhanCongHienTai);
+                }
+            });
+
+            // ✅ HÀM LOAD API (tách riêng để tái sử dụng)
+            async function loadDanhSachMonHocGV(thu, tiet, selectedMaPhanCong = '') {
                 try {
-                    dataApi = JSON.parse(raw);
-                } catch (e) {
-                    console.error('Raw response (first 2000 chars):', raw.slice(0, 2000));
-                    // Show a helpful error to the user with a snippet
-                    const snippet = raw.replace(/\s+/g, ' ').trim().slice(0, 800);
-                    modalError.textContent = `Lỗi: Server không trả về JSON. Nội dung trả về (snippet): ${snippet}`;
+                    const apiUrl = `${BASE_URL}/tkb/getDanhSachMonHocGV/${maLop}/${thu}/${tiet}`;
+                    const response = await fetch(apiUrl);
+                    if (!response.ok) throw new Error(`Lỗi HTTP ${response.status}`);
+                    const raw = await response.text();
+                    let dataApi;
+                    try {
+                        dataApi = JSON.parse(raw);
+                    } catch (e) {
+                        console.error('Raw response:', raw.slice(0, 2000));
+                        const snippet = raw.replace(/\s+/g, ' ').trim().slice(0, 800);
+                        modalError.textContent = `Lỗi: Server trả về không phải JSON. Snippet: ${snippet}`;
+                        modalError.style.display = 'block';
+                        saveButton.disabled = true;
+                        throw new Error('Non-JSON response');
+                    }
+                    if (dataApi.error) throw new Error(dataApi.error);
+
+                    // Populate select
+                    maPhanCongSelect.innerHTML = '<option value="">-- Chọn môn học & giáo viên --</option>';
+                    let foundSelected = false;
+                    if (dataApi.mon_hoc_gv) {
+                        dataApi.mon_hoc_gv.forEach(item => {
+                            const option = document.createElement('option');
+                            option.value = item.ma_phan_cong;
+                            option.textContent = item.ten_hien_thi;
+                            if (item.is_ban && item.ma_phan_cong != selectedMaPhanCong) {
+                                option.disabled = true;
+                                option.textContent += ` ${item.ly_do || '(Bận)'}`;
+                                option.style.backgroundColor = '#f8d7da';
+                                option.style.color = '#842029';
+                            }
+                            if (item.ma_phan_cong == selectedMaPhanCong) {
+                                option.selected = true;
+                                foundSelected = true;
+                            }
+                            maPhanCongSelect.appendChild(option);
+                        });
+                    }
+
+                    if (selectedMaPhanCong && !foundSelected) {
+                        const option = document.createElement('option');
+                        option.value = selectedMaPhanCong;
+                        option.textContent = `Môn/GV ID ${selectedMaPhanCong} (Lỗi?)`;
+                        option.selected = true;
+                        option.disabled = true;
+                        maPhanCongSelect.insertBefore(option, maPhanCongSelect.firstChild);
+                    }
+
+                    saveButton.disabled = false;
+                    modalError.style.display = 'none';
+                } catch (error) {
+                    console.error('Lỗi load API:', error);
+                    modalError.textContent = `Lỗi: ${error.message}`;
                     modalError.style.display = 'block';
                     saveButton.disabled = true;
-                    throw new Error('Server returned non-JSON response');
                 }
-                if (dataApi.error) throw new Error(dataApi.error);
+            }
 
-                // Populate Mon Hoc/GV Select
-                maPhanCongSelect.innerHTML = '<option value="">-- Chọn môn học & giáo viên --</option>';
-                let foundSelectedPhanCong = false;
-                if(dataApi.mon_hoc_gv) {
-                    dataApi.mon_hoc_gv.forEach(item => {
-                        const option = document.createElement('option');
-                        option.value = item.ma_phan_cong;
-                        option.textContent = item.ten_hien_thi;
-                        if (item.is_ban && item.ma_phan_cong != maPhanCongHienTai) {
-                            option.disabled = true;
-                            option.textContent += ` ${item.ly_do || '(Bận)'}`;
-                            option.style.backgroundColor = '#f8d7da'; option.style.color = '#842029';
-                        }
-                        if (item.ma_phan_cong == maPhanCongHienTai) {
-                            option.selected = true; foundSelectedPhanCong = true;
-                        }
-                        maPhanCongSelect.appendChild(option);
-                    });
-                }
-                
-                if(maPhanCongHienTai && !foundSelectedPhanCong && !isFixed){
-                     const option = document.createElement('option'); option.value = maPhanCongHienTai;
-                     option.textContent = `Môn/GV ID ${maPhanCongHienTai} (Lỗi?)`;
-                     option.selected = true; option.disabled = true;
-                     maPhanCongSelect.insertBefore(option, maPhanCongSelect.firstChild);
-                }
-
-            } catch (error) {
-                console.error('Lỗi khi tải dữ liệu TKB:', error);
-                modalError.textContent = `Lỗi: ${error.message}. Vui lòng thử lại.`;
-                modalError.style.display = 'block'; saveButton.disabled = true;
-            } finally {
-                modalLoading.style.display = 'none'; modalFormContent.style.display = 'block';
-                if (!isFixed && !modalError.textContent) { saveButton.disabled = false; }
+            // Fetch dynamic data (dùng hàm loadDanhSachMonHocGV)
+            if (!isFixed && loaiTietHienTai !== 'tam_nghi') {
+                await loadDanhSachMonHocGV(thu, tiet, maPhanCongHienTai);
+                modalFormContent.style.display = 'block';
+                modalLoading.style.display = 'none';
+            } else if (loaiTietHienTai === 'tam_nghi') {
+                maPhanCongSelect.innerHTML = '<option value="">-- Không cần chọn (Tạm nghỉ) --</option>';
+                saveButton.disabled = false;
+                modalFormContent.style.display = 'block';
+                modalLoading.style.display = 'none';
+            } else {
+                // isFixed = true (Chào cờ/Sinh hoạt)
+                modalFormContent.style.display = 'block';
+                modalLoading.style.display = 'none';
             }
         });
 
@@ -470,7 +585,9 @@
              document.getElementById('tkbForm').reset();
              maPhanCongSelect.innerHTML = ''; deleteButton.style.display = 'none';
              saveButton.disabled = true; modalError.style.display = 'none'; modalError.textContent = '';
-             maPhanCongSelect.disabled = false;
+               maPhanCongSelect.disabled = false;
+               loaiTietSelect.value = 'hoc';
+               ghiChuInput.value = '';
         });
 
         // Delete button confirmation
@@ -479,12 +596,13 @@
         // Save button validation
         document.getElementById('tkbForm').addEventListener('submit', function(e) {
             const submitter = e.submitter;
-            if (!submitter || submitter.name !== 'delete') {
-                if (!this.checkValidity() || maPhanCongSelect.value === "") {
-                    e.preventDefault(); modalError.textContent = 'Vui lòng chọn Môn học và Giáo viên.';
-                    modalError.style.display = 'block'; maPhanCongSelect.focus();
-                } else { modalError.style.display = 'none'; }
+            if (submitter && submitter.name === 'delete') return;
+            if (loaiTietSelect.value !== 'tam_nghi' && (maPhanCongSelect.value === "" || !this.checkValidity())) {
+                e.preventDefault(); modalError.textContent = 'Vui lòng chọn Môn học và Giáo viên.';
+                modalError.style.display = 'block'; maPhanCongSelect.focus();
+                return;
             }
+            modalError.style.display = 'none';
         });
 
         // HÀM MỚI: Dùng cho Date Picker

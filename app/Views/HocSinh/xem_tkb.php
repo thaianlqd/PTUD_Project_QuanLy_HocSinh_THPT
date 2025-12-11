@@ -38,11 +38,18 @@
         .session-sep { grid-column: 1 / -1; background-color: #fff3cd; color: #856404; font-weight: bold; text-align: center; padding: 5px; font-size: 0.85rem; letter-spacing: 1px; text-transform: uppercase; }
         
         /* Card Môn Học */
-        .mon-card { border-left: 3px solid var(--primary); padding-left: 8px; height: 100%; display: flex; flex-direction: column; justify-content: center; }
-        .mon-card.fixed-session { border-left-color: #dc3545; }
-        .mon-card .ten-mon { font-weight: 700; color: #2c3e50; font-size: 0.9rem; margin-bottom: 2px; }
-        .mon-card.fixed-session .ten-mon { color: #dc3545; }
+        .mon-card { border-left: 4px solid var(--primary); padding-left: 10px; height: 100%; display: flex; flex-direction: column; justify-content: center; background: #eef2ff; }
+        .mon-card.fixed-session { border-left-color: #b91c1c; background: #fee2e2; }
+        .mon-card.hoc { border-left-color: #15803d; background: #c5f0d6; }
+        .mon-card.thi { border-left-color: #c2410c; background: #ffe0b3; }
+        .mon-card.tam_nghi { border-left-color: #b91c1c; background: #ffc6c6; }
+        .mon-card .ten-mon { font-weight: 700; color: #1f2937; font-size: 0.92rem; margin-bottom: 2px; }
+        .mon-card.fixed-session .ten-mon { color: #b91c1c; }
+        .mon-card.tam_nghi .ten-mon { color: #b91c1c; }
+        .mon-card.thi .ten-mon { color: #b45309; }
+        .mon-card.hoc .ten-mon { color: #166534; }
         .mon-card .info { font-size: 0.75rem; color: #6c757d; display: block; line-height: 1.3; }
+        .mon-card .note { font-size: 0.75rem; color: #6c757d; margin-top: 2px; }
         
         /* Mobile List View */
         @media (max-width: 768px) {
@@ -149,10 +156,14 @@
                             }
                         ?>
                         <?php if ($s): ?>
-                            <div class="mon-card <?= $is_fixed ? 'fixed-session' : '' ?>">
+                            <?php $loai = $s['loai_tiet'] ?? 'hoc'; $cls = $is_fixed ? 'fixed-session' : $loai; ?>
+                            <div class="mon-card <?= $cls ?>">
                                 <div class="ten-mon"><?= htmlspecialchars($s['mon']) ?></div>
                                 <span class="info"><i class="bi bi-person me-1"></i><?= htmlspecialchars($s['gv']) ?></span>
                                 <span class="info"><i class="bi bi-geo-alt me-1"></i><?= htmlspecialchars($s['phong']) ?></span>
+                                <?php if (!empty($s['ghi_chu'])): ?>
+                                    <div class="note"><i class="bi bi-info-circle me-1"></i><?= htmlspecialchars($s['ghi_chu']) ?></div>
+                                <?php endif; ?>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -173,10 +184,14 @@
                             $s = isset($tkb_data[$thu][$tiet]) ? $tkb_data[$thu][$tiet] : null; 
                         ?>
                         <?php if ($s): ?>
-                            <div class="mon-card" style="border-left-color: #ffc107;">
+                            <?php $loai = $s['loai_tiet'] ?? 'hoc'; ?>
+                            <div class="mon-card <?= $loai ?>">
                                 <div class="ten-mon text-dark"><?= htmlspecialchars($s['mon']) ?></div>
                                 <span class="info"><i class="bi bi-person me-1"></i><?= htmlspecialchars($s['gv']) ?></span>
                                 <span class="info"><i class="bi bi-geo-alt me-1"></i><?= htmlspecialchars($s['phong']) ?></span>
+                                <?php if (!empty($s['ghi_chu'])): ?>
+                                    <div class="note"><i class="bi bi-info-circle me-1"></i><?= htmlspecialchars($s['ghi_chu']) ?></div>
+                                <?php endif; ?>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -216,11 +231,15 @@
                                 </small>
                             </div>
                             <div class="flex-grow-1">
-                                <h6 class="fw-bold text-primary mb-1 <?= ($thu==2 && $tiet<=2) ? 'text-danger' : '' ?>">
+                                <?php $loai = $s['loai_tiet'] ?? 'hoc'; ?>
+                                <h6 class="fw-bold mb-1 <?php echo ($loai==='tam_nghi') ? 'text-danger' : (($loai==='thi') ? 'text-warning' : 'text-primary'); ?> <?= ($thu==2 && $tiet<=2) ? 'text-danger' : '' ?>">
                                     <?= htmlspecialchars($s['mon']) ?>
                                 </h6>
                                 <div class="small text-muted"><i class="bi bi-person-fill me-1"></i> <?= htmlspecialchars($s['gv']) ?></div>
                                 <div class="small text-muted"><i class="bi bi-geo-alt-fill me-1"></i> Phòng: <?= htmlspecialchars($s['phong']) ?></div>
+                                <?php if (!empty($s['ghi_chu'])): ?>
+                                    <div class="small text-muted"><i class="bi bi-info-circle me-1"></i><?= htmlspecialchars($s['ghi_chu']) ?></div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     <?php endif; endfor; ?>

@@ -619,6 +619,40 @@ class GiaoVienModel {
      * ✅ HÀM 1 (MỚI): Lấy TKB chi tiết của GV cho 1 lớp (theo học kỳ)
      * ⚠️ TÊN KHÁC: getTkbGVByLop() - KHÔNG TRÙNG
      */
+    // public function getTkbGVByLop($ma_giao_vien, $ma_lop, $ma_hoc_ky = 1) {
+    //     if ($this->db === null) return [];
+    //     $ma_hoc_ky = $this->normalizeHocKy($ma_hoc_ky);
+
+    //     $sql = "SELECT 
+    //                 t.ma_tkb_chi_tiet,
+    //                 t.thu,
+    //                 t.tiet,
+    //                 th.gio_bat_dau,
+    //                 th.gio_ket_thuc,
+    //                 mh.ten_mon_hoc AS mon,
+    //                 lh.ten_lop AS lop,
+    //                 p.ten_phong AS phong,
+    //                 lh.ma_lop,
+    //                 mh.ma_mon_hoc
+    //             FROM tkb_chi_tiet t
+    //             JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
+    //             JOIN mon_hoc mh ON bpc.ma_mon_hoc = mh.ma_mon_hoc
+    //             JOIN lop_hoc lh ON bpc.ma_lop = lh.ma_lop
+    //             LEFT JOIN tiet_hoc th ON t.tiet = th.ma_tiet_hoc
+    //             LEFT JOIN phong_hoc p ON t.ma_phong_hoc = p.ma_phong
+    //             WHERE bpc.ma_giao_vien = ?
+    //               AND lh.ma_lop = ?
+    //               AND t.ma_hoc_ky = ?
+    //             ORDER BY t.thu+0, t.tiet";
+    //     try {
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([$ma_giao_vien, $ma_lop, $ma_hoc_ky]);
+    //         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    //     } catch (PDOException $e) {
+    //         error_log("Lỗi getTkbGVByLop: " . $e->getMessage());
+    //         return [];
+    //     }
+    // }
     public function getTkbGVByLop($ma_giao_vien, $ma_lop, $ma_hoc_ky = 1) {
         if ($this->db === null) return [];
         $ma_hoc_ky = $this->normalizeHocKy($ma_hoc_ky);
@@ -633,20 +667,22 @@ class GiaoVienModel {
                     lh.ten_lop AS lop,
                     p.ten_phong AS phong,
                     lh.ma_lop,
-                    mh.ma_mon_hoc
+                    mh.ma_mon_hoc,
+                    t.loai_tiet,
+                    t.ghi_chu
                 FROM tkb_chi_tiet t
-                JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
-                JOIN mon_hoc mh ON bpc.ma_mon_hoc = mh.ma_mon_hoc
-                JOIN lop_hoc lh ON bpc.ma_lop = lh.ma_lop
+                LEFT JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
+                LEFT JOIN mon_hoc mh ON bpc.ma_mon_hoc = mh.ma_mon_hoc
+                LEFT JOIN lop_hoc lh ON bpc.ma_lop = lh.ma_lop
                 LEFT JOIN tiet_hoc th ON t.tiet = th.ma_tiet_hoc
                 LEFT JOIN phong_hoc p ON t.ma_phong_hoc = p.ma_phong
-                WHERE bpc.ma_giao_vien = ?
-                  AND lh.ma_lop = ?
+                WHERE t.ma_lop = ?
                   AND t.ma_hoc_ky = ?
+                  AND (bpc.ma_giao_vien = ? OR bpc.ma_phan_cong IS NULL)
                 ORDER BY t.thu+0, t.tiet";
         try {
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([$ma_giao_vien, $ma_lop, $ma_hoc_ky]);
+            $stmt->execute([$ma_lop, $ma_hoc_ky, $ma_giao_vien]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log("Lỗi getTkbGVByLop: " . $e->getMessage());
@@ -658,11 +694,44 @@ class GiaoVienModel {
      * ✅ HÀM 2 (MỚI): Lấy TKB tất cả lớp của GV (để xem tất cả lịch dạy)
      * ⚠️ TÊN KHÁC: getTkbGVAll() - KHÔNG TRÙNG
      */
+    // public function getTkbGVAll($ma_giao_vien, $ma_hoc_ky = 'HK1') {
+    //     if ($this->db === null) return [];
+    //     $ma_hoc_ky = $this->normalizeHocKy($ma_hoc_ky);
+
+    //     // ✅ FIX: Lấy cả tiết môn học + tiết GVCN (chào cờ, sinh hoạt)
+    //     $sql = "SELECT 
+    //                 t.ma_tkb_chi_tiet,
+    //                 t.thu,
+    //                 t.tiet,
+    //                 th.gio_bat_dau,
+    //                 th.gio_ket_thuc,
+    //                 mh.ten_mon_hoc AS mon,
+    //                 lh.ten_lop AS lop,
+    //                 p.ten_phong AS phong,
+    //                 lh.ma_lop,
+    //                 mh.ma_mon_hoc
+    //             FROM tkb_chi_tiet t
+    //             JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
+    //             JOIN mon_hoc mh ON bpc.ma_mon_hoc = mh.ma_mon_hoc
+    //             JOIN lop_hoc lh ON bpc.ma_lop = lh.ma_lop
+    //             LEFT JOIN tiet_hoc th ON t.tiet = th.ma_tiet_hoc
+    //             LEFT JOIN phong_hoc p ON t.ma_phong_hoc = p.ma_phong
+    //             WHERE bpc.ma_giao_vien = ?
+    //               AND t.ma_hoc_ky = ?
+    //             ORDER BY t.thu+0, t.tiet, lh.ten_lop";
+    //     try {
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([$ma_giao_vien, $ma_hoc_ky]);
+    //         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    //     } catch (PDOException $e) {
+    //         error_log("Lỗi getTkbGVAll: " . $e->getMessage());
+    //         return [];
+    //     }
+    // }
     public function getTkbGVAll($ma_giao_vien, $ma_hoc_ky = 'HK1') {
         if ($this->db === null) return [];
         $ma_hoc_ky = $this->normalizeHocKy($ma_hoc_ky);
 
-        // ✅ FIX: Lấy cả tiết môn học + tiết GVCN (chào cờ, sinh hoạt)
         $sql = "SELECT 
                     t.ma_tkb_chi_tiet,
                     t.thu,
@@ -673,19 +742,21 @@ class GiaoVienModel {
                     lh.ten_lop AS lop,
                     p.ten_phong AS phong,
                     lh.ma_lop,
-                    mh.ma_mon_hoc
+                    mh.ma_mon_hoc,
+                    t.loai_tiet,
+                    t.ghi_chu
                 FROM tkb_chi_tiet t
-                JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
-                JOIN mon_hoc mh ON bpc.ma_mon_hoc = mh.ma_mon_hoc
-                JOIN lop_hoc lh ON bpc.ma_lop = lh.ma_lop
+                LEFT JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
+                LEFT JOIN mon_hoc mh ON bpc.ma_mon_hoc = mh.ma_mon_hoc
+                LEFT JOIN lop_hoc lh ON bpc.ma_lop = lh.ma_lop
                 LEFT JOIN tiet_hoc th ON t.tiet = th.ma_tiet_hoc
                 LEFT JOIN phong_hoc p ON t.ma_phong_hoc = p.ma_phong
-                WHERE bpc.ma_giao_vien = ?
-                  AND t.ma_hoc_ky = ?
+                WHERE t.ma_hoc_ky = ?
+                  AND (bpc.ma_giao_vien = ? OR bpc.ma_phan_cong IS NULL)
                 ORDER BY t.thu+0, t.tiet, lh.ten_lop";
         try {
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([$ma_giao_vien, $ma_hoc_ky]);
+            $stmt->execute([$ma_hoc_ky, $ma_giao_vien]);
             return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
             error_log("Lỗi getTkbGVAll: " . $e->getMessage());

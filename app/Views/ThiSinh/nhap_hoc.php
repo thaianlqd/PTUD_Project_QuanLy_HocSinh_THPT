@@ -8,6 +8,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Đăng Ký Nhập Học</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
             --primary-color: #0d6efd;
@@ -335,6 +336,21 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             border-left: 4px solid #10b981;
         }
 
+        .btn-back {
+            background: #ffffff;
+            color: #333;
+            font-weight: 600;
+            border: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+            transition: all 0.2s ease;
+        }
+
+        .btn-back:hover {
+            color: #fff;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transform: translateY(-1px);
+        }
+
         .subject-counter {
             background: #667eea;
             color: white;
@@ -406,6 +422,12 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 </head>
 <body>
     <div class="container-main">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <a class="btn btn-back" href="<?php echo BASE_URL; ?>/ThiSinh/dashboard">
+                <i class="bi bi-arrow-left-circle me-2"></i>Quay về Dashboard
+            </a>
+        </div>
+
         <h1 class="page-title">📋 Đăng Ký Nhập Học</h1>
 
         <!-- Step Indicator -->

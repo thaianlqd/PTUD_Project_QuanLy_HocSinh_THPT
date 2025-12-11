@@ -85,48 +85,87 @@ class TkbModel {
      * Lấy toàn bộ chi tiết TKB của 1 lớp (THEO HỌC KỲ)
      * <-- ĐÃ SỬA: Thêm $ma_hoc_ky
      */
+    // public function getChiTietTkbLop($ma_lop, $ma_hoc_ky) {
+    //     if ($this->db === null) return [];
+
+    //     $sql = "SELECT
+    //                 t.thu,
+    //                 t.tiet,
+    //                 m.ten_mon_hoc,
+    //                 nd.ho_ten AS ten_giao_vien,
+    //                 COALESCE(ph_tkb.ten_phong, ph_mon.ten_phong, ph_lop.ten_phong) AS ten_phong_hoc,
+    //                 COALESCE(t.ma_phong_hoc, ph_mon.ma_phong, l.ma_phong_hoc_chinh) AS ma_phong_hoc_thuc_te,
+    //                 bpc.ma_phan_cong
+    //             FROM tkb_chi_tiet t
+    //             JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
+    //             JOIN mon_hoc m ON bpc.ma_mon_hoc = m.ma_mon_hoc
+    //             JOIN giao_vien gv ON bpc.ma_giao_vien = gv.ma_giao_vien
+    //             JOIN nguoi_dung nd ON gv.ma_giao_vien = nd.ma_nguoi_dung
+    //             JOIN lop_hoc l ON t.ma_lop = l.ma_lop
+    //             LEFT JOIN phong_hoc ph_tkb ON t.ma_phong_hoc = ph_tkb.ma_phong
+    //             LEFT JOIN phong_hoc ph_mon ON m.yeu_cau_phong_dac_biet <> 'None' AND ph_mon.loai_phong = m.yeu_cau_phong_dac_biet
+    //             LEFT JOIN phong_hoc ph_lop ON l.ma_phong_hoc_chinh = ph_lop.ma_phong
+    //             WHERE t.ma_lop = ? AND t.ma_hoc_ky = ?"; // <-- ĐÃ SỬA: Thêm ma_hoc_ky
+
+    //     try {
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([$ma_lop, $ma_hoc_ky]); // <-- ĐÃ SỬA: Thêm ma_hoc_ky
+
+    //         $tkb_data = [];
+    //         foreach ($stmt->fetchAll() as $row) {
+    //             $tkb_data[$row['thu']][$row['tiet']] = [
+    //                 'mon' => $row['ten_mon_hoc'],
+    //                 'gv' => $row['ten_giao_vien'],
+    //                 'phong' => $row['ten_phong_hoc'],
+    //                 'ma_phong' => $row['ma_phong_hoc_thuc_te'],
+    //                 'ma_phan_cong' => $row['ma_phan_cong']
+    //             ];
+    //         }
+    //         return $tkb_data;
+    //     } catch (PDOException $e) {
+    //         error_log("Lỗi getChiTietTkbLop: " . $e->getMessage());
+    //         return [];
+    //     }
+    // }
     public function getChiTietTkbLop($ma_lop, $ma_hoc_ky) {
         if ($this->db === null) return [];
-
         $sql = "SELECT
-                    t.thu,
-                    t.tiet,
+                    t.thu, t.tiet,
                     m.ten_mon_hoc,
                     nd.ho_ten AS ten_giao_vien,
                     COALESCE(ph_tkb.ten_phong, ph_mon.ten_phong, ph_lop.ten_phong) AS ten_phong_hoc,
                     COALESCE(t.ma_phong_hoc, ph_mon.ma_phong, l.ma_phong_hoc_chinh) AS ma_phong_hoc_thuc_te,
-                    bpc.ma_phan_cong
+                    bpc.ma_phan_cong,
+                    t.loai_tiet,
+                    t.ghi_chu
                 FROM tkb_chi_tiet t
-                JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
-                JOIN mon_hoc m ON bpc.ma_mon_hoc = m.ma_mon_hoc
-                JOIN giao_vien gv ON bpc.ma_giao_vien = gv.ma_giao_vien
-                JOIN nguoi_dung nd ON gv.ma_giao_vien = nd.ma_nguoi_dung
+                LEFT JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
+                LEFT JOIN mon_hoc m ON bpc.ma_mon_hoc = m.ma_mon_hoc
+                LEFT JOIN giao_vien gv ON bpc.ma_giao_vien = gv.ma_giao_vien
+                LEFT JOIN nguoi_dung nd ON gv.ma_giao_vien = nd.ma_nguoi_dung
                 JOIN lop_hoc l ON t.ma_lop = l.ma_lop
                 LEFT JOIN phong_hoc ph_tkb ON t.ma_phong_hoc = ph_tkb.ma_phong
                 LEFT JOIN phong_hoc ph_mon ON m.yeu_cau_phong_dac_biet <> 'None' AND ph_mon.loai_phong = m.yeu_cau_phong_dac_biet
                 LEFT JOIN phong_hoc ph_lop ON l.ma_phong_hoc_chinh = ph_lop.ma_phong
-                WHERE t.ma_lop = ? AND t.ma_hoc_ky = ?"; // <-- ĐÃ SỬA: Thêm ma_hoc_ky
-
-        try {
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([$ma_lop, $ma_hoc_ky]); // <-- ĐÃ SỬA: Thêm ma_hoc_ky
-
-            $tkb_data = [];
-            foreach ($stmt->fetchAll() as $row) {
-                $tkb_data[$row['thu']][$row['tiet']] = [
-                    'mon' => $row['ten_mon_hoc'],
-                    'gv' => $row['ten_giao_vien'],
-                    'phong' => $row['ten_phong_hoc'],
-                    'ma_phong' => $row['ma_phong_hoc_thuc_te'],
-                    'ma_phan_cong' => $row['ma_phan_cong']
-                ];
-            }
-            return $tkb_data;
-        } catch (PDOException $e) {
-            error_log("Lỗi getChiTietTkbLop: " . $e->getMessage());
-            return [];
+                WHERE t.ma_lop = ? AND t.ma_hoc_ky = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$ma_lop, $ma_hoc_ky]);
+        $tkb_data = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $thu = (int)$row['thu']; $tiet = (int)$row['tiet'];
+            $tkb_data[$thu][$tiet] = [
+                'mon' => $row['ten_mon_hoc'],
+                'gv' => $row['ten_giao_vien'],
+                'phong' => $row['ten_phong_hoc'],
+                'ma_phong' => $row['ma_phong_hoc_thuc_te'],
+                'ma_phan_cong' => $row['ma_phan_cong'],
+                'loai_tiet' => $row['loai_tiet'] ?: 'hoc',
+                'ghi_chu' => $row['ghi_chu'] ?: ''
+            ];
         }
+        return $tkb_data;
     }
+
 
    /**
      * Lấy dữ liệu cho sidebar ràng buộc (THEO HỌC KỲ)
@@ -357,10 +396,41 @@ class TkbModel {
     /**
      * Tự động xác định phòng học cho một tiết (Giữ nguyên)
      */
-    private function xacDinhPhongHoc($ma_phan_cong, $ma_lop) {
-        // (Hàm này giữ nguyên, không cần thay đổi)
-        if ($this->db === null) return $this->getPhongHocChinhID($ma_lop);
+    // private function xacDinhPhongHoc($ma_phan_cong, $ma_lop) {
+    //     // (Hàm này giữ nguyên, không cần thay đổi)
+    //     if ($this->db === null) return $this->getPhongHocChinhID($ma_lop);
 
+    //     try {
+    //         $sql = "SELECT m.yeu_cau_phong_dac_biet
+    //                 FROM bang_phan_cong bpc
+    //                 JOIN mon_hoc m ON bpc.ma_mon_hoc = m.ma_mon_hoc
+    //                 WHERE bpc.ma_phan_cong = ?";
+    //         $stmt_mon = $this->db->prepare($sql);
+    //         $stmt_mon->execute([$ma_phan_cong]);
+    //         $yeu_cau = $stmt_mon->fetchColumn();
+
+    //         if ($yeu_cau && $yeu_cau !== 'None') {
+    //             $sql_phong_dt = "SELECT ma_phong
+    //                              FROM phong_hoc
+    //                              WHERE loai_phong = ? AND trang_thai_phong = 'HoatDong'
+    //                              LIMIT 1";
+    //             $stmt_phong_dt = $this->db->prepare($sql_phong_dt);
+    //             $stmt_phong_dt->execute([$yeu_cau]);
+    //             $ma_phong_dac_thu = $stmt_phong_dt->fetchColumn();
+
+    //             if ($ma_phong_dac_thu) {
+    //                 return (int)$ma_phong_dac_thu;
+    //             }
+    //         }
+    //         return $this->getPhongHocChinhID($ma_lop);
+    //     } catch (PDOException $e) {
+    //         error_log("Lỗi xacDinhPhongHoc: " . $e->getMessage());
+    //         return $this->getPhongHocChinhID($ma_lop);
+    //     }
+    // }
+    private function xacDinhPhongHoc($ma_phan_cong, $ma_lop) {
+        if ($this->db === null) return $this->getPhongHocChinhID($ma_lop);
+        if (!$ma_phan_cong) return $this->getPhongHocChinhID($ma_lop);
         try {
             $sql = "SELECT m.yeu_cau_phong_dac_biet
                     FROM bang_phan_cong bpc
@@ -372,16 +442,13 @@ class TkbModel {
 
             if ($yeu_cau && $yeu_cau !== 'None') {
                 $sql_phong_dt = "SELECT ma_phong
-                                 FROM phong_hoc
-                                 WHERE loai_phong = ? AND trang_thai_phong = 'HoatDong'
-                                 LIMIT 1";
+                                FROM phong_hoc
+                                WHERE loai_phong = ? AND trang_thai_phong = 'HoatDong'
+                                LIMIT 1";
                 $stmt_phong_dt = $this->db->prepare($sql_phong_dt);
                 $stmt_phong_dt->execute([$yeu_cau]);
                 $ma_phong_dac_thu = $stmt_phong_dt->fetchColumn();
-
-                if ($ma_phong_dac_thu) {
-                    return (int)$ma_phong_dac_thu;
-                }
+                if ($ma_phong_dac_thu) return (int)$ma_phong_dac_thu;
             }
             return $this->getPhongHocChinhID($ma_lop);
         } catch (PDOException $e) {
@@ -395,33 +462,55 @@ class TkbModel {
      * Lưu 1 tiết học (THEO HỌC KỲ)
      * <-- ĐÃ SỬA: Thêm $ma_hoc_ky
      */
-    public function luuTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong) {
-        if ($this->db === null) return false;
+    // public function luuTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong) {
+    //     if ($this->db === null) return false;
 
-        $ma_phong_hoc = $this->xacDinhPhongHoc($ma_phan_cong, $ma_lop);
+    //     $ma_phong_hoc = $this->xacDinhPhongHoc($ma_phan_cong, $ma_lop);
 
-        // <-- ĐÃ SỬA: Thêm ma_hoc_ky vào INSERT
-        $sql = "INSERT INTO tkb_chi_tiet (ma_lop, ma_hoc_ky, thu, tiet, ma_phan_cong, ma_phong_hoc)
-                VALUES (:ma_lop, :ma_hoc_ky, :thu, :tiet, :ma_phan_cong, :ma_phong_hoc)
-                ON DUPLICATE KEY UPDATE
-                ma_phan_cong = VALUES(ma_phan_cong),
-                ma_phong_hoc = VALUES(ma_phong_hoc)";
+    //     // <-- ĐÃ SỬA: Thêm ma_hoc_ky vào INSERT
+    //     $sql = "INSERT INTO tkb_chi_tiet (ma_lop, ma_hoc_ky, thu, tiet, ma_phan_cong, ma_phong_hoc)
+    //             VALUES (:ma_lop, :ma_hoc_ky, :thu, :tiet, :ma_phan_cong, :ma_phong_hoc)
+    //             ON DUPLICATE KEY UPDATE
+    //             ma_phan_cong = VALUES(ma_phan_cong),
+    //             ma_phong_hoc = VALUES(ma_phong_hoc)";
 
-        try {
-            $stmt = $this->db->prepare($sql);
-            $stmt->bindParam(':ma_lop', $ma_lop, PDO::PARAM_INT);
-            $stmt->bindParam(':ma_hoc_ky', $ma_hoc_ky, PDO::PARAM_INT); // <-- ĐÃ SỬA
-            $stmt->bindParam(':thu', $thu, PDO::PARAM_INT);
-            $stmt->bindParam(':tiet', $tiet, PDO::PARAM_INT);
-            $stmt->bindParam(':ma_phan_cong', $ma_phan_cong, PDO::PARAM_INT);
+    //     try {
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->bindParam(':ma_lop', $ma_lop, PDO::PARAM_INT);
+    //         $stmt->bindParam(':ma_hoc_ky', $ma_hoc_ky, PDO::PARAM_INT); // <-- ĐÃ SỬA
+    //         $stmt->bindParam(':thu', $thu, PDO::PARAM_INT);
+    //         $stmt->bindParam(':tiet', $tiet, PDO::PARAM_INT);
+    //         $stmt->bindParam(':ma_phan_cong', $ma_phan_cong, PDO::PARAM_INT);
             
-            if ($ma_phong_hoc === null) {
-                $stmt->bindValue(':ma_phong_hoc', null, PDO::PARAM_NULL);
-            } else {
-                $stmt->bindParam(':ma_phong_hoc', $ma_phong_hoc, PDO::PARAM_INT);
-            }
-            return $stmt->execute();
+    //         if ($ma_phong_hoc === null) {
+    //             $stmt->bindValue(':ma_phong_hoc', null, PDO::PARAM_NULL);
+    //         } else {
+    //             $stmt->bindParam(':ma_phong_hoc', $ma_phong_hoc, PDO::PARAM_INT);
+    //         }
+    //         return $stmt->execute();
+    //     } catch (PDOException $e) {
+    //         error_log("Lỗi luuTietHoc: " . $e->getMessage());
+    //         return false;
+    //     }
+    // }
+    public function luuTietHoc($ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong = null, $loai_tiet = 'hoc', $ghi_chu = null) {
+        if ($this->db === null) return false;
+        $loai_tiet = in_array($loai_tiet, ['hoc','thi','tam_nghi']) ? $loai_tiet : 'hoc';
+        $this->db->beginTransaction();
+        try {
+            $ma_phong = $ma_phan_cong ? $this->xacDinhPhongHoc($ma_phan_cong, $ma_lop) : $this->getPhongHocChinhID($ma_lop);
+            $sql = "INSERT INTO tkb_chi_tiet (ma_lop, ma_hoc_ky, thu, tiet, ma_phan_cong, ma_phong_hoc, loai_tiet, ghi_chu)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE ma_phan_cong = VALUES(ma_phan_cong),
+                                            ma_phong_hoc = VALUES(ma_phong_hoc),
+                                            loai_tiet = VALUES(loai_tiet),
+                                            ghi_chu = VALUES(ghi_chu)";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_lop, $ma_hoc_ky, $thu, $tiet, $ma_phan_cong, $ma_phong, $loai_tiet, $ghi_chu]);
+            $this->db->commit();
+            return true;
         } catch (PDOException $e) {
+            $this->db->rollBack();
             error_log("Lỗi luuTietHoc: " . $e->getMessage());
             return false;
         }
@@ -572,5 +661,21 @@ class TkbModel {
             return 'Lỗi';
         }
     }
+
+
+
+    public function getMaTkbChiTietBySlot($ma_lop, $ma_hoc_ky, $thu, $tiet) {
+        if ($this->db === null) return null;
+        try {
+            $sql = "SELECT ma_tkb_chi_tiet FROM tkb_chi_tiet WHERE ma_lop = ? AND ma_hoc_ky = ? AND thu = ? AND tiet = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_lop, $ma_hoc_ky, $thu, $tiet]);
+            return $stmt->fetchColumn();
+        } catch (PDOException $e) {
+            error_log("Lỗi getMaTkbChiTietBySlot: " . $e->getMessage());
+            return null;
+        }
+    }
+
 }
 ?>

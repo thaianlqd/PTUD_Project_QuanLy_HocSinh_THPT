@@ -150,7 +150,42 @@
             border: 1px solid #b7e4c7;
             font-weight: 500;
         }
+        /* CSS cho loại tiết */
+        .loai-hoc {
+            background-color: #c5f0d6 !important;
+            border-left: 4px solid #15803d !important;
+        }
+        .loai-hoc .mon-cell {
+            color: #166534 !important;
+        }
 
+        .loai-thi {
+            background-color: #ffe0b3 !important;
+            border-left: 4px solid #c2410c !important;
+        }
+        .loai-thi .mon-cell {
+            color: #b45309 !important;
+        }
+
+        .loai-nghi {
+            background-color: #ffc6c6 !important;
+            border-left: 4px solid #b91c1c !important;
+        }
+        .loai-nghi .mon-cell {
+            color: #b91c1c !important;
+        }
+
+        .loai-nghi .lop-cell {
+            color: #b91c1c !important;
+        }
+
+        .ghi-chu-note {
+            font-size: 0.7rem;
+            color: #666;
+            margin-top: 3px;
+            font-style: italic;
+            display: block;
+        }
         /* Giờ học trong cột tiết */
         .tiet-number { 
             font-weight: bold;
@@ -545,10 +580,13 @@
                             <span class="phong-cell">Phòng học</span>
                         </td>`;
                     } else if (item) {
-                        html += `<td>
+                        const loaiTiet = item.loai_tiet || 'hoc';
+                        const loaiClass = loaiTiet === 'thi' ? 'loai-thi' : (loaiTiet === 'tam_nghi' ? 'loai-nghi' : 'loai-hoc');
+                        html += `<td class="${loaiClass}">
                             <div class="mon-cell">${item.mon}</div>
                             <small class="lop-cell">${item.lop}</small><br>
                             <span class="phong-cell">${item.phong || 'N/A'}</span>
+                            ${item.ghi_chu ? `<span class="ghi-chu-note"><i class="bi bi-info-circle"></i> ${item.ghi_chu}</span>` : ''}
                         </td>`;
                     } else {
                         html += `<td><span class="empty-cell">–</span></td>`;
@@ -643,10 +681,13 @@
                             <span class="phong-cell">Phòng học</span>
                         </td>`;
                     } else if (item) {
-                        html += `<td>
+                        const loaiTiet = item.loai_tiet || 'hoc';
+                        const loaiClass = loaiTiet === 'thi' ? 'loai-thi' : (loaiTiet === 'tam_nghi' ? 'loai-nghi' : 'loai-hoc');
+                        html += `<td class="${loaiClass}">
                             <div class="mon-cell">${item.mon}</div>
                             <small class="lop-cell">${item.lop}</small><br>
                             <span class="phong-cell">${item.phong || 'N/A'}</span>
+                            ${item.ghi_chu ? `<span class="ghi-chu-note"><i class="bi bi-info-circle"></i> ${item.ghi_chu}</span>` : ''}
                         </td>`;
                     } else {
                         html += `<td><span class="empty-cell">–</span></td>`;
