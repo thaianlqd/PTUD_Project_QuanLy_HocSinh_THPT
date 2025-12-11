@@ -722,5 +722,119 @@ class GiaoVienController extends Controller {
         $result = $this->diemDanhModel->xoaPhien($ma_phien, $this->ma_giao_vien);
         echo json_encode($result, JSON_UNESCAPED_UNICODE);
     }
+
+
+    //note: phần thời khóa biểu giáo viên ở đây 
+    /**
+     * ✅ HÀM 1: TRANG CHÍNH XEM LỊCH DẠY
+     * URL: /giaovien/lichdayview
+     * Hiển thị danh sách lớp để chọn xem TKB
+     */
+    public function xemTkbByLopApi() {
+        header('Content-Type: application/json; charset=utf-8');
+        
+        $ma_lop = filter_input(INPUT_POST, 'ma_lop', FILTER_VALIDATE_INT);
+        $ma_hoc_ky = $_POST['ma_hoc_ky'] ?? '1';  // ✅ ĐỔI: 'HK1' → '1'
+        
+        if (!$ma_lop) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Thiếu mã lớp'
+            ], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+        
+        try {
+            $giaoVienModel = $this->loadModel('GiaoVienModel');
+            
+            // Lấy TKB chi tiết
+            $tkb_data = $giaoVienModel->getTkbGVByLop($this->ma_giao_vien, $ma_lop, $ma_hoc_ky);
+            
+            // Lấy danh sách tiết học
+            $tiet_hoc_list = $giaoVienModel->getDanhSachTietHoc();
+            
+            // Lấy thông tin lớp
+            $lop_info = $giaoVienModel->getLopDayByGiaoVien($this->ma_giao_vien);
+            $current_lop = null;
+            
+            foreach ($lop_info as $lop) {
+                if ($lop['ma_lop'] == $ma_lop) {
+                    $current_lop = $lop;
+                    break;
+                }
+            }
+            
+            if (!$current_lop) {
+                http_response_code(404);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Lớp không tồn tại hoặc bạn không được phân công'
+                ], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'data' => $tkb_data,
+                'tiet_hoc' => $tiet_hoc_list,
+                'lop_info' => $current_lop,
+                'ma_hoc_ky' => $ma_hoc_ky
+            ], JSON_UNESCAPED_UNICODE);
+            
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    public function xemTkbAllApi() {
+        header('Content-Type: application/json; charset=utf-8');
+        
+        $ma_hoc_ky = $_POST['ma_hoc_ky'] ?? '1';  // ✅ ĐỔI: 'HK1' → '1'
+        
+        try {
+            $giaoVienModel = $this->loadModel('GiaoVienModel');
+            
+            $tkb_all = $giaoVienModel->getTkbGVAll($this->ma_giao_vien, $ma_hoc_ky);
+            $tiet_hoc_list = $giaoVienModel->getDanhSachTietHoc();
+            $stats = $giaoVienModel->getThongKeTkbGV($this->ma_giao_vien, $ma_hoc_ky);
+            
+            echo json_encode([
+                'success' => true,
+                'data' => $tkb_all,
+                'tiet_hoc' => $tiet_hoc_list,
+                'stats' => $stats,
+                'ma_hoc_ky' => $ma_hoc_ky
+            ], JSON_UNESCAPED_UNICODE);
+            
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    public function lichdayview() {
+        $giaoVienModel = $this->loadModel('GiaoVienModel');
+        
+        $lop_list = $giaoVienModel->getLopDayByGiaoVien($this->ma_giao_vien);
+        $stats = $giaoVienModel->getThongKeTkbGV($this->ma_giao_vien, '1');  // ✅ ĐỔI: 'HK1' → '1'
+        
+        $data = [
+            'user_name' => $_SESSION['user_name'] ?? 'Giáo Viên',
+            'lop_list' => $lop_list,
+            'stats' => $stats,
+            'ma_hoc_ky' => '1'  // ✅ ĐỔI
+        ];
+        
+        echo $this->loadView('BGH/quan_ly_lich_day', $data);
+    }
+
 }
 ?>

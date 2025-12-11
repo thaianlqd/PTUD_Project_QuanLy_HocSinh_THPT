@@ -205,7 +205,7 @@
                 </a>
             </li>
             
-            <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-bank"></i>Quản Lý Trường Học</a></li>
+            <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/TruongHoc"><i class="bi bi-bank"></i>Quản Lý Trường Học</a></li>
             <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-journal-bookmark"></i>Chương Trình Khung</a></li>
             
             <li class="nav-header text-uppercase small text-muted ms-3 mt-3 mb-1">Hệ Thống</li>

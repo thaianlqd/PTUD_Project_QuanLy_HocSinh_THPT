@@ -93,7 +93,7 @@
             <?php endif; ?>
 
             <div class="text-uppercase small text-muted fw-bold mt-3 mb-1 ms-3" style="font-size: 0.75rem;">Giảng Dạy</div>
-            <a class="nav-link" href="#lich-day"><i class="bi bi-calendar-week"></i> Lịch Dạy</a>
+            <a class="nav-link" href="<?php echo BASE_URL; ?>/giaovien/lichdayview"><i class="bi bi-calendar-week"></i> Lịch Dạy</a>
             <a class="nav-link" href="<?php echo BASE_URL; ?>/giaovien/diemdanh"><i class="bi bi-upc-scan"></i> Điểm Danh</a>
             <a class="nav-link" href="<?php echo BASE_URL; ?>/giaovien/baitap"><i class="bi bi-journal-text"></i> Bài Tập & Điểm</a>
 
@@ -200,7 +200,7 @@
                     
                     <div>
                         <a href="<?php echo BASE_URL; ?>/giaovienchunhiem/duyetdon" class="btn btn-warning btn-sm shadow-sm me-2 text-dark fw-bold">
-                            <i class="bi bi-envelope-paper me-2"></i>Duyệt Đơn Phép
+                            <i class="bi bi-envelope-paper me-2"></i>Duyệt Đơn Xin Nghỉ Học
                         </a>
 
                         <button class="btn btn-success btn-sm shadow-sm"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Xuất Báo Cáo Lớp</button>
@@ -287,9 +287,14 @@
                 
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h5 class="fw-bold" style="color: #fd7e14;"><i class="bi bi-briefcase-fill me-2"></i>Công Tác Giảng Dạy</h5>
-                    <a href="<?php echo BASE_URL; ?>/giaovien/baitap" class="btn btn-warning text-dark fw-bold shadow-sm">
-                        <i class="bi bi-plus-circle-fill me-2"></i>Giao Bài Tập Mới
-                    </a>
+                    <div class="gap-2 d-flex">
+                        <a href="<?php echo BASE_URL; ?>/tailieu/quanly" class="btn btn-info text-white fw-bold shadow-sm">
+                            <i class="bi bi-file-earmark-pdf me-2"></i>Tài Liệu
+                        </a>
+                        <a href="<?php echo BASE_URL; ?>/giaovien/baitap" class="btn btn-warning text-dark fw-bold shadow-sm">
+                            <i class="bi bi-plus-circle-fill me-2"></i>Giao Bài Tập Mới
+                        </a>
+                    </div>
                 </div>
 
                 <!-- BẢNG ĐIỂM MÔN - GV BỘ MÔN -->
