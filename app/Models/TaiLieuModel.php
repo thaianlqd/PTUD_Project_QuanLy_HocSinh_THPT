@@ -3,7 +3,6 @@ class TaiLieuModel {
     private $db;
 
     public function __construct() {
-        // Thử port 3307 trước, 3306 sau
         $ports = [3307, 3306];
         $connected = false;
 
@@ -27,9 +26,6 @@ class TaiLieuModel {
         }
     }
 
-    /**
-     * Lấy danh sách tài liệu theo môn học (dành cho HS xem)
-     */
     public function getDanhSachTaiLieuByMonHoc($ma_mon_hoc) {
         if ($this->db === null) return [];
         
@@ -60,9 +56,6 @@ class TaiLieuModel {
         }
     }
 
-    /**
-     * Lấy tài liệu của GV (để quản lý/chỉnh sửa)
-     */
     public function getDanhSachTaiLieuByGiaoVien($ma_giao_vien) {
         if ($this->db === null) return [];
         
@@ -93,9 +86,6 @@ class TaiLieuModel {
         }
     }
 
-    /**
-     * Lấy chi tiết 1 tài liệu
-     */
     public function getChiTietTaiLieu($ma_tai_lieu) {
         if ($this->db === null) return null;
         
@@ -109,7 +99,6 @@ class TaiLieuModel {
                         tl.ghi_chu,
                         tl.ngay_tao,
                         tl.trang_thai,
-                        tl.duong_dan_file,
                         tl.ma_giao_vien,
                         tl.ma_mon_hoc,
                         nd.ho_ten as giao_vien_up,
@@ -129,16 +118,36 @@ class TaiLieuModel {
         }
     }
 
-    /**
-     * Thêm tài liệu mới
-     */
+    public function getMonGiangDay($ma_giao_vien) {
+        if ($this->db === null) return [];
+        
+        try {
+            $sql = "SELECT DISTINCT 
+                        m.ma_mon_hoc,
+                        m.ten_mon_hoc
+                    FROM bang_phan_cong bpc
+                    INNER JOIN mon_hoc m ON bpc.ma_mon_hoc = m.ma_mon_hoc
+                    WHERE bpc.ma_giao_vien = ?
+                    AND m.ten_mon_hoc NOT IN ('Chào cờ', 'Sinh hoạt lớp')
+                    ORDER BY m.ten_mon_hoc ASC";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_giao_vien]);
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("Lỗi getMonGiangDay: " . $e->getMessage());
+            return [];
+        }
+    }
+
     public function addTaiLieu($data) {
         if ($this->db === null) return ['success' => false, 'message' => 'Lỗi kết nối CSDL'];
         
         try {
+            // ✅ Xóa duong_dan_file khỏi INSERT
             $sql = "INSERT INTO tai_lieu 
-                    (ten_tai_lieu, mo_ta, loai_tai_lieu, file_dinh_kem, duong_dan_file, ghi_chu, ma_giao_vien, ma_mon_hoc, ngay_tao, ngay_cap_nhat, trang_thai)
-                    VALUES (:ten, :mo_ta, :loai, :file, :duong_dan, :ghi_chu, :ma_gv, :ma_mon, NOW(), NOW(), 'Hien')";
+                    (ten_tai_lieu, mo_ta, loai_tai_lieu, file_dinh_kem, ghi_chu, ma_giao_vien, ma_mon_hoc, ngay_tao, ngay_cap_nhat, trang_thai)
+                    VALUES (:ten, :mo_ta, :loai, :file, :ghi_chu, :ma_gv, :ma_mon, NOW(), NOW(), 'Hien')";
             
             $stmt = $this->db->prepare($sql);
             $result = $stmt->execute([
@@ -146,7 +155,6 @@ class TaiLieuModel {
                 ':mo_ta' => $data['mo_ta'] ?? '',
                 ':loai' => $data['loai_tai_lieu'],
                 ':file' => $data['file_dinh_kem'],
-                ':duong_dan' => $data['duong_dan_file'],
                 ':ghi_chu' => $data['ghi_chu'] ?? '',
                 ':ma_gv' => $data['ma_giao_vien'],
                 ':ma_mon' => $data['ma_mon_hoc']
@@ -167,9 +175,6 @@ class TaiLieuModel {
         }
     }
 
-    /**
-     * Cập nhật tài liệu
-     */
     public function updateTaiLieu($data) {
         if ($this->db === null) return ['success' => false, 'message' => 'Lỗi kết nối CSDL'];
         
@@ -203,43 +208,26 @@ class TaiLieuModel {
         }
     }
 
-    /**
-     * Xóa tài liệu (Soft delete - chỉ ẩn)
-     */
     public function deleteTaiLieu($ma_tai_lieu, $ma_giao_vien) {
         if ($this->db === null) return ['success' => false, 'message' => 'Lỗi kết nối CSDL'];
         
         try {
-            // Kiểm tra quyền sở hữu
-            $checkSql = "SELECT duong_dan_file FROM tai_lieu WHERE ma_tai_lieu = ? AND ma_giao_vien = ?";
-            $checkStmt = $this->db->prepare($checkSql);
-            $checkStmt->execute([$ma_tai_lieu, $ma_giao_vien]);
-            $tl = $checkStmt->fetch();
+            // Soft delete (không xóa file vì không lưu đường dẫn)
+            $sql = "UPDATE tai_lieu SET trang_thai = 'An', ngay_cap_nhat = NOW() WHERE ma_tai_lieu = ? AND ma_giao_vien = ?";
+            $stmt = $this->db->prepare($sql);
+            $result = $stmt->execute([$ma_tai_lieu, $ma_giao_vien]);
             
-            if (!$tl) {
+            if ($result) {
+                return ['success' => true, 'message' => 'Xóa tài liệu thành công!'];
+            } else {
                 return ['success' => false, 'message' => 'Bạn không có quyền xóa tài liệu này'];
             }
-            
-            // Soft delete
-            $sql = "UPDATE tai_lieu SET trang_thai = 'An', ngay_cap_nhat = NOW() WHERE ma_tai_lieu = ?";
-            $stmt = $this->db->prepare($sql);
-            $result = $stmt->execute([$ma_tai_lieu]);
-            
-            // Xóa file thực
-            if ($tl['duong_dan_file'] && file_exists($tl['duong_dan_file'])) {
-                unlink($tl['duong_dan_file']);
-            }
-            
-            return ['success' => true, 'message' => 'Xóa tài liệu thành công!'];
         } catch (PDOException $e) {
             error_log('deleteTaiLieu error: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()];
         }
     }
 
-    /**
-     * Lấy danh sách tài liệu theo loại
-     */
     public function getDanhSachTaiLieuByLoai($ma_mon_hoc, $loai_tai_lieu) {
         if ($this->db === null) return [];
         
@@ -257,9 +245,6 @@ class TaiLieuModel {
         }
     }
 
-    /**
-     * Đếm tài liệu của GV
-     */
     public function countTaiLieuByGiaoVien($ma_giao_vien) {
         if ($this->db === null) return 0;
         

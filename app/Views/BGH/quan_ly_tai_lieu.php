@@ -35,6 +35,20 @@
 
     <!-- MAIN CONTENT -->
     <div class="main-content">
+        <!-- DEBUG: Kiểm tra dữ liệu từ Controller -->
+        <div class="alert alert-warning alert-dismissible fade show mb-3" role="alert">
+            <strong>🔍 DEBUG INFO:</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <pre style="margin: 10px 0 0 0; font-size: 0.85rem; background: #f5f5f5; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto;"><code><?php 
+                echo "SESSION user_id: " . ($_SESSION['user_id'] ?? 'KHÔNG CÓ') . "\n";
+                echo "SESSION user_role: " . ($_SESSION['user_role'] ?? 'KHÔNG CÓ') . "\n";
+                echo "SESSION user_name: " . ($_SESSION['user_name'] ?? 'KHÔNG CÓ') . "\n\n";
+                echo "mon_hoc_list count: " . count($data['mon_hoc_list'] ?? []) . "\n";
+                echo "mon_hoc_list data:\n";
+                var_dump($data['mon_hoc_list']);
+            ?></code></pre>
+        </div>
+
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h4 class="fw-bold text-dark mb-1">Quản Lý Tài Liệu</h4>
@@ -283,10 +297,25 @@
 
         // === CHỈNH SỬA TÀI LIỆU ===
         function editTaiLieu(maTaiLieu) {
-            // Tìm dữ liệu từ bảng
-            // Mở modal chỉnh sửa
-            const modal = new bootstrap.Modal(document.getElementById('modalEditTaiLieu'));
-            modal.show();
+            // Fetch dữ liệu từ server
+            fetch('<?php echo BASE_URL; ?>/tailieu/getChiTiet/' + maTaiLieu)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        // Fill modal
+                        document.getElementById('edit_ma_tai_lieu').value = data.data.ma_tai_lieu;
+                        document.getElementById('edit_ten_tai_lieu').value = data.data.ten_tai_lieu;
+                        document.getElementById('edit_loai_tai_lieu').value = data.data.loai_tai_lieu;
+                        document.getElementById('edit_mo_ta').value = data.data.mo_ta;
+                        document.getElementById('edit_ghi_chu').value = data.data.ghi_chu;
+                        
+                        // Mở modal
+                        const modal = new bootstrap.Modal(document.getElementById('modalEditTaiLieu'));
+                        modal.show();
+                    } else {
+                        alert('Lỗi: ' + data.message);
+                    }
+                });
         }
 
         function submitEditTaiLieu() {
