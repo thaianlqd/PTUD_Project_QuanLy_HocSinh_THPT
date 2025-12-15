@@ -1005,6 +1005,60 @@
             }
         } catch(e) {}
     }
+
+    // --- LOAD TAB TRƯỢT & ĐIỂM CHUẨN ---
+    async function loadDanhSachTruot() {
+        try {
+            const res = await apiCall(`${API_URL}/getDuLieuTruotVaDiemChuanApi`);
+            if (!res.success) {
+                showNotification(res.message || 'Không tải được danh sách trượt', 'danger');
+                return;
+            }
+
+            const diemChuanData = res.bang_diem_chuan || [];
+            const dsTruot = res.ds_truot || [];
+
+            // Render bảng điểm chuẩn
+            const diemChuanBody = document.getElementById('diemChuanTableBody');
+            diemChuanBody.innerHTML = diemChuanData.length ? diemChuanData.map(t => `
+                <tr>
+                    <td>${escapeHtml(t.ten_truong)}</td>
+                    <td>${t.chi_tieu_hoc_sinh ?? '-'}</td>
+                    <td>${t.da_tuyen ?? 0}</td>
+                    <td class="text-danger fw-bold">${t.diem_chuan ? parseFloat(t.diem_chuan).toFixed(2) : '-'}</td>
+                </tr>
+            `).join('') : '<tr><td colspan="4" class="text-center text-muted">Không có dữ liệu</td></tr>';
+
+            // Render danh sách trượt
+            const truotBody = document.getElementById('thiSinhTruotTableBody');
+            if (!dsTruot.length) {
+                truotBody.innerHTML = '<tr><td colspan="7" class="text-center">Không có thí sinh trượt.</td></tr>';
+            } else {
+                truotBody.innerHTML = dsTruot.map(ts => `
+                    <tr>
+                        <td>${escapeHtml(ts.so_bao_danh)}</td>
+                        <td>${escapeHtml(ts.ho_ten)}</td>
+                        <td class="fw-bold">${ts.tong_diem ?? '-'}</td>
+                        <td>${escapeHtml(ts.nv1 || '-')}</td>
+                        <td>${escapeHtml(ts.nv2 || '-')}</td>
+                        <td>${escapeHtml(ts.nv3 || '-')}</td>
+                        <td class="text-muted">${ts.ly_do || 'Không đủ điểm'}</td>
+                    </tr>
+                `).join('');
+            }
+        } catch (e) {
+            // apiCall đã show notification, chỉ log thêm nếu cần
+            console.error(e);
+        }
+    }
+
+    // Gắn sự kiện khi nhấn tab "Danh sách Trượt"
+    document.addEventListener('DOMContentLoaded', () => {
+        const tabTruotBtn = document.getElementById('tabTruot-tab');
+        if (tabTruotBtn) {
+            tabTruotBtn.addEventListener('click', loadDanhSachTruot);
+        }
+    });
     </script>
 </body>
 </html>

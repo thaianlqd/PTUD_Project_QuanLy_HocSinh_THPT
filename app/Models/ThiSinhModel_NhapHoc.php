@@ -139,9 +139,93 @@ class ThiSinhModel_NhapHoc {
     // ========================================================================
     // 1. LẤY DANH SÁCH TRƯỜNG (Đậu & Trượt) + ĐIỂM CHUẨN
     // ========================================================================
+    // public function getDanhSachTruongNhapHoc($ma_nguoi_dung) {
+    //     try {
+    //         // 1. Lấy tất cả NV đã đăng ký
+    //         $sqlNV = "SELECT nv.ma_truong, tt.ten_truong, nv.thu_tu_nguyen_vong 
+    //                   FROM nguyen_vong nv
+    //                   JOIN truong_thpt tt ON nv.ma_truong = tt.ma_truong
+    //                   WHERE nv.ma_nguoi_dung = ? 
+    //                   ORDER BY nv.thu_tu_nguyen_vong ASC";
+            
+    //         $stmtNV = $this->db->prepare($sqlNV);
+    //         $stmtNV->execute([$ma_nguoi_dung]);
+    //         $danhSachNV = $stmtNV->fetchAll();
+            
+    //         // 2. Lấy thông tin trúng tuyển của thí sinh hiện tại
+    //         $sqlKQ = "SELECT 
+    //                     ts.trang_thai, 
+    //                     ts.trang_thai_xac_nhan, 
+    //                     ts.truong_trung_tuyen, -- Tên trường đậu
+    //                     (dts.diem_toan * 2 + dts.diem_van * 2 + dts.diem_anh) as diem_cua_ban
+    //                 FROM thi_sinh ts
+    //                 JOIN diem_thi_tuyen_sinh dts ON ts.ma_nguoi_dung = dts.ma_nguoi_dung
+    //                 WHERE ts.ma_nguoi_dung = ?";
+            
+    //         $stmtKQ = $this->db->prepare($sqlKQ);
+    //         $stmtKQ->execute([$ma_nguoi_dung]);
+    //         $ketQuaCaNhan = $stmtKQ->fetch();
+            
+    //         $dau = [];
+    //         $truot = [];
+    //         $tenTruongDau = null;
+
+    //         // Nếu thí sinh có đậu
+    //         if ($ketQuaCaNhan && $ketQuaCaNhan['trang_thai'] == 'Dau') {
+    //             $tenTruongDau = $ketQuaCaNhan['truong_trung_tuyen'];
+                
+    //             // Tìm ID của trường đậu từ danh sách NV (để lấy mã trường cho API nhập học)
+    //             $maTruongDau = null;
+    //             foreach ($danhSachNV as $nv) {
+    //                 if ($nv['ten_truong'] == $tenTruongDau) {
+    //                     $maTruongDau = $nv['ma_truong'];
+    //                     break;
+    //                 }
+    //             }
+
+    //             // Tính điểm chuẩn của trường đậu
+    //             $diemChuanTruongDau = $this->layDiemChuanCuaTruong($tenTruongDau);
+
+    //             $dau[] = [
+    //                 'ma_truong' => $maTruongDau,
+    //                 'ten_truong' => $tenTruongDau,
+    //                 'diem_cua_ban' => $ketQuaCaNhan['diem_cua_ban'], // 47.00
+    //                 'diem_chuan' => $diemChuanTruongDau,             // 39.00 (Số bác cần)
+    //                 'trang_thai_xac_nhan' => $ketQuaCaNhan['trang_thai_xac_nhan']
+    //             ];
+    //         }
+            
+    //         // 3. Xử lý danh sách trượt (Hoặc các NV khác)
+    //         // Logic: Duyệt qua danh sách NV, cái nào không phải trường đậu thì là trượt (hoặc hủy bỏ)
+    //         foreach ($danhSachNV as $nv) {
+    //             if ($nv['ten_truong'] !== $tenTruongDau) {
+    //                 // Tính điểm chuẩn của các trường này luôn để hiển thị tham khảo
+    //                 $diemChuanTruongNay = $this->layDiemChuanCuaTruong($nv['ten_truong']);
+                    
+    //                 $truot[] = [
+    //                     'ma_truong' => $nv['ma_truong'],
+    //                     'ten_truong' => $nv['ten_truong'],
+    //                     'thu_tu' => $nv['thu_tu_nguyen_vong'],
+    //                     'diem_chuan' => $diemChuanTruongNay,
+    //                     'trang_thai' => 'Truot'
+    //                 ];
+    //             }
+    //         }
+            
+    //         return ['dau' => $dau, 'truot' => $truot];
+
+    //     } catch (Exception $e) {
+    //         error_log("Error: " . $e->getMessage());
+    //         return ['dau' => [], 'truot' => []];
+    //     }
+    // }
+
+    // ========================================================================
+    // 1. LẤY DANH SÁCH TRƯỜNG (ĐẬU & TRƯỢT) + ĐIỂM CHUẨN (CHUẨN 100%)
+    // ========================================================================
     public function getDanhSachTruongNhapHoc($ma_nguoi_dung) {
         try {
-            // 1. Lấy tất cả NV đã đăng ký
+            // A. Lấy tất cả NV đã đăng ký của thí sinh
             $sqlNV = "SELECT nv.ma_truong, tt.ten_truong, nv.thu_tu_nguyen_vong 
                       FROM nguyen_vong nv
                       JOIN truong_thpt tt ON nv.ma_truong = tt.ma_truong
@@ -152,11 +236,11 @@ class ThiSinhModel_NhapHoc {
             $stmtNV->execute([$ma_nguoi_dung]);
             $danhSachNV = $stmtNV->fetchAll();
             
-            // 2. Lấy thông tin trúng tuyển của thí sinh hiện tại
+            // B. Lấy thông tin kết quả xét tuyển của thí sinh này
             $sqlKQ = "SELECT 
                         ts.trang_thai, 
                         ts.trang_thai_xac_nhan, 
-                        ts.truong_trung_tuyen, -- Tên trường đậu
+                        ts.truong_trung_tuyen, -- Tên trường đậu (lưu dạng text)
                         (dts.diem_toan * 2 + dts.diem_van * 2 + dts.diem_anh) as diem_cua_ban
                     FROM thi_sinh ts
                     JOIN diem_thi_tuyen_sinh dts ON ts.ma_nguoi_dung = dts.ma_nguoi_dung
@@ -168,45 +252,35 @@ class ThiSinhModel_NhapHoc {
             
             $dau = [];
             $truot = [];
-            $tenTruongDau = null;
-
-            // Nếu thí sinh có đậu
-            if ($ketQuaCaNhan && $ketQuaCaNhan['trang_thai'] == 'Dau') {
-                $tenTruongDau = $ketQuaCaNhan['truong_trung_tuyen'];
-                
-                // Tìm ID của trường đậu từ danh sách NV (để lấy mã trường cho API nhập học)
-                $maTruongDau = null;
-                foreach ($danhSachNV as $nv) {
-                    if ($nv['ten_truong'] == $tenTruongDau) {
-                        $maTruongDau = $nv['ma_truong'];
-                        break;
-                    }
-                }
-
-                // Tính điểm chuẩn của trường đậu
-                $diemChuanTruongDau = $this->layDiemChuanCuaTruong($tenTruongDau);
-
-                $dau[] = [
-                    'ma_truong' => $maTruongDau,
-                    'ten_truong' => $tenTruongDau,
-                    'diem_cua_ban' => $ketQuaCaNhan['diem_cua_ban'], // 47.00
-                    'diem_chuan' => $diemChuanTruongDau,             // 39.00 (Số bác cần)
-                    'trang_thai_xac_nhan' => $ketQuaCaNhan['trang_thai_xac_nhan']
-                ];
-            }
             
-            // 3. Xử lý danh sách trượt (Hoặc các NV khác)
-            // Logic: Duyệt qua danh sách NV, cái nào không phải trường đậu thì là trượt (hoặc hủy bỏ)
+            // Tên trường mà thí sinh đậu (nếu có)
+            $tenTruongDau = ($ketQuaCaNhan && $ketQuaCaNhan['trang_thai'] == 'Dau') 
+                            ? $ketQuaCaNhan['truong_trung_tuyen'] 
+                            : null;
+
+            // C. Duyệt qua từng nguyện vọng để phân loại Đậu/Trượt
             foreach ($danhSachNV as $nv) {
-                if ($nv['ten_truong'] !== $tenTruongDau) {
-                    // Tính điểm chuẩn của các trường này luôn để hiển thị tham khảo
-                    $diemChuanTruongNay = $this->layDiemChuanCuaTruong($nv['ten_truong']);
-                    
+                // Tính điểm chuẩn của trường này (để hiển thị tham khảo)
+                $diemChuan = $this->layDiemChuanCuaTruong($nv['ten_truong']);
+
+                // Nếu tên trường trùng với trường đậu -> Đưa vào danh sách ĐẬU
+                if ($tenTruongDau && $nv['ten_truong'] == $tenTruongDau) {
+                    $dau[] = [
+                        'ma_truong' => $nv['ma_truong'],
+                        'ten_truong' => $nv['ten_truong'],
+                        'thu_tu' => $nv['thu_tu_nguyen_vong'],
+                        'diem_cua_ban' => $ketQuaCaNhan['diem_cua_ban'],
+                        'diem_chuan' => $diemChuan,
+                        'trang_thai_xac_nhan' => $ketQuaCaNhan['trang_thai_xac_nhan']
+                    ];
+                } 
+                // Ngược lại -> Đưa vào danh sách TRƯỢT
+                else {
                     $truot[] = [
                         'ma_truong' => $nv['ma_truong'],
                         'ten_truong' => $nv['ten_truong'],
                         'thu_tu' => $nv['thu_tu_nguyen_vong'],
-                        'diem_chuan' => $diemChuanTruongNay,
+                        'diem_chuan' => $diemChuan,
                         'trang_thai' => 'Truot'
                     ];
                 }
@@ -215,7 +289,7 @@ class ThiSinhModel_NhapHoc {
             return ['dau' => $dau, 'truot' => $truot];
 
         } catch (Exception $e) {
-            error_log("Error: " . $e->getMessage());
+            error_log("Error getDanhSachTruongNhapHoc: " . $e->getMessage());
             return ['dau' => [], 'truot' => []];
         }
     }

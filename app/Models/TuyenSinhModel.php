@@ -344,6 +344,8 @@ class TuyenSinhModel {
             }
         }
 
+        
+
         // ====================================================================
         // B. CHẾ ĐỘ CHẠY LỌC ẢO (ĐÃ FIX LOGIC TỪ CHỐI)
         // ====================================================================
@@ -440,6 +442,64 @@ class TuyenSinhModel {
             $this->db->rollBack();
             return ['success' => false, 'message' => 'Lỗi Lọc Ảo: ' . $e->getMessage()];
         }
+    }
+
+    // --- API: LẤY DANH SÁCH THÍ SINH TRƯỢT ---
+    public function getDanhSachTruot() {
+        $sql = "SELECT 
+                    ts.so_bao_danh, 
+                    nd.ho_ten, 
+                    
+                    -- Tính tổng điểm
+                    (dts.diem_toan * 2 + dts.diem_van * 2 + dts.diem_anh) as tong_diem,
+                    
+                    -- Lấy tên 3 nguyện vọng để hiển thị xem trượt trường nào
+                    t1.ten_truong as nv1,
+                    t2.ten_truong as nv2,
+                    t3.ten_truong as nv3
+                    
+                FROM thi_sinh ts
+                JOIN nguoi_dung nd ON ts.ma_nguoi_dung = nd.ma_nguoi_dung
+                LEFT JOIN diem_thi_tuyen_sinh dts ON ts.ma_nguoi_dung = dts.ma_nguoi_dung
+                
+                -- Join lấy tên NV1, NV2, NV3
+                LEFT JOIN nguyen_vong nv1 ON ts.ma_nguoi_dung = nv1.ma_nguoi_dung AND nv1.thu_tu_nguyen_vong = 1
+                LEFT JOIN truong_thpt t1 ON nv1.ma_truong = t1.ma_truong
+                
+                LEFT JOIN nguyen_vong nv2 ON ts.ma_nguoi_dung = nv2.ma_nguoi_dung AND nv2.thu_tu_nguyen_vong = 2
+                LEFT JOIN truong_thpt t2 ON nv2.ma_truong = t2.ma_truong
+                
+                LEFT JOIN nguyen_vong nv3 ON ts.ma_nguoi_dung = nv3.ma_nguoi_dung AND nv3.thu_tu_nguyen_vong = 3
+                LEFT JOIN truong_thpt t3 ON nv3.ma_truong = t3.ma_truong
+                
+                -- ĐIỀU KIỆN QUAN TRỌNG: CHỈ LẤY NGƯỜI TRƯỢT
+                WHERE ts.trang_thai = 'Truot'
+                
+                ORDER BY tong_diem DESC";
+        
+        return $this->db->query($sql)->fetchAll();
+    }
+
+    // --- API: TÍNH ĐIỂM CHUẨN CÁC TRƯỜNG (Để hiển thị bảng bên trên) ---
+    public function getBangDiemChuan() {
+        // Logic: Điểm chuẩn = Điểm thấp nhất của thí sinh ĐẬU vào trường đó
+        $sql = "SELECT 
+                    tt.ten_truong,
+                    tt.chi_tieu_hoc_sinh,
+                    tt.so_luong_hoc_sinh as da_tuyen,
+                    
+                    -- Tìm điểm min của những người đậu
+                    COALESCE(MIN(dts.diem_toan * 2 + dts.diem_van * 2 + dts.diem_anh), 0) as diem_chuan
+                    
+                FROM truong_thpt tt
+                -- Join với những thí sinh ĐẬU vào trường này
+                LEFT JOIN thi_sinh ts ON ts.truong_trung_tuyen = tt.ten_truong AND ts.trang_thai = 'Dau'
+                LEFT JOIN diem_thi_tuyen_sinh dts ON ts.ma_nguoi_dung = dts.ma_nguoi_dung
+                
+                GROUP BY tt.ma_truong, tt.ten_truong
+                ORDER BY diem_chuan DESC";
+                
+        return $this->db->query($sql)->fetchAll();
     }
     
     // --- API 6: LẤY KẾT QUẢ LỌC ẢO (ĐÃ CẬP NHẬT LẤY NV1, NV2, NV3) ---

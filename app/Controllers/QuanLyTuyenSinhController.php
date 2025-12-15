@@ -177,6 +177,23 @@ class QuanLyTuyenSinhController { // Chạy độc lập, không cần extends C
     }
 
 
+    // API: Lấy dữ liệu cho tab "Danh sách Trượt & Điểm Chuẩn"
+    public function getDuLieuTruotVaDiemChuanApi() {
+        try {
+            $dsTruot = $this->model->getDanhSachTruot();
+            $diemChuan = $this->model->getBangDiemChuan();
+            
+            $this->sendJson([
+                'success' => true, 
+                'ds_truot' => $dsTruot,
+                'bang_diem_chuan' => $diemChuan
+            ]);
+        } catch (Exception $e) {
+            $this->sendJson(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+
     // API 6: Lấy kết quả Lọc Ảo (Toàn cục)
     public function getKetQuaLocApi() {
         $ts = $this->model->getKetQuaLoc();
