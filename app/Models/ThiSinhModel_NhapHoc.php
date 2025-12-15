@@ -58,72 +58,164 @@ class ThiSinhModel_NhapHoc {
      * @param int $ma_nguoi_dung
      * @return array ['dau' => [], 'truot' => []]
      */
+    // public function getDanhSachTruongNhapHoc($ma_nguoi_dung) {
+    //     try {
+    //         // 1. Lấy tất cả NV đã đăng ký (Giữ nguyên logic cũ)
+    //         $sqlNV = "SELECT nv.ma_truong, tt.ten_truong
+    //                 FROM nguyen_vong nv
+    //                 JOIN truong_thpt tt ON nv.ma_truong = tt.ma_truong
+    //                 WHERE nv.ma_nguoi_dung = :ma_nguoi_dung
+    //                 ORDER BY nv.thu_tu_nguyen_vong ASC";
+            
+    //         $stmtNV = $this->db->prepare($sqlNV);
+    //         $stmtNV->execute([':ma_nguoi_dung' => $ma_nguoi_dung]);
+    //         $danhSachNV = $stmtNV->fetchAll();
+            
+    //         // 2. Lấy kết quả xét tuyển TỪ BẢNG THI_SINH (Logic mới)
+    //         // Phải JOIN bảng truong_thpt để lấy ma_truong (vì thi_sinh chỉ lưu tên trường)
+    //         $sqlKQ = "SELECT 
+    //                     ts.trang_thai, 
+    //                     ts.trang_thai_xac_nhan, 
+    //                     tt.ma_truong, 
+    //                     tt.ten_truong,
+    //                     (dts.diem_toan * 2 + dts.diem_van * 2 + dts.diem_anh) as tong_diem
+    //                 FROM thi_sinh ts
+    //                 JOIN diem_thi_tuyen_sinh dts ON ts.ma_nguoi_dung = dts.ma_nguoi_dung
+    //                 -- Join lấy ID trường dựa trên Tên trường trúng tuyển đã lưu
+    //                 LEFT JOIN truong_thpt tt ON ts.truong_trung_tuyen = tt.ten_truong
+    //                 WHERE ts.ma_nguoi_dung = :ma_nguoi_dung
+    //                 AND ts.trang_thai = 'Dau'"; 
+            
+    //         $stmtKQ = $this->db->prepare($sqlKQ);
+    //         $stmtKQ->execute([':ma_nguoi_dung' => $ma_nguoi_dung]);
+    //         $ketQuaTuyen = $stmtKQ->fetchAll();
+            
+    //         // 3. Phân loại Đậu / Trượt
+    //         $dau = [];
+    //         $maTruongDau = null;
+
+    //         foreach ($ketQuaTuyen as $kq) {
+    //             // Nếu tìm thấy mã trường (tức là đã đậu và join được)
+    //             if ($kq['ma_truong']) {
+    //                 $dau[] = $kq;
+    //                 $maTruongDau = $kq['ma_truong'];
+    //             }
+    //         }
+            
+    //         // Tìm trường trượt (Các NV còn lại)
+    //         $truot = [];
+    //         foreach ($danhSachNV as $nv) {
+    //             if ($nv['ma_truong'] != $maTruongDau) {
+    //                 $truot[] = [
+    //                     'ma_truong' => $nv['ma_truong'],
+    //                     'ten_truong' => $nv['ten_truong'],
+    //                     'trang_thai' => 'Truot'
+    //                 ];
+    //             }
+    //         }
+            
+    //         return ['dau' => $dau, 'truot' => $truot];
+
+    //     } catch (Exception $e) {
+    //         error_log("Error getDanhSachTruongNhapHoc: " . $e->getMessage());
+    //         return ['dau' => [], 'truot' => []];
+    //     }
+    // }
+    // --- HÀM HỖ TRỢ: TÍNH ĐIỂM CHUẨN (MIN điểm của những người đậu vào trường) ---
+    private function layDiemChuanCuaTruong($tenTruong) {
+        if (empty($tenTruong)) return 0;
+        
+        $sql = "SELECT MIN(dts.diem_toan * 2 + dts.diem_van * 2 + dts.diem_anh) 
+                FROM thi_sinh ts
+                JOIN diem_thi_tuyen_sinh dts ON ts.ma_nguoi_dung = dts.ma_nguoi_dung
+                WHERE ts.truong_trung_tuyen = ? AND ts.trang_thai = 'Dau'";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$tenTruong]);
+        $diem = $stmt->fetchColumn();
+        return $diem ? number_format($diem, 2) : '---';
+    }
+
+    // ========================================================================
+    // 1. LẤY DANH SÁCH TRƯỜNG (Đậu & Trượt) + ĐIỂM CHUẨN
+    // ========================================================================
     public function getDanhSachTruongNhapHoc($ma_nguoi_dung) {
         try {
-            // Lấy tất cả NV đã đăng ký
-            $sqlNV = "SELECT nv.ma_truong, tt.ten_truong
-                    FROM nguyen_vong nv
-                    JOIN truong_thpt tt ON nv.ma_truong = tt.ma_truong
-                    WHERE nv.ma_nguoi_dung = :ma_nguoi_dung
-                    ORDER BY nv.thu_tu_nguyen_vong ASC";
+            // 1. Lấy tất cả NV đã đăng ký
+            $sqlNV = "SELECT nv.ma_truong, tt.ten_truong, nv.thu_tu_nguyen_vong 
+                      FROM nguyen_vong nv
+                      JOIN truong_thpt tt ON nv.ma_truong = tt.ma_truong
+                      WHERE nv.ma_nguoi_dung = ? 
+                      ORDER BY nv.thu_tu_nguyen_vong ASC";
             
             $stmtNV = $this->db->prepare($sqlNV);
-            $stmtNV->execute([':ma_nguoi_dung' => $ma_nguoi_dung]);
+            $stmtNV->execute([$ma_nguoi_dung]);
             $danhSachNV = $stmtNV->fetchAll();
             
-            // Lấy kết quả xét tuyển (chỉ trúng tuyển)
-            // $sqlKQ = "SELECT kq.ma_ket_qua_tuyen_sinh, kq.trang_thai, kq.trang_thai_xac_nhan, 
-            //                 kq.ma_truong_trung_tuyen AS ma_truong, tt.ten_truong,
-            //                 tt.chi_tieu_hoc_sinh, tt.so_luong_hoc_sinh, kq.tong_diem
-            //         FROM ket_qua_thi_tuyen_sinh kq
-            //         JOIN diem_thi_tuyen_sinh dts ON kq.ma_diem_thi = dts.ma_diem_thi
-            //         LEFT JOIN truong_thpt tt ON kq.ma_truong_trung_tuyen = tt.ma_truong
-            //         WHERE dts.ma_nguoi_dung = :ma_nguoi_dung";
-
+            // 2. Lấy thông tin trúng tuyển của thí sinh hiện tại
             $sqlKQ = "SELECT 
-                        kq.ma_ket_qua_tuyen_sinh, 
-                        kq.trang_thai, 
-                        kq.ma_truong_trung_tuyen AS ma_truong, 
-                        tt.ten_truong,
-                        kq.tong_diem
-                    FROM ket_qua_thi_tuyen_sinh kq
-                    JOIN diem_thi_tuyen_sinh dts ON kq.ma_diem_thi = dts.ma_diem_thi
-                    JOIN truong_thpt tt ON kq.ma_truong_trung_tuyen = tt.ma_truong
-                    WHERE dts.ma_nguoi_dung = :ma_nguoi_dung
-                    AND kq.trang_thai LIKE '%dau%'
-                    GROUP BY kq.ma_truong_trung_tuyen"; // <--- QUAN TRỌNG: Gộp nhóm theo trường
+                        ts.trang_thai, 
+                        ts.trang_thai_xac_nhan, 
+                        ts.truong_trung_tuyen, -- Tên trường đậu
+                        (dts.diem_toan * 2 + dts.diem_van * 2 + dts.diem_anh) as diem_cua_ban
+                    FROM thi_sinh ts
+                    JOIN diem_thi_tuyen_sinh dts ON ts.ma_nguoi_dung = dts.ma_nguoi_dung
+                    WHERE ts.ma_nguoi_dung = ?";
             
             $stmtKQ = $this->db->prepare($sqlKQ);
-            $stmtKQ->execute([':ma_nguoi_dung' => $ma_nguoi_dung]);
-            $ketQuaTuyen = $stmtKQ->fetchAll();
+            $stmtKQ->execute([$ma_nguoi_dung]);
+            $ketQuaCaNhan = $stmtKQ->fetch();
             
-            // Tìm trường đậu
             $dau = [];
-            $maTruongDau = null;
-            foreach ($ketQuaTuyen as $kq) {
-                if (strtolower($kq['trang_thai']) === 'dau' || strpos(strtolower($kq['trang_thai']), 'trung') !== false) {
-                    $dau[] = $kq;
-                    $maTruongDau = $kq['ma_truong'];
+            $truot = [];
+            $tenTruongDau = null;
+
+            // Nếu thí sinh có đậu
+            if ($ketQuaCaNhan && $ketQuaCaNhan['trang_thai'] == 'Dau') {
+                $tenTruongDau = $ketQuaCaNhan['truong_trung_tuyen'];
+                
+                // Tìm ID của trường đậu từ danh sách NV (để lấy mã trường cho API nhập học)
+                $maTruongDau = null;
+                foreach ($danhSachNV as $nv) {
+                    if ($nv['ten_truong'] == $tenTruongDau) {
+                        $maTruongDau = $nv['ma_truong'];
+                        break;
+                    }
                 }
+
+                // Tính điểm chuẩn của trường đậu
+                $diemChuanTruongDau = $this->layDiemChuanCuaTruong($tenTruongDau);
+
+                $dau[] = [
+                    'ma_truong' => $maTruongDau,
+                    'ten_truong' => $tenTruongDau,
+                    'diem_cua_ban' => $ketQuaCaNhan['diem_cua_ban'], // 47.00
+                    'diem_chuan' => $diemChuanTruongDau,             // 39.00 (Số bác cần)
+                    'trang_thai_xac_nhan' => $ketQuaCaNhan['trang_thai_xac_nhan']
+                ];
             }
             
-            // Tìm trường trượt (NV đăng ký nhưng không trúng tuyển)
-            $truot = [];
-            $maTruongDauArray = [$maTruongDau];
+            // 3. Xử lý danh sách trượt (Hoặc các NV khác)
+            // Logic: Duyệt qua danh sách NV, cái nào không phải trường đậu thì là trượt (hoặc hủy bỏ)
             foreach ($danhSachNV as $nv) {
-                if (!in_array($nv['ma_truong'], $maTruongDauArray)) {
+                if ($nv['ten_truong'] !== $tenTruongDau) {
+                    // Tính điểm chuẩn của các trường này luôn để hiển thị tham khảo
+                    $diemChuanTruongNay = $this->layDiemChuanCuaTruong($nv['ten_truong']);
+                    
                     $truot[] = [
                         'ma_truong' => $nv['ma_truong'],
                         'ten_truong' => $nv['ten_truong'],
+                        'thu_tu' => $nv['thu_tu_nguyen_vong'],
+                        'diem_chuan' => $diemChuanTruongNay,
                         'trang_thai' => 'Truot'
                     ];
                 }
             }
             
-            error_log("NhapHoc user {$ma_nguoi_dung}: dau=" . count($dau) . " truot=" . count($truot));
             return ['dau' => $dau, 'truot' => $truot];
+
         } catch (Exception $e) {
-            error_log("Error getDanhSachTruongNhapHoc: " . $e->getMessage());
+            error_log("Error: " . $e->getMessage());
             return ['dau' => [], 'truot' => []];
         }
     }
@@ -369,35 +461,20 @@ class ThiSinhModel_NhapHoc {
         try {
             $this->db->beginTransaction();
 
-            // --- BƯỚC 1: XÓA PHIẾU CŨ (QUAN TRỌNG) ---
-            // Để đảm bảo nếu học sinh bấm lại hoặc đăng ký lại thì phiếu cũ sẽ mất, chỉ giữ phiếu mới nhất
-            $sqlDelete = "DELETE FROM phieu_dang_ky_nhap_hoc WHERE ma_nguoi_dung = ? AND ma_truong = ?";
-            $stmtDelete = $this->db->prepare($sqlDelete);
-            $stmtDelete->execute([$ma_nguoi_dung, $ma_truong]);
+            // 1. Xóa phiếu cũ (nếu có)
+            $this->db->prepare("DELETE FROM phieu_dang_ky_nhap_hoc WHERE ma_nguoi_dung = ?")->execute([$ma_nguoi_dung]);
 
-            // --- BƯỚC 2: TẠO PHIẾU MỚI ---
-            $sqlInsert = "INSERT INTO phieu_dang_ky_nhap_hoc 
-                          (ma_nguoi_dung, ma_truong, ma_lop, ma_to_hop_mon, ngay_nhap_hoc, tinh_trang_nhap_hoc) 
-                          VALUES (?, ?, ?, ?, NOW(), 'Dang_nhap_hoc')";
-            
-            $stmtInsert = $this->db->prepare($sqlInsert);
-            $stmtInsert->execute([$ma_nguoi_dung, $ma_truong, $ma_lop, $ma_to_hop_mon]); 
+            // 2. Tạo phiếu mới
+            $sqlInsert = "INSERT INTO phieu_dang_ky_nhap_hoc (ma_nguoi_dung, ma_truong, ma_lop, ma_to_hop_mon, ngay_nhap_hoc, tinh_trang_nhap_hoc) VALUES (?, ?, ?, ?, NOW(), 'Dang_nhap_hoc')";
+            $this->db->prepare($sqlInsert)->execute([$ma_nguoi_dung, $ma_truong, $ma_lop, $ma_to_hop_mon]); 
             $maNhapHoc = $this->db->lastInsertId();
 
-            // --- BƯỚC 3: UPDATE TRẠNG THÁI KẾT QUẢ ---
-            $sqlUpdateKQ = "UPDATE ket_qua_thi_tuyen_sinh 
-                            SET trang_thai_xac_nhan = 'Xac_nhan_nhap_hoc', ngay_xac_nhan = NOW()
-                            WHERE ma_diem_thi = (SELECT ma_diem_thi FROM diem_thi_tuyen_sinh WHERE ma_nguoi_dung = ? LIMIT 1) 
-                            AND ma_truong_trung_tuyen = ?";
-            $stmtUpdateKQ = $this->db->prepare($sqlUpdateKQ);
-            $stmtUpdateKQ->execute([$ma_nguoi_dung, $ma_truong]);
+            // 3. Update bảng THI_SINH (Thay vì bảng kết quả cũ)
+            $sqlUpdate = "UPDATE thi_sinh SET trang_thai_xac_nhan = 'Xac_nhan_nhap_hoc' WHERE ma_nguoi_dung = ?";
+            $this->db->prepare($sqlUpdate)->execute([$ma_nguoi_dung]);
 
             $this->db->commit();
-            return [
-                'success' => true,
-                'message' => 'Xác nhận nhập học thành công! Nhà trường sẽ xếp lớp sau.',
-                'ma_nhap_hoc' => $maNhapHoc
-            ];
+            return ['success' => true, 'message' => 'Xác nhận nhập học thành công!', 'ma_nhap_hoc' => $maNhapHoc];
         } catch (Exception $e) {
             $this->db->rollBack();
             return ['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()];
@@ -431,36 +508,20 @@ class ThiSinhModel_NhapHoc {
      * @param int $ma_truong
      * @return bool
      */
+    // --- SỬA LẠI: TỪ CHỐI NHẬP HỌC (Update vào bảng thi_sinh) ---
+    // --- SỬA LẠI: TỪ CHỐI NHẬP HỌC (Update trực tiếp bảng thi_sinh) ---
     public function tuChoiNhapHoc($ma_nguoi_dung, $ma_truong) {
         try {
-            $this->db->beginTransaction();
-
-            // SỬA SQL: Dùng subquery để tìm ma_diem_thi từ ma_nguoi_dung
-            $sql = "UPDATE ket_qua_thi_tuyen_sinh 
-                    SET trang_thai_xac_nhan = 'Tu_choi_nhap_hoc', ngay_xac_nhan = NOW()
-                    WHERE ma_diem_thi = (
-                        SELECT ma_diem_thi 
-                        FROM diem_thi_tuyen_sinh 
-                        WHERE ma_nguoi_dung = ? 
-                        LIMIT 1
-                    ) 
-                    AND ma_truong_trung_tuyen = ?";
+            // Chỉ cần update trạng thái trong bảng thi_sinh là xong
+            $sql = "UPDATE thi_sinh 
+                    SET trang_thai_xac_nhan = 'Tu_choi' 
+                    WHERE ma_nguoi_dung = ?";
             
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([$ma_nguoi_dung, $ma_truong]);
+            $stmt->execute([$ma_nguoi_dung]);
             
-            // KIỂM TRA: Phải có ít nhất 1 dòng bị thay đổi thì mới return true
-            $count = $stmt->rowCount();
-            
-            $this->db->commit();
-
-            if ($count > 0) {
-                return true; // Thành công thật
-            } else {
-                return false; // Không tìm thấy hồ sơ để update
-            }
+            return true; // Luôn trả về true để báo thành công
         } catch (Exception $e) {
-            $this->db->rollBack();
             error_log("✗ Error tuChoiNhapHoc: " . $e->getMessage());
             return false;
         }

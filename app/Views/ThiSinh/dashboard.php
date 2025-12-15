@@ -106,8 +106,31 @@
           <div class="card text-center">
             <div class="card-body">
               <i class="bi bi-award fs-1 mb-2 <?php echo $data['kq_class'] ?? 'text-secondary'; ?>"></i>
-              <h5 class="fw-bold <?php echo $data['kq_class'] ?? 'text-secondary'; ?>">Kết Quả Tuyển Sinh</h5>
-              <h4 class="fw-bold"><?php echo $data['kq_text']; ?></h4>
+              <!-- <h5 class="fw-bold <?php echo $data['kq_class'] ?? 'text-secondary'; ?>">Kết Quả Tuyển Sinh</h5>
+              <h4 class="fw-bold"><?php echo $data['kq_text']; ?></h4> -->
+              <h5 class="fw-bold <?php echo (isset($data['ket_qua']['trang_thai']) && $data['ket_qua']['trang_thai'] == 'Dau') ? 'text-success' : 'text-secondary'; ?>">
+                Kết Quả Tuyển Sinh
+            </h5>
+
+            <div class="mt-2">
+                <?php if (isset($data['ket_qua']['trang_thai']) && $data['ket_qua']['trang_thai'] == 'Dau'): ?>
+                    <h3 class="fw-bold text-success mb-1">TRÚNG TUYỂN</h3>
+                    <div class="text-primary fw-bold fs-5 text-uppercase">
+                        <?php echo $data['ket_qua']['truong_trung_tuyen']; ?>
+                    </div>
+                    <small class="text-muted fw-bold">
+                        (Nguyện vọng số <?php echo $data['ket_qua']['nguyen_vong_trung_tuyen']; ?>)
+                    </small>
+
+                <?php elseif (isset($data['ket_qua']['trang_thai']) && $data['ket_qua']['trang_thai'] == 'Truot'): ?>
+                    <h3 class="fw-bold text-danger">KHÔNG TRÚNG TUYỂN</h3>
+                    <small class="text-muted">Rất tiếc, bạn chưa đủ điều kiện.</small>
+
+                <?php else: ?>
+                    <h4 class="fw-bold text-muted">Chưa công bố</h4>
+                    <small class="text-muted">Hệ thống đang xử lý...</small>
+                <?php endif; ?>
+            </div>
               <small class="text-muted">
                   <?php 
                     // Dùng tổng điểm nếu controller đã truyền, fallback tính lại

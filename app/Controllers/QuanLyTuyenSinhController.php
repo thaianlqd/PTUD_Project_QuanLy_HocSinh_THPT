@@ -136,25 +136,46 @@ class QuanLyTuyenSinhController { // Chạy độc lập, không cần extends C
     //     }
     // }
     // API 5: Chạy thuật toán Lọc Ảo
+    // public function runLocAoApi() {
+    //     try {
+    //         // Lấy tham số mode từ body (json)
+    //         $input = json_decode(file_get_contents('php://input'), true);
+    //         $mode = $input['mode'] ?? 'reset'; // Mặc định là reset nếu không truyền
+
+    //         $resetAll = ($mode === 'reset'); // True nếu reset, False nếu update
+
+    //         $this->model->runLocAo($resetAll);
+            
+    //         $msg = $resetAll 
+    //             ? 'Đã chạy Lọc ảo mới (Reset toàn bộ) thành công!' 
+    //             : 'Đã cập nhật Lọc ảo (Giữ nguyên các hồ sơ đã xác nhận) thành công!';
+
+    //         $this->sendJson(['success' => true, 'message' => $msg]);
+    //     } catch (Exception $e) {
+    //         $this->sendJson(['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()]);
+    //     }
+    // }
     public function runLocAoApi() {
         try {
-            // Lấy tham số mode từ body (json)
+            // 1. Lấy dữ liệu từ Client
             $input = json_decode(file_get_contents('php://input'), true);
-            $mode = $input['mode'] ?? 'reset'; // Mặc định là reset nếu không truyền
-
-            $resetAll = ($mode === 'reset'); // True nếu reset, False nếu update
-
-            $this->model->runLocAo($resetAll);
             
-            $msg = $resetAll 
-                ? 'Đã chạy Lọc ảo mới (Reset toàn bộ) thành công!' 
-                : 'Đã cập nhật Lọc ảo (Giữ nguyên các hồ sơ đã xác nhận) thành công!';
+            // 2. Lấy chế độ: 'reset' hoặc 'normal' (hoặc 'update')
+            // Nếu không gửi gì lên thì mặc định là 'normal' cho an toàn (tránh lỡ tay reset nhầm)
+            $mode = isset($input['mode']) ? $input['mode'] : 'normal'; 
 
-            $this->sendJson(['success' => true, 'message' => $msg]);
+            // 3. Truyền thẳng chuỗi 'reset' hoặc 'normal' xuống Model
+            // Model sẽ tự so sánh if ($mode == 'reset')
+            $result = $this->model->runLocAo($mode);
+            
+            // 4. Trả về kết quả từ Model (Model đã return sẵn mảng ['success' => ..., 'message' => ...])
+            $this->sendJson($result);
+
         } catch (Exception $e) {
             $this->sendJson(['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()]);
         }
     }
+
 
     // API 6: Lấy kết quả Lọc Ảo (Toàn cục)
     public function getKetQuaLocApi() {

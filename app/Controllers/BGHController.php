@@ -9,25 +9,74 @@ class BGHController extends Controller { // <-- Tên class là BGHController
     private $diemSoModel;
     private $ma_nguoi_dung_bgh; // Mã của BGH đang đăng nhập (chính là ma_giao_vien)
 
-    public function __construct() {
-        // --- KIỂM TRA QUYỀN TRUY CẬP CỦA BGH ---
+    // public function __construct() {
+    //     // --- KIỂM TRA QUYỀN TRUY CẬP CỦA BGH ---
         
-        // ✅ SỬA: Chỉ cho BGH vào (BGH có user_role = 'BanGiamHieu')
-        if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] != 'BanGiamHieu') {
+    //     // ✅ SỬA: Chỉ cho BGH vào (BGH có user_role = 'BanGiamHieu')
+    //     if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] != 'BanGiamHieu') {
+    //         header('Location: ' . BASE_URL . '/auth/index');
+    //         exit;
+    //     }
+        
+    //     // --- Hết kiểm tra quyền ---
+
+    //     $this->diemSoModel = $this->loadModel('DiemSoModel');
+    //     if ($this->diemSoModel === null) {
+    //          die("Lỗi nghiêm trọng: Không thể tải DiemSoModel.");
+    //     }
+        
+    //     // Lấy mã người dùng (GV/BGH) từ session
+    //     // (Bạn PHẢI lưu ma_nguoi_dung vào session khi họ đăng nhập thành công)
+    //     $this->ma_nguoi_dung_bgh = $_SESSION['user_id'] ?? 0; 
+    //     if ($this->ma_nguoi_dung_bgh == 0) {
+    //         die("Lỗi: Phiên đăng nhập không hợp lệ. Không tìm thấy user_id.");
+    //     }
+    // }
+    public function __construct() {
+        // 1. Khởi động session nếu chưa có
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        // 2. Lấy thông tin từ session
+        $role    = $_SESSION['user_role'] ?? '';
+        // Sử dụng mb_strtolower để xử lý tiếng Việt có dấu chính xác
+        $chuc_vu = mb_strtolower($_SESSION['user_chuc_vu'] ?? '', 'UTF-8');
+
+        // 3. Logic kiểm tra quyền (Đồng bộ với Dashboard)
+        // - Role là 'BanGiamHieu'
+        // - HOẶC Role là 'GiaoVien' NHƯNG chức vụ có chứa từ khóa BGH
+        $is_bgh = ($role === 'BanGiamHieu')
+               || ($role === 'GiaoVien' && (
+                    str_contains($chuc_vu, 'ban giám hiệu') || 
+                    str_contains($chuc_vu, 'hiệu trưởng') || 
+                    str_contains($chuc_vu, 'phó hiệu') ||
+                    str_contains($chuc_vu, 'bgh')
+                  ));
+        
+        // --- DEBUG (Mở ra nếu vẫn lỗi để xem nó đang nhận giá trị gì) ---
+        // echo "Role: " . $role . "<br>";
+        // echo "Chuc vu (goc): " . $_SESSION['user_chuc_vu'] . "<br>";
+        // echo "Chuc vu (lower): " . $chuc_vu . "<br>";
+        // echo "Is BGH: " . ($is_bgh ? 'Yes' : 'No');
+        // die();
+        // -------------------------------------------------------------
+
+        // 4. Nếu không phải BGH -> Đá về trang login
+        if (!$is_bgh) {
+            // Có thể thêm báo lỗi để biết tại sao bị đá
+            // header('Location: ' . BASE_URL . '/auth/index?error=access_denied'); 
             header('Location: ' . BASE_URL . '/auth/index');
             exit;
         }
-        
-        // --- Hết kiểm tra quyền ---
 
+        // 5. Load Model
         $this->diemSoModel = $this->loadModel('DiemSoModel');
         if ($this->diemSoModel === null) {
-             die("Lỗi nghiêm trọng: Không thể tải DiemSoModel.");
+            die("Lỗi nghiêm trọng: Không thể tải DiemSoModel.");
         }
-        
-        // Lấy mã người dùng (GV/BGH) từ session
-        // (Bạn PHẢI lưu ma_nguoi_dung vào session khi họ đăng nhập thành công)
-        $this->ma_nguoi_dung_bgh = $_SESSION['user_id'] ?? 0; 
+
+        $this->ma_nguoi_dung_bgh = $_SESSION['user_id'] ?? 0;
         if ($this->ma_nguoi_dung_bgh == 0) {
             die("Lỗi: Phiên đăng nhập không hợp lệ. Không tìm thấy user_id.");
         }

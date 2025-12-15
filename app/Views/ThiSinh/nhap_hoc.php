@@ -474,6 +474,9 @@ if (session_status() === PHP_SESSION_NONE) session_start();
                     <strong>ℹ️ Hướng dẫn:</strong> Chọn một trường mà bạn trúng tuyển để tiếp tục đăng ký nhập học.
                 </div>
 
+                <!-- Kết quả trúng tuyển: Điểm của bạn / Điểm chuẩn -->
+                <div id="ketQuaContainer" class="mb-3"></div>
+
                 <div id="danh-sach-truong"></div>
             </div>
         </div>
@@ -643,32 +646,75 @@ if (session_status() === PHP_SESSION_NONE) session_start();
             const container = document.getElementById('danh-sach-truong');
             const alertChuaDau = document.getElementById('alert-chua-dau');
             const alertHuongDan = document.getElementById('alert-huong-dan');
+            const ketQuaBox = document.getElementById('ketQuaContainer');
             
-            if (!danh_sach.dau || danh_sach.dau.length === 0) {
+            if (!danh_sach || !Array.isArray(danh_sach.dau) || danh_sach.dau.length === 0) {
                 alertChuaDau.style.display = 'block';
                 alertHuongDan.style.display = 'none';
                 container.innerHTML = '';
+                if (ketQuaBox) ketQuaBox.innerHTML = '';
                 return;
             }
 
             alertChuaDau.style.display = 'none';
             alertHuongDan.style.display = 'block';
 
-            let html = '<h5 class="mb-3">🎯 Các Trường Trúng Tuyển:</h5>';
+            // 1) Hiển thị hộp thông báo kết quả (điểm của bạn / điểm chuẩn)
+            if (ketQuaBox && danh_sach.dau.length > 0) {
+                const info = danh_sach.dau[0];
+                const diemCuaBan = (info.diem_cua_ban ?? info.tong_diem ?? '-');
+                const diemChuan = (info.diem_chuan ?? info.diem_chuan_truong ?? info.tong_diem_chuan ?? '-');
+
+                let htmlInfo = `
+                    <div class="alert alert-success">
+                        <h5 class="mb-2">🎉 CHÚC MỪNG BẠN ĐÃ TRÚNG TUYỂN!</h5>
+                        <h4 class="text-primary fw-bold mb-3">${info.ten_truong}</h4>
+                        <div class="row g-0 mt-2">
+                            <div class="col-6 text-end border-end pe-3">
+                                <div class="text-muted">Điểm của bạn</div>
+                                <div class="fs-4 fw-bold text-success">${diemCuaBan}</div>
+                            </div>
+                            <div class="col-6 text-start ps-3">
+                                <div class="text-muted">Điểm chuẩn trường</div>
+                                <div class="fs-4 fw-bold text-danger">${diemChuan}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                if (Array.isArray(danh_sach.truot) && danh_sach.truot.length > 0) {
+                    htmlInfo += `<div class="mt-3">
+                        <h6 class="text-muted">Các nguyện vọng khác:</h6>
+                        <ul class="list-group">
+                            ${danh_sach.truot.map(t => `
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>NV${t.thu_tu ?? t.thu_tu_nguyen_vong ?? ''}: ${t.ten_truong}</span>
+                                    <span class="badge bg-secondary">Điểm chuẩn: ${t.diem_chuan ?? t.diem_chuan_truong ?? '-'}</span>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>`;
+                }
+                ketQuaBox.innerHTML = htmlInfo;
+            }
+
+            // 2) Hiển thị danh sách trường để chọn tiếp
+            let htmlList = '<h5 class="mb-3">🎯 Các Trường Trúng Tuyển:</h5>';
             danh_sach.dau.forEach(school => {
-                html += `
+                const diemChuanSchool = (school.diem_chuan ?? school.tong_diem ?? '-');
+                htmlList += `
                     <div class="school-item" data-ma-truong="${school.ma_truong}">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <h6 class="mb-1 fw-bold text-primary">${school.ten_truong}</h6>
-                                <small class="text-muted">Điểm chuẩn: ${school.tong_diem}</small>
+                                <small class="text-muted">Điểm chuẩn: ${diemChuanSchool}</small>
                             </div>
                             <span class="school-status status-dau">✓ Đậu</span>
                         </div>
                     </div>
                 `;
             });
-            container.innerHTML = html;
+            container.innerHTML = htmlList;
 
             // Add event listeners
             document.querySelectorAll('.school-item').forEach(item => {

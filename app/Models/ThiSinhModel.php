@@ -54,15 +54,37 @@ class ThiSinhModel {
     }
 
     // 4. Lấy kết quả xét tuyển
+    // public function getKetQuaTuyenSinh($user_id) {
+    //     $sql = "SELECT kq.trang_thai, kq.trang_thai_xac_nhan, tr.ten_truong AS truong_trung_tuyen
+    //             FROM diem_thi_tuyen_sinh dts
+    //             JOIN ket_qua_thi_tuyen_sinh kq ON dts.ma_diem_thi = kq.ma_diem_thi
+    //             LEFT JOIN truong_thpt tr ON kq.ma_truong_trung_tuyen = tr.ma_truong
+    //             WHERE dts.ma_nguoi_dung = ?";
+    //     $stmt = $this->db->prepare($sql);
+    //     $stmt->execute([$user_id]);
+    //     return $stmt->fetch() ?: null;
+    // }
+    // 4. Lấy kết quả xét tuyển (ĐÃ SỬA: Lấy trực tiếp từ bảng thi_sinh)
     public function getKetQuaTuyenSinh($user_id) {
-        $sql = "SELECT kq.trang_thai, kq.trang_thai_xac_nhan, tr.ten_truong AS truong_trung_tuyen
-                FROM diem_thi_tuyen_sinh dts
-                JOIN ket_qua_thi_tuyen_sinh kq ON dts.ma_diem_thi = kq.ma_diem_thi
-                LEFT JOIN truong_thpt tr ON kq.ma_truong_trung_tuyen = tr.ma_truong
-                WHERE dts.ma_nguoi_dung = ?";
+        // Code cũ của bác đang JOIN bảng ket_qua_thi_tuyen_sinh -> Bảng này giờ rỗng nên sai.
+        // Code mới: Lấy thẳng từ thi_sinh
+        
+        $sql = "SELECT 
+                    ts.trang_thai,               -- Dau / Truot / ChoXetTuyen
+                    ts.trang_thai_xac_nhan,      -- Xac_nhan_nhap_hoc / Tu_choi / Chua_Xac_Nhan
+                    ts.truong_trung_tuyen,       -- Tên trường (Lưu dạng text)
+                    ts.nguyen_vong_trung_tuyen,  -- Số thứ tự NV (1, 2, 3)
+                    
+                    -- Lấy thêm điểm để hiển thị cho oách
+                    (dts.diem_toan * 2 + dts.diem_van * 2 + dts.diem_anh) as tong_diem
+                    
+                FROM thi_sinh ts
+                LEFT JOIN diem_thi_tuyen_sinh dts ON ts.ma_nguoi_dung = dts.ma_nguoi_dung
+                WHERE ts.ma_nguoi_dung = ?";
+                
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$user_id]);
-        return $stmt->fetch() ?: null;
+        return $stmt->fetch() ?: []; 
     }
 
     // 5. Đăng ký nguyện vọng mới (ĐÃ FIX: Bỏ ngay_dang_ky)

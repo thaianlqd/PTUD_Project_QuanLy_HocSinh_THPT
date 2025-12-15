@@ -696,14 +696,29 @@
                     tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Không có thí sinh.</td></tr>';
                 } else {
                     result.data.forEach(ts => {
-                        let statusText = 'CHỜ XÁC NHẬN'; let badgeClass = 'bg-warning text-dark'; let statusValue = 'pending';
-                        if (ts.trang_thai_xac_nhan === 'Xac_nhan_nhap_hoc') { statusText = 'ĐÃ XÁC NHẬN'; badgeClass = 'bg-success text-white'; statusValue = 'confirmed'; }
-                        else if (ts.trang_thai_xac_nhan === 'Tu_choi_nhap_hoc') { statusText = 'ĐÃ TỪ CHỐI'; badgeClass = 'bg-danger text-white'; statusValue = 'rejected'; }
-                        
+                        let statusText = 'CHỜ XÁC NHẬN';
+                        let badgeClass = 'bg-warning text-dark';
+                        let statusValue = 'pending';
+
+                        if (ts.trang_thai_xac_nhan === 'Xac_nhan_nhap_hoc') {
+                            statusText = 'ĐÃ XÁC NHẬN';
+                            badgeClass = 'bg-success text-white';
+                            statusValue = 'confirmed';
+                        }
+                        // Hỗ trợ cả 'Tu_choi_nhap_hoc' và 'Tu_choi'
+                        else if (ts.trang_thai_xac_nhan === 'Tu_choi_nhap_hoc' || ts.trang_thai_xac_nhan === 'Tu_choi') {
+                            statusText = 'ĐÃ TỪ CHỐI';
+                            badgeClass = 'bg-danger text-white';
+                            statusValue = 'rejected';
+                        }
+
                         tableBody.innerHTML += `<tr data-status="${statusValue}">
-                            <td>${escapeHtml(ts.so_bao_danh)}</td><td>${escapeHtml(ts.ho_ten)}</td>
+                            <td>${escapeHtml(ts.so_bao_danh)}</td>
+                            <td>${escapeHtml(ts.ho_ten)}</td>
                             <td>${ts.ngay_sinh ? new Date(ts.ngay_sinh).toLocaleDateString('vi-VN') : 'N/A'}</td>
-                            <td>${ts.tong_diem}</td><td><span class="badge ${badgeClass}">${statusText}</span></td></tr>`;
+                            <td>${ts.tong_diem}</td>
+                            <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                        </tr>`;
                     });
                 }
             } catch (e) {}

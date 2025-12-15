@@ -201,11 +201,11 @@
             
             <li class="nav-item">
                 <a class="nav-link text-primary fw-bold bg-light" href="<?php echo BASE_URL; ?>/quanlytuyensinh">
-                    <i class="bi bi-mortarboard-fill"></i>Tuyển Sinh 2025
+                    <i class="bi bi-mortarboard-fill"></i>Quản Lý Tuyển Sinh
                 </a>
             </li>
             
-            <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/TruongHoc"><i class="bi bi-bank"></i>Quản Lý Trường Học</a></li>
+            <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/TruongHoc"><i class="bi bi-bank"></i>Quản Lý Trường Học THPT</a></li>
             <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-journal-bookmark"></i>Chương Trình Khung</a></li>
             
             <li class="nav-header text-uppercase small text-muted ms-3 mt-3 mb-1">Hệ Thống</li>
