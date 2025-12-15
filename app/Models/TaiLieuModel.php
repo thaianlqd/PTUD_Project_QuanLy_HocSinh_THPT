@@ -26,27 +26,43 @@ class TaiLieuModel {
         }
     }
 
+    // public function getDanhSachTaiLieuByMonHoc($ma_mon_hoc) {
+    //     if ($this->db === null) return [];
+        
+    //     try {
+    //         $sql = "SELECT 
+    //                     tl.ma_tai_lieu,
+    //                     tl.ten_tai_lieu,
+    //                     tl.mo_ta,
+    //                     tl.loai_tai_lieu,
+    //                     tl.file_dinh_kem,
+    //                     tl.ghi_chu,
+    //                     tl.ngay_tao,
+    //                     nd.ho_ten as giao_vien_up,
+    //                     mh.ten_mon_hoc
+    //                 FROM tai_lieu tl
+    //                 JOIN giao_vien gv ON tl.ma_giao_vien = gv.ma_giao_vien
+    //                 JOIN nguoi_dung nd ON gv.ma_giao_vien = nd.ma_nguoi_dung
+    //                 JOIN mon_hoc mh ON tl.ma_mon_hoc = mh.ma_mon_hoc
+    //                 WHERE tl.ma_mon_hoc = ? AND tl.trang_thai = 'Hien'
+    //                 ORDER BY tl.ngay_tao DESC";
+            
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([$ma_mon_hoc]);
+    //         return $stmt->fetchAll();
+    //     } catch (PDOException $e) {
+    //         error_log('getDanhSachTaiLieuByMonHoc error: ' . $e->getMessage());
+    //         return [];
+    //     }
+    // }
     public function getDanhSachTaiLieuByMonHoc($ma_mon_hoc) {
         if ($this->db === null) return [];
-        
         try {
-            $sql = "SELECT 
-                        tl.ma_tai_lieu,
-                        tl.ten_tai_lieu,
-                        tl.mo_ta,
-                        tl.loai_tai_lieu,
-                        tl.file_dinh_kem,
-                        tl.ghi_chu,
-                        tl.ngay_tao,
-                        nd.ho_ten as giao_vien_up,
-                        mh.ten_mon_hoc
+            $sql = "SELECT tl.*, mh.ten_mon_hoc
                     FROM tai_lieu tl
-                    JOIN giao_vien gv ON tl.ma_giao_vien = gv.ma_giao_vien
-                    JOIN nguoi_dung nd ON gv.ma_giao_vien = nd.ma_nguoi_dung
-                    JOIN mon_hoc mh ON tl.ma_mon_hoc = mh.ma_mon_hoc
-                    WHERE tl.ma_mon_hoc = ? AND tl.trang_thai = 'Hien'
-                    ORDER BY tl.ngay_tao DESC";
-            
+                    LEFT JOIN mon_hoc mh ON tl.ma_mon_hoc = mh.ma_mon_hoc
+                    WHERE tl.ma_mon_hoc = ?
+                    ORDER BY tl.ma_tai_lieu DESC";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$ma_mon_hoc]);
             return $stmt->fetchAll();
@@ -55,6 +71,8 @@ class TaiLieuModel {
             return [];
         }
     }
+
+
 
     public function getDanhSachTaiLieuByGiaoVien($ma_giao_vien) {
         if ($this->db === null) return [];
@@ -257,6 +275,92 @@ class TaiLieuModel {
         } catch (PDOException $e) {
             error_log('countTaiLieuByGiaoVien error: ' . $e->getMessage());
             return 0;
+        }
+    }
+
+
+
+
+    /**
+     * Lấy tất cả tài liệu đang hiển thị
+     */
+    public function getTaiLieuHienThiAll() {
+        if ($this->db === null) return [];
+        try {
+            $sql = "SELECT tl.*, mh.ten_mon_hoc
+                    FROM tai_lieu tl
+                    JOIN mon_hoc mh ON tl.ma_mon_hoc = mh.ma_mon_hoc
+                    WHERE tl.trang_thai = 'Hien'
+                    ORDER BY tl.ngay_tao DESC";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute();
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log('getTaiLieuHienThiAll error: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Lấy tài liệu theo danh sách môn (phù hợp lớp của HS)
+     */
+    public function getTaiLieuByMonList(array $ds_mon) {
+        if ($this->db === null) return [];
+        if (empty($ds_mon)) return [];
+        try {
+            $placeholders = implode(',', array_fill(0, count($ds_mon), '?'));
+            $sql = "SELECT tl.*, mh.ten_mon_hoc
+                    FROM tai_lieu tl
+                    JOIN mon_hoc mh ON tl.ma_mon_hoc = mh.ma_mon_hoc
+                    WHERE tl.trang_thai = 'Hien' AND tl.ma_mon_hoc IN ($placeholders)
+                    ORDER BY tl.ngay_tao DESC";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($ds_mon);
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log('getTaiLieuByMonList error: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Lấy thông tin học sinh (kèm tên lớp)
+     */
+    public function getHocSinhInfo($ma_hoc_sinh) {
+        if ($this->db === null) return null;
+        try {
+            $sql = "SELECT hs.*, l.ten_lop
+                    FROM hoc_sinh hs
+                    LEFT JOIN lop_hoc l ON hs.ma_lop = l.ma_lop
+                    WHERE hs.ma_hoc_sinh = ?
+                    LIMIT 1";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_hoc_sinh]);
+            return $stmt->fetch();
+        } catch (PDOException $e) {
+            error_log('getHocSinhInfo error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Lấy danh sách môn của một lớp
+     */
+    public function getMonHocCuaLop($ma_lop) {
+        if ($this->db === null) return [];
+        try {
+            $sql = "SELECT DISTINCT mh.ma_mon_hoc, mh.ten_mon_hoc
+                    FROM bang_phan_cong bpc
+                    JOIN mon_hoc mh ON bpc.ma_mon_hoc = mh.ma_mon_hoc
+                    WHERE bpc.ma_lop = ?
+                      AND mh.ten_mon_hoc NOT IN ('Chào cờ','Sinh hoạt lớp')
+                    ORDER BY mh.ten_mon_hoc ASC";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_lop]);
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log('getMonHocCuaLop error: ' . $e->getMessage());
+            return [];
         }
     }
 }

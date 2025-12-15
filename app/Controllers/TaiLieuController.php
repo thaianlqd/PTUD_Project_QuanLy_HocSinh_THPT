@@ -310,14 +310,60 @@ class TaiLieuController extends Controller {
         exit;
     }
 
-    public function hienThi($ma_mon_hoc) {
+    // public function hienThi($ma_mon_hoc) {
+    //     $model = $this->getTaiLieuModel();
+        
+    //     $data = [
+    //         'taiLieu_list' => $model->getDanhSachTaiLieuByMonHoc($ma_mon_hoc)
+    //     ];
+        
+    //     echo $this->loadView('HocSinh/tai_lieu', $data);
+    // }
+
+
+    /**
+     * Hiển thị tài liệu cho Học sinh
+     */
+    public function hienThi() {
+        if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'HocSinh') {
+            header('Location: ' . BASE_URL . '/auth/index');
+            exit;
+        }
+
+        $ma_hoc_sinh = $_SESSION['user_id'] ?? null;
+        if (!$ma_hoc_sinh) {
+            echo 'Không xác định được học sinh';
+            return;
+        }
+
         $model = $this->getTaiLieuModel();
-        
+
+        // Lấy thông tin HS và lớp (fallback từ session)
+        $hs_info = $model->getHocSinhInfo($ma_hoc_sinh);
+        $ma_lop  = $hs_info['ma_lop'] ?? ($_SESSION['ma_lop'] ?? $_SESSION['user_lop'] ?? null);
+        $ten_lop = $hs_info['ten_lop'] ?? ($_SESSION['user_class_name'] ?? '---');
+
+        $tai_lieu_list = [];
+        $mon_hoc_list  = [];
+
+        if ($ma_lop) {
+            $mon_hoc_list = $model->getMonHocCuaLop($ma_lop) ?? [];
+            foreach ($mon_hoc_list as $mon) {
+                $docs = $model->getDanhSachTaiLieuByMonHoc($mon['ma_mon_hoc']);
+                if ($docs) $tai_lieu_list = array_merge($tai_lieu_list, $docs);
+            }
+        }
+
         $data = [
-            'taiLieu_list' => $model->getDanhSachTaiLieuByMonHoc($ma_mon_hoc)
+            'tai_lieu_list' => $tai_lieu_list,
+            'mon_hoc_list'  => $mon_hoc_list,
+            'ten_lop'       => $ten_lop,
         ];
-        
-        echo $this->loadView('HocSinh/tai_lieu', $data);
+
+        echo $this->loadView('HocSinh/tai_lieu_hoc_tap', $data);
     }
+
+
+    
 }
 ?>

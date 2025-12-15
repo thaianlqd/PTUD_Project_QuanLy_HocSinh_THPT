@@ -72,6 +72,12 @@
                 <i class="bi bi-bar-chart-line-fill me-2"></i> Bảng Điểm
             </a>
         </li>
+        <!-- Tài liệu học tập cho HS -->
+        <li class="nav-item">
+            <a class="nav-link" href="<?= BASE_URL ?>/tailieu/hienThi">
+                <i class="bi bi-file-earmark-pdf-fill me-2"></i> Tài Liệu Học Tập
+            </a>
+        </li>
         <li class="nav-item">
             <a class="nav-link" href="<?= BASE_URL ?>/hocsinhTkb/index">
                 <i class="bi bi-calendar-week me-2"></i> Thời Khóa Biểu
