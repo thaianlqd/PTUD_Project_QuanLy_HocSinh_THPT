@@ -676,54 +676,45 @@ class TuyenSinhModel {
     //     }
     // }
     public function chotNhapHoc($ma_truong, $ma_lop_dich) {
-        // B1: Lấy tên trường từ mã trường (Vì bảng thi_sinh lưu Tên trường)
+        // B1: Lấy tên trường
         $stmtName = $this->db->prepare("SELECT ten_truong FROM truong_thpt WHERE ma_truong = ?");
         $stmtName->execute([$ma_truong]);
         $tenTruong = $stmtName->fetchColumn();
 
-        if (!$tenTruong) return 0; // Không tìm thấy trường thì dừng
+        if (!$tenTruong) return 0;
 
         $this->db->beginTransaction();
         try {
-            // B2: Lấy danh sách thí sinh ĐÃ XÁC NHẬN nhập học vào trường này
-            // Điều kiện: Chưa có tên trong bảng hoc_sinh (tránh trùng lặp)
-            $sql = "SELECT ma_nguoi_dung 
-                    FROM thi_sinh 
-                    WHERE truong_trung_tuyen = ? 
-                    AND trang_thai_xac_nhan = 'Xac_nhan_nhap_hoc'
-                    AND NOT EXISTS (SELECT 1 FROM hoc_sinh hs WHERE hs.ma_hoc_sinh = thi_sinh.ma_nguoi_dung)";
+            // B2: Lấy danh sách thí sinh ĐÃ XÁC NHẬN nhập học
+            // QUAN TRỌNG: Chỉ lấy những ID có tồn tại trong bảng nguoi_dung để tránh lỗi "ma"
+            $sql = "SELECT ts.ma_nguoi_dung 
+                    FROM thi_sinh ts
+                    JOIN nguoi_dung nd ON ts.ma_nguoi_dung = nd.ma_nguoi_dung 
+                    WHERE ts.truong_trung_tuyen = ? 
+                    AND ts.trang_thai_xac_nhan = 'Xac_nhan_nhap_hoc'
+                    AND NOT EXISTS (SELECT 1 FROM hoc_sinh hs WHERE hs.ma_hoc_sinh = ts.ma_nguoi_dung)";
             
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$tenTruong]);
             $users = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-            // B3: Chuẩn bị câu lệnh Insert học sinh và Update Role
+            // B3: Thêm vào bảng học sinh
             $stmtIns = $this->db->prepare("INSERT INTO hoc_sinh (ma_hoc_sinh, ngay_nhap_hoc, trang_thai, ma_lop) VALUES (?, CURDATE(), 'DangHoc', ?)");
-            
-            $stmtRole = $this->db->prepare("UPDATE tai_khoan tk 
-                                            JOIN nguoi_dung nd ON tk.ma_tai_khoan = nd.ma_tai_khoan 
-                                            SET tk.vai_tro = 'HocSinh' 
-                                            WHERE nd.ma_nguoi_dung = ?");
+            $stmtRole = $this->db->prepare("UPDATE tai_khoan tk JOIN nguoi_dung nd ON tk.ma_tai_khoan = nd.ma_tai_khoan SET tk.vai_tro = 'HocSinh' WHERE nd.ma_nguoi_dung = ?");
 
             $count = 0;
             foreach ($users as $uid) {
-                // Thêm vào bảng học sinh
                 $stmtIns->execute([$uid, $ma_lop_dich]);
-                // Đổi quyền đăng nhập thành Học sinh
                 $stmtRole->execute([$uid]);
                 $count++;
             }
             
-            // B4: CẬP NHẬT SĨ SỐ CHUẨN XÁC (FIX LỖI ĐẾM SAI)
-            // Thay vì cộng dồn, ta đếm trực tiếp số lượng thực tế trong bảng hoc_sinh
-            $sqlFixSiSo = "UPDATE lop_hoc 
-                           SET si_so = (SELECT COUNT(*) FROM hoc_sinh WHERE ma_lop = ?) 
-                           WHERE ma_lop = ?";
-            
+            // B4: Cập nhật lại sĩ số chuẩn xác
+            $sqlFixSiSo = "UPDATE lop_hoc SET si_so = (SELECT COUNT(*) FROM hoc_sinh WHERE ma_lop = ?) WHERE ma_lop = ?";
             $this->db->prepare($sqlFixSiSo)->execute([$ma_lop_dich, $ma_lop_dich]);
 
             $this->db->commit();
-            return $count; // Trả về số lượng học sinh vừa thêm mới
+            return $count;
 
         } catch (Exception $e) {
             $this->db->rollBack();
@@ -952,14 +943,88 @@ class TuyenSinhModel {
         }
     }
 
+    // public function autoPhanLop($ma_truong, $danh_sach_hs_ids) {
+    //     $this->db->beginTransaction();
+    //     try {
+    //         $countSuccess = 0;
+    //         $countFail = 0;
+
+    //         // 1. Lấy tất cả các lớp của trường, kèm theo thông tin sĩ số và mã tổ hợp
+    //         // Sắp xếp theo sĩ số tăng dần (để ưu tiên xếp vào lớp vắng trước -> cân bằng sĩ số)
+    //         $sqlLop = "SELECT ma_lop, ma_to_hop_mon, si_so, chi_tieu_lop 
+    //                    FROM lop_hoc 
+    //                    WHERE ma_truong = ? AND trang_thai_lop = 'HoatDong' 
+    //                    ORDER BY si_so ASC"; 
+    //         $stmtLop = $this->db->prepare($sqlLop);
+    //         $stmtLop->execute([$ma_truong]);
+    //         $allClasses = $stmtLop->fetchAll();
+
+    //         // 2. Lấy thông tin tổ hợp của các học sinh được chọn
+    //         // Chuyển mảng IDs thành chuỗi để query
+    //         $idsPlaceholders = implode(',', array_fill(0, count($danh_sach_hs_ids), '?'));
+    //         $sqlHS = "SELECT dts.ma_nguoi_dung, pdk.ma_to_hop_mon 
+    //                   FROM diem_thi_tuyen_sinh dts
+    //                   JOIN phieu_dang_ky_nhap_hoc pdk ON dts.ma_nguoi_dung = pdk.ma_nguoi_dung
+    //                   WHERE dts.ma_nguoi_dung IN ($idsPlaceholders)";
+    //         $stmtHS = $this->db->prepare($sqlHS);
+    //         $stmtHS->execute($danh_sach_hs_ids);
+    //         $students = $stmtHS->fetchAll();
+
+    //         $stmtInsert = $this->db->prepare("INSERT INTO hoc_sinh (ma_hoc_sinh, ma_lop, ngay_nhap_hoc, trang_thai) VALUES (?, ?, CURDATE(), 'DangHoc')");
+    //         $stmtUpdateSiSo = $this->db->prepare("UPDATE lop_hoc SET si_so = si_so + 1 WHERE ma_lop = ?");
+
+    //         // 3. Duyệt từng học sinh để xếp
+    //         foreach ($students as $hs) {
+    //             $maHS = $hs['ma_nguoi_dung'];
+    //             $maToHopHS = $hs['ma_to_hop_mon'];
+    //             $assigned = false;
+
+    //             // Tìm lớp phù hợp: Cùng tổ hợp VÀ còn chỗ (si_so < chi_tieu - giả sử chi tiêu lớp là 45 chẳng hạn)
+    //             // Do danh sách lớp đã sort theo sĩ số ASC, nên nó sẽ tự động chọn lớp vắng nhất
+    //             foreach ($allClasses as &$lop) { // Dùng tham chiếu &lop để update sĩ số ảo
+    //                 if ($lop['ma_to_hop_mon'] == $maToHopHS) {
+    //                     // Giả sử max sĩ số là 45 (hoặc lấy từ DB nếu có cột chi_tieu_lop)
+    //                     $maxSiSo = $lop['chi_tieu_lop'] ?? 45; 
+                        
+    //                     if ($lop['si_so'] < $maxSiSo) {
+    //                         // Tìm thấy lớp phù hợp!
+    //                         $stmtInsert->execute([$maHS, $lop['ma_lop']]);
+    //                         $stmtUpdateSiSo->execute([$lop['ma_lop']]);
+                            
+    //                         // Update sĩ số trong mảng tạm để vòng lặp sau biết
+    //                         $lop['si_so']++; 
+    //                         $assigned = true;
+    //                         $countSuccess++;
+    //                         break; // Xếp xong thì thoát vòng lặp lớp, chuyển sang HS tiếp theo
+    //                     }
+    //                 }
+    //             }
+
+    //             if (!$assigned) {
+    //                 $countFail++; // Không tìm thấy lớp phù hợp hoặc lớp đã đầy
+    //             }
+    //         }
+
+    //         $this->db->commit();
+            
+    //         $msg = "Đã xếp thành công: $countSuccess học sinh.";
+    //         if ($countFail > 0) $msg .= "\nThất bại: $countFail (Do không có lớp phù hợp hoặc lớp đã đầy).";
+            
+    //         return ['success' => true, 'message' => $msg];
+
+    //     } catch (Exception $e) {
+    //         $this->db->rollBack();
+    //         return ['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()];
+    //     }
+    // }
+    // --- API 13: PHÂN LỚP TỰ ĐỘNG (ĐÃ FIX SĨ SỐ CHUẨN) ---
     public function autoPhanLop($ma_truong, $danh_sach_hs_ids) {
         $this->db->beginTransaction();
         try {
             $countSuccess = 0;
             $countFail = 0;
 
-            // 1. Lấy tất cả các lớp của trường, kèm theo thông tin sĩ số và mã tổ hợp
-            // Sắp xếp theo sĩ số tăng dần (để ưu tiên xếp vào lớp vắng trước -> cân bằng sĩ số)
+            // 1. Lấy tất cả các lớp của trường
             $sqlLop = "SELECT ma_lop, ma_to_hop_mon, si_so, chi_tieu_lop 
                        FROM lop_hoc 
                        WHERE ma_truong = ? AND trang_thai_lop = 'HoatDong' 
@@ -969,7 +1034,8 @@ class TuyenSinhModel {
             $allClasses = $stmtLop->fetchAll();
 
             // 2. Lấy thông tin tổ hợp của các học sinh được chọn
-            // Chuyển mảng IDs thành chuỗi để query
+            if (empty($danh_sach_hs_ids)) return ['success' => false, 'message' => 'Chưa chọn học sinh nào!'];
+            
             $idsPlaceholders = implode(',', array_fill(0, count($danh_sach_hs_ids), '?'));
             $sqlHS = "SELECT dts.ma_nguoi_dung, pdk.ma_to_hop_mon 
                       FROM diem_thi_tuyen_sinh dts
@@ -979,8 +1045,13 @@ class TuyenSinhModel {
             $stmtHS->execute($danh_sach_hs_ids);
             $students = $stmtHS->fetchAll();
 
+            // Chuẩn bị các câu lệnh
             $stmtInsert = $this->db->prepare("INSERT INTO hoc_sinh (ma_hoc_sinh, ma_lop, ngay_nhap_hoc, trang_thai) VALUES (?, ?, CURDATE(), 'DangHoc')");
-            $stmtUpdateSiSo = $this->db->prepare("UPDATE lop_hoc SET si_so = si_so + 1 WHERE ma_lop = ?");
+            
+            $stmtUpdateRole = $this->db->prepare("UPDATE tai_khoan tk JOIN nguoi_dung nd ON tk.ma_tai_khoan = nd.ma_tai_khoan SET tk.vai_tro = 'HocSinh' WHERE nd.ma_nguoi_dung = ?");
+            
+            // --- SỬA Ở ĐÂY: Dùng COUNT(*) để cập nhật sĩ số chuẩn xác ---
+            $stmtFixSiSo = $this->db->prepare("UPDATE lop_hoc SET si_so = (SELECT COUNT(*) FROM hoc_sinh WHERE ma_lop = ?) WHERE ma_lop = ?");
 
             // 3. Duyệt từng học sinh để xếp
             foreach ($students as $hs) {
@@ -988,29 +1059,32 @@ class TuyenSinhModel {
                 $maToHopHS = $hs['ma_to_hop_mon'];
                 $assigned = false;
 
-                // Tìm lớp phù hợp: Cùng tổ hợp VÀ còn chỗ (si_so < chi_tieu - giả sử chi tiêu lớp là 45 chẳng hạn)
-                // Do danh sách lớp đã sort theo sĩ số ASC, nên nó sẽ tự động chọn lớp vắng nhất
-                foreach ($allClasses as &$lop) { // Dùng tham chiếu &lop để update sĩ số ảo
+                foreach ($allClasses as &$lop) { 
                     if ($lop['ma_to_hop_mon'] == $maToHopHS) {
-                        // Giả sử max sĩ số là 45 (hoặc lấy từ DB nếu có cột chi_tieu_lop)
                         $maxSiSo = $lop['chi_tieu_lop'] ?? 45; 
                         
                         if ($lop['si_so'] < $maxSiSo) {
-                            // Tìm thấy lớp phù hợp!
+                            // a. Insert vào lớp
                             $stmtInsert->execute([$maHS, $lop['ma_lop']]);
-                            $stmtUpdateSiSo->execute([$lop['ma_lop']]);
                             
-                            // Update sĩ số trong mảng tạm để vòng lặp sau biết
+                            // b. Update Role
+                            $stmtUpdateRole->execute([$maHS]);
+                            
+                            // c. Cập nhật sĩ số chuẩn (COUNT lại từ đầu)
+                            $stmtFixSiSo->execute([$lop['ma_lop'], $lop['ma_lop']]);
+                            
+                            // d. Tăng biến đếm tạm thời trong mảng PHP (để vòng lặp sau biết lớp đã đầy chưa)
                             $lop['si_so']++; 
+                            
                             $assigned = true;
                             $countSuccess++;
-                            break; // Xếp xong thì thoát vòng lặp lớp, chuyển sang HS tiếp theo
+                            break; 
                         }
                     }
                 }
 
                 if (!$assigned) {
-                    $countFail++; // Không tìm thấy lớp phù hợp hoặc lớp đã đầy
+                    $countFail++;
                 }
             }
 
