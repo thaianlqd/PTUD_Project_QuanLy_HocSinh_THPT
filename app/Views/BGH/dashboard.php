@@ -245,9 +245,9 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach($data['cn_hs_list'] as $hs): ?>
+                                        <?php $stt = 1; foreach($data['cn_hs_list'] as $hs): ?>
                                         <tr>
-                                            <td class="fw-bold"><?php echo htmlspecialchars($hs['ho_ten']); ?></td>
+                                            <td class="fw-bold"><?php echo $stt++; ?>. <?php echo htmlspecialchars($hs['ho_ten']); ?></td>
                                             <td class="text-center">
                                                 <?php if($hs['so_buoi_vang'] > 0): ?>
                                                     <span class="badge bg-danger rounded-pill"><?php echo $hs['so_buoi_vang']; ?></span>
@@ -265,7 +265,20 @@
                                                     echo "<span class='badge bg-$bg bg-opacity-75'>$hk</span>";
                                                 ?>
                                             </td>
-                                            <td class="text-end"><button class="btn btn-sm btn-outline-secondary"><i class="bi bi-three-dots"></i></button></td>
+                                            <!-- <td class="text-end"><button class="btn btn-sm btn-outline-secondary"><i class="bi bi-three-dots"></i></button></td> -->
+                                             <td class="text-end">
+                                                <button class="btn btn-sm btn-outline-primary" 
+                                                    onclick="openModalChinhSuaCN(
+                                                        <?php echo $hs['ma_hoc_sinh']; ?>,
+                                                        '<?php echo htmlspecialchars($hs['ho_ten'], ENT_QUOTES); ?>',
+                                                        <?php echo (int)$hs['so_buoi_vang']; ?>,
+                                                        '<?php echo htmlspecialchars($hs['hanh_kiem'] ?? '', ENT_QUOTES); ?>',
+                                                        '<?php echo htmlspecialchars($hs['nhan_xet_gvcn'] ?? '', ENT_QUOTES); ?>'
+                                                    )">
+                                                    <i class="bi bi-pencil"></i> Sửa
+                                                </button>
+                                            </td>
+
                                         </tr>
                                         <?php endforeach; ?>
                                     </tbody>
@@ -925,6 +938,48 @@
         document.querySelector('[data-bs-target="#tab-phieu"]').addEventListener('shown.bs.tab', function() {
             loadDanhSachPhieu('TatCa');
         });
+
+
+        function openModalChinhSuaCN(ma_hs, ho_ten, so_vang, hanh_kiem, nhan_xet) {
+            document.getElementById('cn_ma_hoc_sinh').value = ma_hs;
+            document.getElementById('cn_ho_ten').textContent = ho_ten;
+            document.getElementById('cn_so_buoi_vang').value = so_vang;
+            document.getElementById('cn_hanh_kiem').value = hanh_kiem;
+            document.getElementById('cn_nhan_xet').value = nhan_xet || '';
+            new bootstrap.Modal(document.getElementById('modalChinhSuaCN')).show();
+        }
+
+        function submitChinhSuaCN() {
+            const ma_hs = document.getElementById('cn_ma_hoc_sinh').value;
+            const so_vang = document.getElementById('cn_so_buoi_vang').value;
+            const hanh_kiem = document.getElementById('cn_hanh_kiem').value;
+            const nhan_xet = document.getElementById('cn_nhan_xet').value;
+            if (!ma_hs || !hanh_kiem) { alert('Vui lòng nhập đủ thông tin!'); return; }
+
+            // Gửi cập nhật số buổi vắng
+            fetch('<?php echo BASE_URL; ?>/giaovienchunhiem/capnhatvang', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: `ma_hs=${ma_hs}&so_buoi_vang=${so_vang}&hoc_ky=HK1`
+            })
+            .then(res => res.json())
+            .then(data => {
+                // Gửi tiếp cập nhật hạnh kiểm
+                return fetch('<?php echo BASE_URL; ?>/giaovienchunhiem/capnhathanhkiem', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: `ma_hs=${ma_hs}&hanh_kiem=${hanh_kiem}&nhan_xet=${encodeURIComponent(nhan_xet)}&hoc_ky=HK1`
+                });
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert('Đã lưu thay đổi!');
+                location.reload();
+            })
+            .catch(err => alert('Lỗi: ' + err.message));
+        }
+
+
     </script>
 
     <!-- Modal Nhập Điểm -->
@@ -1101,5 +1156,51 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Chỉnh Sửa Chủ Nhiệm -->
+    <div class="modal fade" id="modalChinhSuaCN" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+            <h5 class="modal-title"><i class="bi bi-pencil"></i> Cập Nhật Học Sinh</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <form id="formChinhSuaCN">
+            <input type="hidden" id="cn_ma_hoc_sinh">
+            <div class="mb-2">
+                <label class="form-label fw-bold">Họ tên học sinh:</label>
+                <div id="cn_ho_ten" class="fw-bold text-primary"></div>
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Số buổi vắng:</label>
+                <input type="number" min="0" class="form-control" id="cn_so_buoi_vang" required>
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Hạnh kiểm:</label>
+                <select class="form-select" id="cn_hanh_kiem" required>
+                <option value="">-- Chọn --</option>
+                <option value="Tot">Tốt</option>
+                <option value="Kha">Khá</option>
+                <option value="Dat">Đạt</option>
+                <option value="ChuaDat">Chưa đạt</option>
+                </select>
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Nhận xét GVCN:</label>
+                <textarea class="form-control" id="cn_nhan_xet" rows="2"></textarea>
+            </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Hủy</button>
+            <button type="button" class="btn btn-success btn-sm" onclick="submitChinhSuaCN()">
+            <i class="bi bi-save"></i> Lưu
+            </button>
+        </div>
+        </div>
+    </div>
+    </div>
+
 </body>
 </html>

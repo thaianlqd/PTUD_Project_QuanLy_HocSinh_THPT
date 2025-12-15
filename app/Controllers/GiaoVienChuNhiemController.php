@@ -121,17 +121,36 @@ class GiaoVienChuNhiemController {
      */
     public function capnhathanhkiem() {
         header('Content-Type: application/json');
-        
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ma_hoc_sinh = $_POST['ma_hs'];
             $hanh_kiem   = $_POST['hanh_kiem']; // Tot, Kha, TB...
             $ma_hoc_ky   = $_POST['hoc_ky'] ?? 'HK1';
+            $nhan_xet    = $_POST['nhan_xet'] ?? null;
 
-            // Gọi Model update (Cần viết hàm này trong GiaoVienChuNhiemModel nếu muốn dùng thật)
-            // $result = $this->gvcnModel->updateHanhKiem($ma_hoc_sinh, $hanh_kiem, $ma_hoc_ky);
-            
-            // Giả lập thành công trả về JSON
-            echo json_encode(['success' => true, 'message' => 'Đã cập nhật hạnh kiểm thành công!']);
+            $result = $this->gvcnModel->capNhatHanhKiem($ma_hoc_sinh, $ma_hoc_ky, $hanh_kiem, $nhan_xet);
+
+            if ($result) {
+                echo json_encode(['success' => true, 'message' => 'Đã cập nhật hạnh kiểm thành công!']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Cập nhật thất bại!']);
+            }
+        }
+    }
+
+    public function capnhatvang() {
+        header('Content-Type: application/json');
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $ma_hoc_sinh = $_POST['ma_hs'];
+            $so_buoi_vang = intval($_POST['so_buoi_vang']);
+            $ma_hoc_ky = $_POST['hoc_ky'] ?? 'HK1';
+
+            $result = $this->gvcnModel->capNhatSoBuoiVang($ma_hoc_sinh, $ma_hoc_ky, $so_buoi_vang);
+
+            if ($result) {
+                echo json_encode(['success' => true, 'message' => 'Đã cập nhật số buổi vắng thành công!']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Cập nhật thất bại!']);
+            }
         }
     }
 }

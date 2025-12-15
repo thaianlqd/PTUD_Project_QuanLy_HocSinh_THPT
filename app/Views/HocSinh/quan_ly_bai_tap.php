@@ -537,7 +537,9 @@
 
         const attachmentLink = document.getElementById('modalAttachment');
         if (assignment.file_dinh_kem) {
-            attachmentLink.href = `${BASE_URL}/public/${assignment.file_dinh_kem}`; // Thêm /public/ nếu file trong thư mục public
+            // attachmentLink.href = `${BASE_URL}/public/${assignment.file_dinh_kem}`;
+            attachmentLink.href = `${BASE_URL}/${assignment.file_dinh_kem}`;
+             // Thêm /public/ nếu file trong thư mục public
             attachmentLink.textContent = assignment.file_dinh_kem.split('/').pop();
             attachmentLink.closest('div').parentElement.style.display = 'flex'; // Hiện block
         } else {

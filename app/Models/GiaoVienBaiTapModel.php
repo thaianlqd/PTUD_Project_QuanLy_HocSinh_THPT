@@ -40,23 +40,48 @@ class GiaoVienBaiTapModel {
     /**
      * HÀM CŨ: Lấy danh sách Lớp + Môn học mà Giáo viên được phân công (cho trang chọn lớp)
      */
+    // public function getLopHocDaPhanCong($ma_giao_vien) {
+    //     if ($this->db === null) return [];
+        
+    //     $sql = "SELECT 
+    //                 l.ma_lop, 
+    //                 l.ten_lop, 
+    //                 l.si_so,
+    //                 mh.ma_mon_hoc,
+    //                 mh.ten_mon_hoc
+    //             FROM bang_phan_cong bpc
+    //             JOIN lop_hoc l ON bpc.ma_lop = l.ma_lop
+    //             JOIN mon_hoc mh ON bpc.ma_mon_hoc = mh.ma_mon_hoc
+    //             WHERE bpc.ma_giao_vien = ?
+    //             GROUP BY l.ma_lop, mh.ma_mon_hoc
+    //             ORDER BY l.ten_lop, mh.ten_mon_hoc";
+        
+    //     try {
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([$ma_giao_vien]);
+    //         return $stmt->fetchAll();
+    //     } catch (PDOException $e) {
+    //         error_log("Lỗi getLopHocDaPhanCong: " . $e->getMessage());
+    //         return [];
+    //     }
+    // }
     public function getLopHocDaPhanCong($ma_giao_vien) {
         if ($this->db === null) return [];
         
-        $sql = "SELECT 
-                    l.ma_lop, 
-                    l.ten_lop, 
-                    l.si_so,
-                    mh.ma_mon_hoc,
-                    mh.ten_mon_hoc
-                FROM bang_phan_cong bpc
-                JOIN lop_hoc l ON bpc.ma_lop = l.ma_lop
-                JOIN mon_hoc mh ON bpc.ma_mon_hoc = mh.ma_mon_hoc
-                WHERE bpc.ma_giao_vien = ?
-                GROUP BY l.ma_lop, mh.ma_mon_hoc
-                ORDER BY l.ten_lop, mh.ten_mon_hoc";
-        
         try {
+            $sql = "SELECT DISTINCT 
+                        bpc.ma_lop,
+                        lh.ten_lop,
+                        bpc.ma_mon_hoc,
+                        mh.ten_mon_hoc,
+                        lh.si_so
+                    FROM bang_phan_cong bpc
+                    INNER JOIN lop_hoc lh ON bpc.ma_lop = lh.ma_lop
+                    INNER JOIN mon_hoc mh ON bpc.ma_mon_hoc = mh.ma_mon_hoc
+                    WHERE bpc.ma_giao_vien = ?
+                      AND mh.ten_mon_hoc NOT IN ('Chào cờ', 'Sinh hoạt lớp')
+                    ORDER BY mh.ten_mon_hoc ASC, lh.ten_lop ASC";
+            
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$ma_giao_vien]);
             return $stmt->fetchAll();

@@ -30,22 +30,38 @@ class GiaoVienChuNhiemModel {
     /**
      * Danh sách HS + ĐTB HK theo đúng học kỳ/năm của lớp
      */
+    // public function getDanhSachHocSinh($ma_lop, $ma_hoc_ky = 'HK1') {
+    //     if ($this->db === null) return [];
+    //     $sql = "SELECT 
+    //                 hs.ma_hoc_sinh,
+    //                 nd.ho_ten,
+    //                 kq.diem_tb_hk,
+    //                 kq.hanh_kiem,
+    //                 kq.nhan_xet_gvcn,
+    //                 0 AS so_buoi_vang
+    //             FROM hoc_sinh hs
+    //             INNER JOIN nguoi_dung nd ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
+    //             INNER JOIN lop_hoc l ON hs.ma_lop = l.ma_lop
+    //             LEFT JOIN ket_qua_hoc_tap kq 
+    //                    ON kq.ma_hoc_sinh = hs.ma_hoc_sinh
+    //                   AND kq.ma_hoc_ky   = ?
+    //                   AND kq.ma_nam_hoc  = l.ma_nam_hoc
+    //             WHERE hs.ma_lop = ?
+    //             ORDER BY nd.ho_ten";
+    //     $stmt = $this->db->prepare($sql);
+    //     $stmt->execute([$ma_hoc_ky, $ma_lop]);
+    //     return $stmt->fetchAll();
+    // }
     public function getDanhSachHocSinh($ma_lop, $ma_hoc_ky = 'HK1') {
-        if ($this->db === null) return [];
-        $sql = "SELECT 
-                    hs.ma_hoc_sinh,
-                    nd.ho_ten,
-                    kq.diem_tb_hk,
-                    kq.hanh_kiem,
-                    kq.nhan_xet_gvcn,
-                    0 AS so_buoi_vang
+        $sql = "SELECT hs.ma_hoc_sinh, nd.ho_ten, 
+                    kqht.so_buoi_vang, 
+                    kqht.hanh_kiem, 
+                    kqht.nhan_xet_gvcn, 
+                    kqht.diem_tb_hk
                 FROM hoc_sinh hs
                 INNER JOIN nguoi_dung nd ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
-                INNER JOIN lop_hoc l ON hs.ma_lop = l.ma_lop
-                LEFT JOIN ket_qua_hoc_tap kq 
-                       ON kq.ma_hoc_sinh = hs.ma_hoc_sinh
-                      AND kq.ma_hoc_ky   = ?
-                      AND kq.ma_nam_hoc  = l.ma_nam_hoc
+                LEFT JOIN ket_qua_hoc_tap kqht 
+                    ON hs.ma_hoc_sinh = kqht.ma_hoc_sinh AND kqht.ma_hoc_ky = ?
                 WHERE hs.ma_lop = ?
                 ORDER BY nd.ho_ten";
         $stmt = $this->db->prepare($sql);
@@ -114,6 +130,48 @@ class GiaoVienChuNhiemModel {
             return false;
         }
     }
-    
+
+    public function capNhatSoBuoiVang($ma_hoc_sinh, $ma_hoc_ky, $so_buoi_vang) {
+        if ($this->db === null) return false;
+        try {
+            $sql = "UPDATE ket_qua_hoc_tap 
+                    SET so_buoi_vang = ?
+                    WHERE ma_hoc_sinh = ? AND ma_hoc_ky = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$so_buoi_vang, $ma_hoc_sinh, $ma_hoc_ky]);
+            // Nếu chưa có dòng, thêm mới:
+            if ($stmt->rowCount() === 0) {
+                $sql2 = "INSERT INTO ket_qua_hoc_tap (ma_hoc_sinh, ma_hoc_ky, so_buoi_vang) VALUES (?, ?, ?)";
+                $stmt2 = $this->db->prepare($sql2);
+                $stmt2->execute([$ma_hoc_sinh, $ma_hoc_ky, $so_buoi_vang]);
+            }
+            return true;
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    public function capNhatHanhKiem($ma_hoc_sinh, $ma_hoc_ky, $hanh_kiem, $nhan_xet_gvcn = null) {
+        if ($this->db === null) return false;
+        try {
+            $sql = "UPDATE ket_qua_hoc_tap 
+                    SET hanh_kiem = ?, nhan_xet_gvcn = ?
+                    WHERE ma_hoc_sinh = ? AND ma_hoc_ky = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$hanh_kiem, $nhan_xet_gvcn, $ma_hoc_sinh, $ma_hoc_ky]);
+            // Nếu chưa có dòng, thêm mới:
+            if ($stmt->rowCount() === 0) {
+                $sql2 = "INSERT INTO ket_qua_hoc_tap (ma_hoc_sinh, ma_hoc_ky, hanh_kiem, nhan_xet_gvcn) VALUES (?, ?, ?, ?)";
+                $stmt2 = $this->db->prepare($sql2);
+                $stmt2->execute([$ma_hoc_sinh, $ma_hoc_ky, $hanh_kiem, $nhan_xet_gvcn]);
+            }
+            return true;
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+
+        
 }
 ?>

@@ -220,8 +220,10 @@ class GiaoVienController extends Controller {
             
             $uploadDir = '../public/uploads/debai/';
             if (!is_dir($uploadDir)) { mkdir($uploadDir, 0777, true); }
-            $safeFileName = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
-            $newFileName = 'debai_' . $data['ma_lop'] . '_' . time() . '_' . $safeFileName . '.' . $fileExtension;
+            // $safeFileName = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
+            // $newFileName = 'debai_' . $data['ma_lop'] . '_' . time() . '_' . $safeFileName . '.' . $fileExtension;
+            $safeFileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', basename($file['name']));
+            $newFileName = $safeFileName; // Giữ nguyên tên file gốc (hoặc thêm tiền tố nếu muốn tránh trùng)
             
             if (move_uploaded_file($file['tmp_name'], $uploadDir . $newFileName)) {
                 $data['file_dinh_kem'] = 'uploads/debai/' . $newFileName;
@@ -284,8 +286,11 @@ class GiaoVienController extends Controller {
                 
                 if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
+                // $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+                // $fileName = 'update_' . time() . '_' . rand(100,999) . '.' . $fileExt;
                 $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-                $fileName = 'update_' . time() . '_' . rand(100,999) . '.' . $fileExt;
+                $safeFileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', basename($file['name']));
+                $fileName = $safeFileName; // Giữ nguyên tên file gốc
                 
                 if (move_uploaded_file($file['tmp_name'], $uploadDir . $fileName)) {
                     $data['file_dinh_kem'] = 'uploads/debai/' . $fileName;

@@ -214,7 +214,23 @@
                         <div class="mb-3">
                             <label class="form-label fw-bold">File đính kèm (Đề bài):</label>
                             <?php if(!empty($data['bai_tap_info']['file_dinh_kem'])): ?>
-                                <div class="alert alert-success py-2 small mb-2"><i class="bi bi-check-circle"></i> Đang có file cũ. Tải lên file mới sẽ ghi đè.</div>
+                                <div class="alert alert-info py-2 mb-2 d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="bi bi-file-earmark-check-fill me-2"></i>
+                                        <strong>File hiện tại:</strong> 
+                                        <span class="text-break"><?php echo basename($data['bai_tap_info']['file_dinh_kem']); ?></span>
+                                    </div>
+                                    <a href="<?php echo BASE_URL . '/' . $data['bai_tap_info']['file_dinh_kem']; ?>" 
+                                    target="_blank" 
+                                    class="btn btn-sm btn-primary">
+                                        <i class="bi bi-download"></i> Tải về
+                                    </a>
+                                </div>
+                                <small class="text-muted d-block mb-2">⚠️ Tải lên file mới sẽ ghi đè file cũ.</small>
+                            <?php else: ?>
+                                <div class="alert alert-warning py-2 small mb-2">
+                                    <i class="bi bi-info-circle"></i> Chưa có file đính kèm.
+                                </div>
                             <?php endif; ?>
                             <input type="file" class="form-control" name="file_dinh_kem_new">
                         </div>
