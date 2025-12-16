@@ -64,6 +64,7 @@
       <li class="nav-item"><a class="nav-link" href="#overview"><i class="bi bi-speedometer2 me-2"></i>Tổng Quan</a></li>
       <li class="nav-item"><a class="nav-link" href="#thong-tin-thi"><i class="bi bi-file-earmark-text me-2"></i>Thông Tin Thi</a></li>
       <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/ThiSinh/nguyenVong"><i class="bi bi-flag me-2"></i>Quản Lý Nguyện Vọng</a></li>
+      <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/ThiSinh/quan_ly_ho_so"><i class="bi bi-person-vcard me-2"></i>Quản Lý Hồ Sơ</a></li>
       <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/ThisinhNhaphoc/nhapHoc"><i class="bi bi-journal-check me-2"></i>Đăng Ký Nhập Học</a></li>
       <li class="nav-item mt-auto p-3 border-top"><a class="nav-link text-danger" href="<?php echo BASE_URL; ?>/auth/logout"><i class="bi bi-box-arrow-right me-2"></i>Đăng Xuất</a></li>
     </ul>

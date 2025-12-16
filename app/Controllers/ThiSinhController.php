@@ -7,6 +7,47 @@ class ThiSinhController extends Controller {
         $this->model = new ThiSinhModel();
     }
 
+    public function index() {
+        // Chuyển hướng về dashboard hoặc trang chính của thí sinh
+        header('Location: ' . BASE_URL . '/ThiSinh/dashboard');
+        exit;
+    }
+
+    // public function quan_ly_ho_so() {
+    //     if (session_status() === PHP_SESSION_NONE) session_start();
+    //     if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] ?? '') !== 'ThiSinh') {
+    //         header('Location: ' . BASE_URL . '/auth/login');
+    //         exit;
+    //     }
+
+    //     // Gọi model lấy thông tin nhập học
+    //     require_once dirname(__DIR__) . '/Models/ThiSinhModel_NhapHoc.php';
+    //     $nhapHocModel = new ThiSinhModel_NhapHoc();
+    //     $user_id = $_SESSION['user_id'];
+    //     $data['nhap_hoc_info'] = $nhapHocModel->getNhapHocInfo($user_id);
+
+    //     echo $this->loadView('ThiSinh/quan_ly_ho_so', $data);
+    // }
+    public function quan_ly_ho_so() {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if (!isset($_SESSION['user_id']) || ($_SESSION['user_role'] ?? '') !== 'ThiSinh') {
+            header('Location: ' . BASE_URL . '/auth/login');
+            exit;
+        }
+
+        require_once dirname(__DIR__) . '/Models/ThiSinhModel_NhapHoc.php';
+        $nhapHocModel = new ThiSinhModel_NhapHoc();
+        $user_id = $_SESSION['user_id'];
+
+        $data['nhap_hoc_info'] = $nhapHocModel->getNhapHocInfo($user_id);
+        $data['info'] = $nhapHocModel->getThongTinThiSinh($user_id);
+        $data['nguyen_vong'] = $nhapHocModel->getDanhSachTruongNhapHoc($user_id);
+        $data['diem'] = $nhapHocModel->getDiemThi($user_id);
+
+        echo $this->loadView('ThiSinh/quan_ly_ho_so', $data);
+    }
+
+
     // ====== TRANG DASHBOARD ======
     public function dashboard() {
         if (session_status() === PHP_SESSION_NONE) session_start();

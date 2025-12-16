@@ -30,6 +30,36 @@ class ThiSinhModel_NhapHoc {
         }
     }
 
+    public function getDiemThi($ma_nguoi_dung) {
+        try {
+            $sql = "SELECT diem_toan, diem_van, diem_anh
+                    FROM diem_thi_tuyen_sinh
+                    WHERE ma_nguoi_dung = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_nguoi_dung]);
+            return $stmt->fetch();
+        } catch (Exception $e) {
+            error_log("Error getDiemThi: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    public function getThongTinThiSinh($ma_nguoi_dung) {
+        try {
+            $sql = "SELECT nd.ho_ten, ts.so_bao_danh, ts.truong_thcs
+                    FROM thi_sinh ts
+                    JOIN nguoi_dung nd ON ts.ma_nguoi_dung = nd.ma_nguoi_dung
+                    WHERE ts.ma_nguoi_dung = ?
+                    LIMIT 1";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_nguoi_dung]);
+            return $stmt->fetch();
+        } catch (Exception $e) {
+            error_log("Error getThongTinThiSinh: " . $e->getMessage());
+            return null;
+        }
+    }
+
     public function getMaToHopByTruong($ma_truong) {
         try {
             $sql = "SELECT ma_to_hop_mon FROM truong_thpt WHERE ma_truong = :ma_truong";
@@ -606,6 +636,36 @@ class ThiSinhModel_NhapHoc {
      * @param int $ma_nguoi_dung
      * @return array|null
      */
+    // public function getNhapHocInfo($ma_nguoi_dung) {
+    //     try {
+    //         $sql = "SELECT 
+    //                     pnh.ma_nhap_hoc,
+    //                     pnh.ma_nguoi_dung,
+    //                     pnh.ma_truong,
+    //                     pnh.ma_lop,
+    //                     pnh.ngay_nhap_hoc,
+    //                     pnh.tinh_trang_nhap_hoc,
+    //                     tt.ten_truong,
+    //                     lh.ten_lop,
+    //                     thm.ten_to_hop,
+    //                     nd.ho_ten as ten_gvcn
+    //                 FROM phieu_dang_ky_nhap_hoc pnh
+    //                 JOIN truong_thpt tt ON pnh.ma_truong = tt.ma_truong
+    //                 JOIN lop_hoc lh ON pnh.ma_lop = lh.ma_lop
+    //                 LEFT JOIN to_hop_mon thm ON lh.ma_to_hop_mon = thm.ma_to_hop_mon
+    //                 LEFT JOIN nguoi_dung nd ON lh.ma_gvcn = nd.ma_nguoi_dung
+    //                 WHERE pnh.ma_nguoi_dung = :ma_nguoi_dung
+    //                 ORDER BY pnh.ngay_nhap_hoc DESC
+    //                 LIMIT 1";
+
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([':ma_nguoi_dung' => $ma_nguoi_dung]);
+    //         return $stmt->fetch();
+    //     } catch (Exception $e) {
+    //         error_log("Error getNhapHocInfo: " . $e->getMessage());
+    //         return null;
+    //     }
+    // }
     public function getNhapHocInfo($ma_nguoi_dung) {
         try {
             $sql = "SELECT 
@@ -613,21 +673,23 @@ class ThiSinhModel_NhapHoc {
                         pnh.ma_nguoi_dung,
                         pnh.ma_truong,
                         pnh.ma_lop,
+                        pnh.ma_to_hop_mon,
                         pnh.ngay_nhap_hoc,
                         pnh.tinh_trang_nhap_hoc,
                         tt.ten_truong,
                         lh.ten_lop,
                         thm.ten_to_hop,
-                        nd.ho_ten as ten_gvcn
+                        nd.ho_ten as ten_gvcn,
+                        ts.trang_thai_xac_nhan
                     FROM phieu_dang_ky_nhap_hoc pnh
                     JOIN truong_thpt tt ON pnh.ma_truong = tt.ma_truong
-                    JOIN lop_hoc lh ON pnh.ma_lop = lh.ma_lop
-                    LEFT JOIN to_hop_mon thm ON lh.ma_to_hop_mon = thm.ma_to_hop_mon
+                    LEFT JOIN lop_hoc lh ON pnh.ma_lop = lh.ma_lop
+                    LEFT JOIN to_hop_mon thm ON pnh.ma_to_hop_mon = thm.ma_to_hop_mon
                     LEFT JOIN nguoi_dung nd ON lh.ma_gvcn = nd.ma_nguoi_dung
+                    JOIN thi_sinh ts ON pnh.ma_nguoi_dung = ts.ma_nguoi_dung
                     WHERE pnh.ma_nguoi_dung = :ma_nguoi_dung
                     ORDER BY pnh.ngay_nhap_hoc DESC
                     LIMIT 1";
-
             $stmt = $this->db->prepare($sql);
             $stmt->execute([':ma_nguoi_dung' => $ma_nguoi_dung]);
             return $stmt->fetch();
@@ -764,6 +826,9 @@ class ThiSinhModel_NhapHoc {
             return null;
         }
     }
+
+
+  
 
     
 }

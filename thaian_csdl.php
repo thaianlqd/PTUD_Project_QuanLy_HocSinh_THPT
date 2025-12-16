@@ -178,6 +178,15 @@ CREATE TABLE `bai_tap` (
   `ten_bai_tap` varchar(100) NOT NULL,
   `mo_ta` varchar(255) DEFAULT NULL,
   `ngay_giao` date DEFAULT curdate(),
+-- Thêm học sinh Thái An vào lớp 10A1 trường Minh Khai (trường đầu tiên, lớp đầu tiên)
+-- Giả sử lớp 10A1 có ma_lop = 1, trường Minh Khai là trường đầu tiên (ma_truong = 1)
+-- Tạo tài khoản học sinh
+INSERT INTO `tai_khoan` (`username`, `password`, `vai_tro`) VALUES ('hs_thaian', '202cb962ac59075b964b07152d234b70', 'HocSinh');
+SET @new_acc_id_thaian = LAST_INSERT_ID();
+-- Tạo người dùng
+INSERT INTO `nguoi_dung` (`ma_nguoi_dung`, `ma_tai_khoan`, `ho_ten`, `gioi_tinh`, `ngay_sinh`) VALUES (@new_acc_id_thaian, @new_acc_id_thaian, 'Thái An', 'Nam', '2009-05-15');
+-- Thêm vào bảng học sinh, giả sử lớp 10A1 có ma_lop = 1
+INSERT INTO `hoc_sinh` (`ma_hoc_sinh`, `ma_lop`, `ngay_nhap_hoc`) VALUES (@new_acc_id_thaian, 1, '2024-09-05');
   `han_nop` datetime NOT NULL,
   `loai_bai_tap` enum('TuLuan','TracNghiem','UploadFile') NOT NULL,
   `file_dinh_kem` varchar(255) DEFAULT NULL,
