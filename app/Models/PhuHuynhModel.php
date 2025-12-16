@@ -41,12 +41,35 @@ class PhuHuynhModel {
      * Tìm xem phụ huynh này là cha mẹ của HS nào.
      * (Hiện chưa có bảng 'phu_huynh_hoc_sinh' nên tạm giả định lấy HS có ID=2)
      */
-    private function getMaHocSinhCuaPhuHuynh($ma_phu_huynh) {
-        $sql = "SELECT ma_hoc_sinh FROM hoc_sinh WHERE ma_hoc_sinh = 2 LIMIT 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute();
-        $this->ma_hoc_sinh_con = $stmt->fetchColumn();
-        return $this->ma_hoc_sinh_con;
+    public function getMaHocSinhCuaPhuHuynh($ma_phu_huynh) {
+        // Ép kiểu về số nguyên cho chắc chắn
+        $ma_ph = (int)$ma_phu_huynh;
+
+        $sql = "SELECT ma_hoc_sinh 
+                FROM phu_huynh_hoc_sinh 
+                WHERE ma_phu_huynh = :ma_ph 
+                LIMIT 1"; 
+        
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->bindParam(':ma_ph', $ma_ph, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            $result = $stmt->fetchColumn();
+            
+            // Debug: Ghi log xem nó tìm ra cái gì
+            // error_log("Tìm con cho PH $ma_ph -> Kết quả: " . ($result ?: 'Không thấy'));
+
+            if ($result) {
+                $this->ma_hoc_sinh_con = $result;
+                return $result;
+            }
+            
+            return null; // Trả về null nếu không thấy
+            
+        } catch (PDOException $e) {
+            return null;
+        }
     }
 
     /**
@@ -54,16 +77,30 @@ class PhuHuynhModel {
      */
     public function getHocSinhInfo($ma_phu_huynh) {
         $ma_hs = $this->getMaHocSinhCuaPhuHuynh($ma_phu_huynh);
-        if (!$ma_hs) return ['ten_con' => 'Chưa liên kết', 'ten_lop' => 'N/A'];
+        
+        // Nếu không có mã HS -> Trả về mảng rỗng có cấu trúc
+        if (!$ma_hs) {
+            return [
+                'ten_con' => 'Chưa liên kết', 
+                'ten_lop' => '---',
+                'ma_hs'   => '---'
+            ];
+        }
 
-        $sql = "SELECT nd.ho_ten AS ten_con, l.ten_lop 
+        $sql = "SELECT 
+                    nd.ho_ten AS ten_con, 
+                    COALESCE(l.ten_lop, 'Chưa xếp lớp') AS ten_lop,
+                    hs.ma_hoc_sinh AS ma_hs
                 FROM hoc_sinh hs
                 JOIN nguoi_dung nd ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
                 LEFT JOIN lop_hoc l ON hs.ma_lop = l.ma_lop
-                WHERE hs.ma_hoc_sinh = ?";
+                WHERE hs.ma_hoc_sinh = :ma_hs";
+                
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$ma_hs]);
-        return $stmt->fetch();
+        $stmt->execute([':ma_hs' => $ma_hs]);
+        $data = $stmt->fetch();
+        
+        return $data ?: ['ten_con' => 'Lỗi dữ liệu', 'ten_lop' => '???'];
     }
 
     /**
@@ -92,70 +129,253 @@ class PhuHuynhModel {
     }
 
     /**
-     * Lấy bảng điểm trung bình các môn (của con)
+     * ✅ Lấy bảng điểm trung bình các môn (của con)
      */
     public function getBangDiem($ma_phu_huynh) {
         $ma_hs = $this->getMaHocSinhCuaPhuHuynh($ma_phu_huynh);
-        if (!$ma_hs) return [];
-
-        // Lấy mã 'ket_qua_hoc_tap' của HS đó
-        $stmt_kqht = $this->db->prepare("SELECT ma_ket_qua_hoc_tap FROM ket_qua_hoc_tap WHERE ma_nguoi_dung = ? LIMIT 1");
-        $stmt_kqht->execute([$ma_hs]);
-        $ma_kqht = $stmt_kqht->fetchColumn();
-        if (!$ma_kqht) return [];
         
-        // Lấy tất cả điểm của mã KQHT đó
+        error_log("getBangDiem - ma_phu_huynh: $ma_phu_huynh, ma_hs: " . ($ma_hs ?? 'NULL'));
+        
+        if (!$ma_hs) {
+            error_log("getBangDiem - Không tìm thấy ma_hoc_sinh!");
+            return [];
+        }
+
+        // ✅ Query từ bảng diem_mon_hoc_hoc_ky
         $sql = "SELECT 
                     mh.ten_mon_hoc,
-                    ds.diem_so,
-                    ds.loai_diem
-                FROM diem_so ds
-                JOIN mon_hoc mh ON ds.ma_mon_hoc = mh.ma_mon_hoc
-                WHERE ds.ma_ket_qua_hoc_tap = ?
-                ORDER BY mh.ten_mon_hoc";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$ma_kqht]);
+                    d.diem_mieng,
+                    d.diem_15phut,
+                    d.diem_1tiet,
+                    d.diem_gua_ky,
+                    d.diem_cuoi_ky,
+                    d.diem_tb_mon_hk,
+                    d.xep_loai_mon,
+                    d.ma_hoc_ky
+                FROM diem_mon_hoc_hoc_ky d
+                JOIN mon_hoc mh ON d.ma_mon_hoc = mh.ma_mon_hoc
+                WHERE d.ma_hoc_sinh = ?
+                ORDER BY d.ma_hoc_ky, mh.ten_mon_hoc";
         
-        // Gộp điểm theo từng môn
-        $bang_diem = [];
-        foreach ($stmt->fetchAll() as $row) {
-            $mon = $row['ten_mon_hoc'];
-            if (!isset($bang_diem[$mon])) {
-                $bang_diem[$mon] = [
-                    'DiemMieng' => [], 
-                    'Diem15Phut' => [], 
-                    'Diem1Tiet' => [], 
-                    'DiemHocKy' => [], 
-                    'TB' => 0
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_hs]);
+            $results = $stmt->fetchAll();
+            
+            error_log("getBangDiem - Số dòng điểm: " . count($results));
+            if (count($results) > 0) {
+                error_log("getBangDiem - Dòng đầu: " . json_encode($results[0]));
+            }
+            
+            // Gộp điểm theo từng môn
+            $bang_diem = [];
+            foreach ($results as $row) {
+                $mon = $row['ten_mon_hoc'];
+                $hoc_ky = $row['ma_hoc_ky']; // ✅ HK1 hoặc HK2
+                
+                if (!isset($bang_diem[$mon])) {
+                    $bang_diem[$mon] = [];
+                }
+                
+                $bang_diem[$mon][$hoc_ky] = [
+                    'DiemMieng' => $row['diem_mieng'] ?? 0,
+                    'Diem15Phut' => $row['diem_15phut'] ?? 0,
+                    'Diem1Tiet' => $row['diem_1tiet'] ?? 0,
+                    'DiemGiuaKy' => $row['diem_gua_ky'] ?? 0,
+                    'DiemCuoiKy' => $row['diem_cuoi_ky'] ?? 0,
+                    'TB' => $row['diem_tb_mon_hk'] ?? 0,           // ✅ SỬA
+                    'XepLoai' => $row['xep_loai_mon'] ?? 'ChuaDat' // ✅ SỬA
                 ];
             }
-            $bang_diem[$mon][$row['loai_diem']][] = $row['diem_so'];
+            
+            error_log("getBangDiem - Kết quả cuối: " . json_encode($bang_diem));
+            
+            return $bang_diem;
+            
+        } catch (PDOException $e) {
+            error_log("Lỗi getBangDiem: " . $e->getMessage());
+            return [];
         }
-        
-        // Tính điểm trung bình
-        foreach ($bang_diem as $mon => &$diem) {
-            $tong = 0; 
-            $so_luong = 0;
-            if (!empty($diem['DiemMieng'])) { 
-                $tong += array_sum($diem['DiemMieng']); 
-                $so_luong += count($diem['DiemMieng']); 
-            }
-            if (!empty($diem['Diem15Phut'])) { 
-                $tong += array_sum($diem['Diem15Phut']); 
-                $so_luong += count($diem['Diem15Phut']); 
-            }
-            if (!empty($diem['Diem1Tiet'])) { 
-                $tong += array_sum($diem['Diem1Tiet']) * 2; 
-                $so_luong += count($diem['Diem1Tiet']) * 2; 
-            }
-            if (!empty($diem['DiemHocKy'])) { 
-                $tong += array_sum($diem['DiemHocKy']) * 3; 
-                $so_luong += count($diem['DiemHocKy']) * 3; 
-            }
-            $diem['TB'] = ($so_luong > 0) ? round($tong / $so_luong, 1) : 0;
+    }
+
+    public function getTenTruongCuaCon($ma_phu_huynh) {
+        $ma_hs = $this->getMaHocSinhCuaPhuHuynh($ma_phu_huynh);
+        if (!$ma_hs) {
+            return 'THPT Manager';
         }
 
-        return $bang_diem;
+        $sql = "
+            SELECT tt.ten_truong 
+            FROM hoc_sinh hs
+            JOIN lop_hoc l ON hs.ma_lop = l.ma_lop
+            JOIN truong_thpt tt ON l.ma_truong = tt.ma_truong
+            WHERE hs.ma_hoc_sinh = ?
+            LIMIT 1
+        ";
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_hs]);
+            $ten_truong = $stmt->fetchColumn();
+            
+            return $ten_truong ?: 'THPT Manager';
+        } catch (Exception $e) {
+            return 'THPT Manager'; // nếu có lỗi gì thì vẫn không crash
+        }
     }
+
+    // ... (Các code cũ giữ nguyên)
+
+    /**
+     * [MỚI] Lấy thông tin chi tiết đầy đủ của con
+     */
+    // public function getThongTinChiTietCon($ma_phu_huynh) {
+    //     // 1. Lấy mã học sinh của phụ huynh (giả sử đã có hàm này)
+    //     $ma_hs = $this->getMaHocSinhCuaPhuHuynh($ma_phu_huynh);
+        
+    //     // Nếu chưa liên kết con cái (trả về false/null), thử lấy ID mặc định để test (ví dụ ID 69 như trong ảnh)
+    //     // DÒNG NÀY CHỈ ĐỂ TEST, KHI CHẠY THẬT NÊN XÓA ĐI
+    //     if (!$ma_hs) $ma_hs = 69; 
+
+    //     // 2. Query dữ liệu dựa trên cấu trúc DB thực tế
+    //     $sql = "SELECT 
+    //                 nd.ho_ten,
+    //                 nd.ngay_sinh,
+    //                 nd.gioi_tinh,
+    //                 nd.email,
+    //                 nd.so_dien_thoai,
+    //                 nd.dia_chi,
+                    
+    //                 hs.ma_hoc_sinh,
+    //                 hs.trang_thai,
+    //                 hs.ngay_nhap_hoc,
+                    
+    //                 l.ten_lop,
+    //                 l.khoi AS ten_khoi,  -- Lấy trực tiếp cột 'khoi' từ bảng lop_hoc
+                    
+    //                 -- Tạm thời để niên khóa cứng hoặc lấy từ ma_nam_hoc nếu có bảng nam_hoc
+    //                 '2025-2026' AS ten_nam_hoc 
+    //             FROM hoc_sinh hs
+    //             JOIN nguoi_dung nd ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
+    //             LEFT JOIN lop_hoc l ON hs.ma_lop = l.ma_lop
+    //             WHERE hs.ma_hoc_sinh = ?";
+
+    //     try {
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([$ma_hs]);
+    //         $result = $stmt->fetch();
+    //         return $result;
+    //     } catch (PDOException $e) {
+    //         error_log("Lỗi getThongTinChiTietCon: " . $e->getMessage());
+    //         return null;
+    //     }
+    // }
+
+
+    public function getThongTinChiTietCon($ma_phu_huynh) {
+        $ma_hs = $this->getMaHocSinhCuaPhuHuynh($ma_phu_huynh);
+        
+        if (empty($ma_hs)) {
+            return null;
+        }
+
+        // QUERY AN TOÀN (Bỏ qua bảng diem_danh và ket_qua_hoc_tap)
+        $sql = "SELECT 
+                    nd.ho_ten,
+                    nd.ngay_sinh,
+                    nd.gioi_tinh,
+                    nd.email,
+                    nd.so_dien_thoai,
+                    nd.dia_chi,
+                    
+                    hs.ma_hoc_sinh,
+                    hs.trang_thai,
+                    hs.ngay_nhap_hoc,
+                    
+                    l.ten_lop,
+                    l.khoi AS ten_khoi,
+                    '2025-2026' AS ten_nam_hoc,
+
+                    -- [FIX] Fake dữ liệu trực tiếp tại đây để không cần bảng khác
+                    'Tot' AS hanh_kiem,    -- Mặc định là Tốt
+                    0 AS so_buoi_vang      -- Mặc định vắng 0 buổi
+
+                FROM hoc_sinh hs
+                JOIN nguoi_dung nd ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
+                LEFT JOIN lop_hoc l ON hs.ma_lop = l.ma_lop
+                WHERE hs.ma_hoc_sinh = ?";
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_hs]);
+            return $stmt->fetch();
+        } catch (PDOException $e) {
+            // Nếu vẫn lỗi thì in ra màn hình xem tiếp
+            echo "Lỗi SQL: " . $e->getMessage();
+            die();
+        }
+    }
+
+
+    /**
+     * Lấy lịch sử xin phép của phụ huynh này
+     */
+    public function getLichSuXinPhep($ma_phu_huynh) {
+        $ma_hs = $this->getMaHocSinhCuaPhuHuynh($ma_phu_huynh);
+        if (!$ma_hs) return [];
+
+        // Sửa query: Tìm theo ma_hs
+        $sql = "SELECT * FROM phieu_xin_nghi_hoc 
+                WHERE ma_nguoi_dung = ? 
+                ORDER BY ngay_lam_don DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$ma_hs]); // Truyền ID con vào
+        return $stmt->fetchAll();
+    }
+
+    /**
+     * Tạo đơn xin phép mới
+     */
+    /**
+     * Tạo đơn xin phép mới
+     * (Đã cập nhật: Tự tính số ngày nghỉ, Code sạch không debug)
+     */
+    public function taoDonXinPhep($ma_phu_huynh, $ngay_bd, $ngay_kt, $ly_do) {
+        // 1. Lấy ID học sinh của phụ huynh này
+        $ma_hs = $this->getMaHocSinhCuaPhuHuynh($ma_phu_huynh);
+        
+        if (!$ma_hs) return false; // Không tìm thấy con thì nghỉ khỏe
+
+        try {
+            // ... (Đoạn tính ngày giữ nguyên) ...
+            $date1 = new DateTime($ngay_bd);
+            $date2 = new DateTime($ngay_kt);
+            $interval = $date1->diff($date2);
+            $so_ngay = $interval->days + 1;
+
+            $sql = "INSERT INTO phieu_xin_nghi_hoc 
+                    (ma_nguoi_dung, ngay_lam_don, ngay_bat_dau_nghi, ngay_ket_thuc_nghi, so_ngay_nghi, ly_do_nghi, trang_thai_don) 
+                    VALUES (?, NOW(), ?, ?, ?, ?, 'ChoDuyet')";
+            
+            $stmt = $this->db->prepare($sql);
+            
+            // [QUAN TRỌNG] Thay $ma_phu_huynh bằng $ma_hs
+            // Vì bảng này yêu cầu ma_nguoi_dung phải là ma_hoc_sinh
+            $stmt->execute([
+                $ma_hs,  // <--- Sửa chỗ này: Lưu ID con (69) thay vì ID bố (70)
+                $ngay_bd, 
+                $ngay_kt, 
+                $so_ngay, 
+                $ly_do
+            ]);
+            
+            return true;
+        } catch (PDOException $e) {
+            error_log("Lỗi taoDonXinPhep: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    
 }
 ?>

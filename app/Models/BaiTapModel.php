@@ -59,6 +59,7 @@ class BaiTapModel {
         // và dùng LEFT JOIN + CASE để xác định trạng thái
         $sql = "SELECT
                     bt.ma_bai_tap,
+                    bn.ma_bai_nop,
                     bt.ten_bai_tap,
                     bt.mo_ta,
                     bt.han_nop, -- Giờ là DATETIME
@@ -375,6 +376,136 @@ class BaiTapModel {
         // và gọi hàm mới
         $result = $this->luuVaChamDiemTracNghiem($ma_bai_tap, $ma_hoc_sinh, $answersJson);
         return $result['success'];
+    }
+
+    /**
+     * ✅ Lấy chi tiết bài nộp của học sinh (kèm datetime UTC+7)
+     * Lấy bằng ma_bai_nop (mã bài nộp), không phải ma_bai_tap
+     */
+    public function getChiTietBaiNopChoHocSinh($ma_bai_nop, $ma_hoc_sinh) {
+        if ($this->db === null) return null;
+
+        try {
+            $sql = "SELECT 
+                        bn.ma_bai_nop,
+                        bn.ma_bai_tap,
+                        bt.ten_bai_tap,
+                        bt.loai_bai_tap,
+                        bt.mo_ta,
+                        
+                        -- Thời gian
+                        bt.han_nop,
+                        CONVERT_TZ(bt.han_nop, '+00:00', '+07:00') as han_nop_vietnam,
+                        bn.ngay_nop,
+                        CONVERT_TZ(bn.ngay_nop, '+00:00', '+07:00') as ngay_nop_vietnam,
+                        bn.gio_bat_dau_lam_bai,
+                        
+                        -- Kết quả
+                        bn.trang_thai,
+                        bn.diem_so,
+                        bn.nhan_xet,  -- <--- MỚI: Lấy lời phê của GV
+                        
+                        -- Nội dung
+                        bn.file_dinh_kem as file_nop, -- Alias cho khớp với JS
+                        bn.noi_dung_tra_loi,
+                        
+                        -- Thông tin đề bài
+                        COALESCE(btl.de_bai_chi_tiet, '') as de_bai_tu_luan,
+                        COALESCE(btn.danh_sach_cau_hoi, '') as danh_sach_cau_hoi,
+                        COALESCE(btn.thoi_gian_lam_bai, 0) as thoi_gian_lam_bai,
+                        COALESCE(buf.loai_file_cho_phep, '') as loai_file_cho_phep,
+                        COALESCE(buf.dung_luong_toi_da, 0) as dung_luong_toi_da
+                    FROM 
+                        bai_nop bn
+                    JOIN 
+                        bai_tap bt ON bn.ma_bai_tap = bt.ma_bai_tap
+                    LEFT JOIN 
+                        bai_tap_tu_luan btl ON bt.ma_bai_tap = btl.ma_bai_tap
+                    LEFT JOIN 
+                        bai_tap_trac_nghiem btn ON bt.ma_bai_tap = btn.ma_bai_tap
+                    LEFT JOIN 
+                        bai_tap_upload_file buf ON bt.ma_bai_tap = buf.ma_bai_tap
+                    WHERE 
+                        bn.ma_bai_nop = ? AND bn.ma_nguoi_dung = ?";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_bai_nop, $ma_hoc_sinh]);
+            return $stmt->fetch();
+        } catch (PDOException $e) {
+            error_log("Lỗi getChiTietBaiNopChoHocSinh: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * HÀM MỚI: Lấy đường dẫn file để Controller tải về (Fix lỗi $this->db ở Controller)
+     */
+    public function getFilePath($ma_bai_nop, $ma_hoc_sinh) {
+        if ($this->db === null) return null;
+        try {
+            $stmt = $this->db->prepare("SELECT file_dinh_kem FROM bai_nop WHERE ma_bai_nop = ? AND ma_nguoi_dung = ?");
+            $stmt->execute([$ma_bai_nop, $ma_hoc_sinh]);
+            return $stmt->fetchColumn();
+        } catch (PDOException $e) {
+            return null;
+        }
+    }
+
+    /**
+     * ✅ Lấy danh sách bài nộp của học sinh (kèm datetime UTC+7)
+     */
+    public function getDanhSachBaiNopCuaHocSinh($ma_hoc_sinh, $ma_lop = null) {
+        if ($this->db === null) return [];
+
+        try {
+            $sql = "SELECT 
+                        bn.ma_bai_nop,
+                        bn.ma_bai_tap,
+                        bt.ten_bai_tap,
+                        bn.ngay_nop,
+                        CONVERT_TZ(bn.ngay_nop, '+00:00', '+07:00') as ngay_nop_vietnam,
+                        bt.han_nop,
+                        CONVERT_TZ(bt.han_nop, '+00:00', '+07:00') as han_nop_vietnam,
+                        bn.trang_thai,
+                        bn.diem_so,
+                        bn.file_nop,
+                        bt.loai_bai_tap
+                    FROM 
+                        bai_nop bn
+                    JOIN 
+                        bai_tap bt ON bn.ma_bai_tap = bt.ma_bai_tap
+                    WHERE 
+                        bn.ma_nguoi_dung = ?";
+            
+            if ($ma_lop) {
+                $sql .= " AND bt.ma_lop = ?";
+            }
+            
+            $sql .= " ORDER BY bn.ngay_nop DESC";
+
+            $stmt = $this->db->prepare($sql);
+            
+            if ($ma_lop) {
+                $stmt->execute([$ma_hoc_sinh, $ma_lop]);
+            } else {
+                $stmt->execute([$ma_hoc_sinh]);
+            }
+            
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("Lỗi getDanhSachBaiNopCuaHocSinh: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * HÀM MỚI (CẦN THÊM): Lấy ma_bai_nop dựa vào bài tập và học sinh
+     * Dùng để trả về cho API sau khi nộp
+     */
+    public function getMaBaiNop($ma_bai_tap, $ma_hoc_sinh) {
+        $stmt = $this->db->prepare("SELECT ma_bai_nop FROM bai_nop WHERE ma_bai_tap = ? AND ma_nguoi_dung = ?");
+        $stmt->execute([$ma_bai_tap, $ma_hoc_sinh]);
+        return $stmt->fetchColumn(); // Trả về ID hoặc false
     }
 }
 ?>

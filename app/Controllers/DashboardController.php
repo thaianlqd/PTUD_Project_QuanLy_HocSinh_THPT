@@ -1,135 +1,337 @@
 <?php
-// Đảm bảo session đã được khởi động
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+if (session_status() === PHP_SESSION_NONE) session_start();
 
 class DashboardController extends Controller {
+    private $userModel;
 
-    private $userModel; // Thêm property
-
-    // Method mặc định (Khi truy cập URL: /dashboard)
     public function index() {
-        // 1. KIỂM TRA LOGIN
+        // 1. Kiểm tra đăng nhập
         if (!isset($_SESSION['user_role'])) {
-            // Nếu chưa, đá về trang đăng nhập
             header('Location: ' . BASE_URL . '/auth/index');
             exit;
         }
 
-        // 2. CHUẨN BỊ DATA CHUNG
         $role = $_SESSION['user_role'];
-        $chuc_vu = $_SESSION['user_chuc_vu'] ?? null; // Lấy chức vụ
         $user_id = $_SESSION['user_id'] ?? 0;
+        $chuc_vu = $_SESSION['user_chuc_vu'] ?? null;
         
+        // Load UserModel (Bắt buộc phải có)
+        $this->userModel = $this->loadModel('UserModel');
+        if (!$this->userModel) { die("Lỗi: Không tìm thấy file models/UserModel.php"); }
+
         $data = [
             'user_name' => $_SESSION['user_name'] ?? 'User',
             'user_id' => $user_id
         ];
         
-        $content = '';
-        
-        // Load model chung
-        $this->userModel = $this->loadModel('UserModel');
-        if ($this->userModel === null) {
-            die("Lỗi nghiêm trọng: Không thể tải UserModel.");
-        }
+        // Khởi tạo cờ mặc định để tránh lỗi Undefined index ở View
+        $data['is_bgh'] = false;
+        $data['is_gvcn'] = false;
 
-
-        // 3. PHÂN LUỒNG VÀ NẠP DATA RIÊNG
+        // 2. Phân luồng xử lý
         switch ($role) {
-            case 'HocSinh':
-                // (Code của Học Sinh)
-                $content = $this->loadView('HocSinh/dashboard', $data);
-                break;
+            case 'QuanTriVien':
+                $school_id = $this->userModel->getAdminSchoolId($user_id);
+                $_SESSION['admin_school_id'] = $school_id;
                 
-            case 'PhuHuynh':
-                $phuHuynhModel = $this->loadModel('PhuHuynhModel');
-
-                $data['hoc_sinh_info'] = $phuHuynhModel->getHocSinhInfo($data['user_id']);
-                $data['hoa_don_count'] = $phuHuynhModel->getHoaDonCount($data['user_id']);
-                $data['phieu_vang_count'] = $phuHuynhModel->getPhieuVangCount($data['user_id']);
-                $data['bang_diem'] = $phuHuynhModel->getBangDiem($data['user_id']);
-
-                $content = $this->loadView('PhuHuynh/dashboard', $data);
-                break;
+                $data['tk_count'] = $this->userModel->getTotalUsers($school_id);
+                $data['lop_count'] = $this->userModel->getTotalLop($school_id); 
+                $data['hs_count'] = $this->userModel->getTotalHs($school_id); 
+                $data['tk_role_data'] = $this->userModel->getTkByRole($school_id);
+                $data['si_so_khoi'] = $this->userModel->getSiSoKhoi($school_id); 
+                $data['users_list'] = $this->userModel->getAllUsers(10, $school_id);
+                // $data['truong_count'] = $this->userModel->getTotalTruong();
                 
-            case 'ThiSinh':
-                $content = $this->loadView('ThiSinh/dashboard', $data);
-                break;
-            
-            // --- BẮT ĐẦU PHẦN SỬA ---
-            case 'GiaoVien':
-                // Check chức vụ đã lưu trong Session
-                
-                // (str_contains an toàn hơn == vì chức vụ có thể là 'Hiệu Trưởng' hoặc 'BanGiamHieu')
-                if ($chuc_vu && (str_contains($chuc_vu, 'BanGiamHieu') || str_contains($chuc_vu, 'Hiệu Trưởng'))) {
-                    // --- NẠP DATA CHO BGH ---
-                    $diemSoModel = $this->loadModel('DiemSoModel');
-                    $data['yeu_cau_count'] = $diemSoModel->getPhieuChoDuyetCount();
-                    $data['diem_tb_truong'] = $diemSoModel->getDiemTBToanTruong();
-                    $data['phieu_moi_nhat'] = $diemSoModel->getDanhSachPhieu('ChoDuyet', 5);
+                // echo $this->loadView('QuanTri/dashboard', $data);
+                // --- ĐIỂM KHÁC BIỆT Ở ĐÂY ---
+                if ($school_id === null) {
+                    // === 1. LÀ SUPER ADMIN (SỞ GIÁO DỤC) ===
+                    // Bác có thể lấy thêm danh sách các trường để hiển thị
+                    $data['truong_count'] = $this->userModel->getTotalTruong(); 
+                    // $data['list_truong'] = $this->userModel->getAllSchools(); (Cần viết thêm hàm này nếu muốn)
                     
-                    $content = $this->loadView('BGH/dashboard', $data); // <--- LOAD VIEW BGH
-
-                } elseif ($chuc_vu && str_contains($chuc_vu, 'Chủ Nhiệm')) {
-                    // --- NẠP DATA CHO GVCN ---
-                    // (Bạn có thể nạp data riêng cho GVCN ở đây sau)
-                    
-                    $content = $this->loadView('GVCN/dashboard', $data); // <--- LOAD VIEW GVCN
-
+                    echo $this->loadView('SuperAdmin/dashboard', $data);
                 } else {
-                    // --- NẠP DATA CHO GV BỘ MÔN (Mặc định) ---
-                    $gvBaiTapModel = $this->loadModel('GiaoVienBaiTapModel');
-                    $data['lop_day_count'] = $gvBaiTapModel->getLopDayCount($user_id);
-                    // $data['bai_nop_percent'] = ... (tải sau)
-                    
-                    // SỬA ĐƯỜNG DẪN Ở ĐÂY:
-                    $content = $this->loadView('GVBoMon/dashboard', $data); // <--- SỬA THÀNH 'GVBoMon'
+                    // === 2. LÀ ADMIN TRƯỜNG ===
+                    // Giữ nguyên giao diện quản trị trường học
+                    echo $this->loadView('QuanTri/dashboard', $data); 
+                    // Hoặc 'QuanTri/dashboard' nếu bác không muốn đổi tên folder cũ
                 }
                 break;
             
-            // Case 'BanGiamHieu' (Dự phòng nếu vai trò CSDL của bạn là BGH)
+
             case 'BanGiamHieu':
+            case 'GiaoVien':
+                // ============================================================
+                // LOGIC TỔNG HỢP (3 TRONG 1) CHO GIÁO VIÊN
+                // ============================================================
+
+                // --- 1. DỮ LIỆU BAN GIÁM HIỆU ---
+                if ($role === 'BanGiamHieu' || ($chuc_vu && (str_contains($chuc_vu, 'BanGiamHieu') || str_contains($chuc_vu, 'Hiệu') || str_contains($chuc_vu, 'Phó')))) {
+                    $data['is_bgh'] = true;
+                    $diemSoModel = $this->loadModel('DiemSoModel');
+                    if ($diemSoModel) {
+                        $data['bgh_yeu_cau_count'] = $diemSoModel->getPhieuChoDuyetCount();
+                        $data['bgh_diem_tb']       = $diemSoModel->getDiemTBToanTruong();
+                        $data['bgh_phieu_moi']     = $diemSoModel->getDanhSachPhieu('ChoDuyet', 5);
+                        $data['bgh_chart_tron']    = $diemSoModel->getChartYeuCau();
+                        $data['bgh_chart_cot']     = $diemSoModel->getChartDiemLop();
+                    }
+                }
+
+                // --- 2. DỮ LIỆU CHỦ NHIỆM ---
+                // Load thủ công để đảm bảo file tồn tại
+                $pathModelCN = './app/Models/GiaoVienChuNhiemModel.php'; 
+                $pathModelCN_Alt = '../app/Models/GiaoVienChuNhiemModel.php'; // Dự phòng
+
+                if (file_exists($pathModelCN)) {
+                    require_once $pathModelCN;
+                    $gvcnModel = new GiaoVienChuNhiemModel();
+                } elseif (file_exists($pathModelCN_Alt)) {
+                    require_once $pathModelCN_Alt;
+                    $gvcnModel = new GiaoVienChuNhiemModel();
+                } else {
+                    $gvcnModel = null;
+                    // echo "Cảnh báo: Không tìm thấy file GiaoVienChuNhiemModel.php";
+                }
+
+                if ($gvcnModel) {
+                    $lopCN = $gvcnModel->getLopChuNhiem($user_id);
+                    if ($lopCN) {
+                        $data['is_gvcn'] = true;
+                        $data['cn_info'] = $lopCN;
+
+                        // Chọn học kỳ: ưu tiên query ?hk=HK1/HK2, mặc định HK1
+                        $ma_hoc_ky = $_GET['hk'] ?? 'HK1';
+
+                        $data['cn_hs_list']  = $gvcnModel->getDanhSachHocSinh($lopCN['ma_lop'], $ma_hoc_ky);
+                        $data['cn_chart_hk'] = $gvcnModel->getChartHanhKiem($lopCN['ma_lop'], $ma_hoc_ky);
+                        $data['cn_hoc_ky']   = $ma_hoc_ky;
+                    }
+                }
+                // --- 3. DỮ LIỆU GIẢNG DẠY (Mặc định có) ---
+                $gvBaiTapModel = $this->loadModel('GiaoVienBaiTapModel');
+                if (!$gvBaiTapModel) { die("Lỗi: Không tìm thấy file models/GiaoVienBaiTapModel.php"); }
+                
+                // Học kỳ đang xem (mặc định HK1, có thể ?hk=HK2)
+                $ma_hoc_ky = $_GET['hk'] ?? 'HK1';
+                
+                $data['gd_mon']        = $gvBaiTapModel->getMonGiangDay($user_id);
+                $data['gd_lop_list']   = $gvBaiTapModel->getDanhSachLop($user_id);
+                $data['gd_lop_count']  = $gvBaiTapModel->getLopDayCount($user_id);
+                $data['gd_dd_count']   = $gvBaiTapModel->getPhienDiemDanhCount($user_id);
+                $data['gd_nopbai_pct'] = $gvBaiTapModel->getTyLeNopBaiTB($user_id);
+                $data['gd_chart_nop']  = $gvBaiTapModel->getChartNopBai($user_id);
+                $data['gd_chart_dd']   = $gvBaiTapModel->getChartDiemDanh($user_id);
+
+                // Danh sách HS + điểm môn mà GV này dạy (theo HK)
                 $diemSoModel = $this->loadModel('DiemSoModel');
-                $data['yeu_cau_count'] = $diemSoModel->getPhieuChoDuyetCount();
-                $data['diem_tb_truong'] = $diemSoModel->getDiemTBToanTruong();
-                $data['phieu_moi_nhat'] = $diemSoModel->getDanhSachPhieu('ChoDuyet', 5);
-                
-                $content = $this->loadView('BGH/dashboard', $data); // <--- LOAD VIEW BGH
+                $data['gv_hoc_ky']   = $ma_hoc_ky;
+                $data['gv_diem_mon'] = $diemSoModel
+                    ? $diemSoModel->getDanhSachDiemMonByGV($user_id, $ma_hoc_ky)
+                    : [];
+
+                // DEBUG: Bỏ comment dòng dưới để xem dữ liệu truyền sang View
+                // echo "<pre>"; print_r($data); echo "</pre>"; die();
+
+                // Gọi View chung trong folder BGH
+                echo $this->loadView('BGH/dashboard', $data);
                 break;
-            // --- KẾT THÚC PHẦN SỬA ---
+
+            case 'HocSinh':
+                    // ==================================================================
+                    // DASHBOARD HỌC SINH – PHIÊN BẢN SẠCH & ỔN ĐỊNH NHẤT (đã sửa lỗi hiển thị "Hồ sơ chưa hoàn chỉnh")
+                    // ==================================================================
+
+                    // Load model chuẩn như các role khác (QuanTriVien, GiaoVien, PhuHuynh)
+                    $hsModel = $this->loadModel('HocSinhModel');
+
+                    if (!$hsModel) {
+                        die("Lỗi nghiêm trọng: Không thể load file models/HocSinhModel.php");
+                    }
+
+                    // Lấy thông tin học sinh từ CSDL (hàm chính)
+                    $hsInfo = $hsModel->getThongTinHS($user_id);
+
+                    // Fallback bằng session (giữ lại logic cũ của bạn nếu cần, nhưng thường không còn cần thiết nữa vì query đã chạy đúng)
+                    $session_info = [];
+                    $ma_lop_session = $_SESSION['ma_lop'] ?? null;
+
+                    if (!$hsInfo && $ma_lop_session) {
+                        $lop_info = $hsModel->getTenLopByMaLop($ma_lop_session);
+                        if ($lop_info) {
+                            $session_info = [
+                                'ma_hoc_sinh'   => $user_id,
+                                'ho_ten'      => $_SESSION['user_name'] ?? 'Học Sinh',
+                                'ngay_sinh'   => null,
+                                'ten_lop'     => $lop_info['ten_lop'],
+                                'ma_lop'       => $ma_lop_session,
+                                'nien_khoa'  => $hsModel->getNienKhoaByMaNamHoc($lop_info['ma_nam_hoc'] ?? null) ?? 'N/A'
+                            ];
+                        }
+                    }
+
+                    // Ưu tiên dữ liệu từ CSDL → fallback → rỗng
+                    $data['student_info'] = $hsInfo ?: $session_info ?: [];
+
+                    // Gán các giá trị mặc định để View không lỗi
+                    $data['bai_chua_nop']       = 0;
+                    $data['lich_tuan_count']      = 0;
+                    $data['diem_tb_hk']         = '--';
+                    $data['diem_tb_mon']     = [];
+                    $data['bai_tap_stats']     = ['da_nop' => 0, 'chua_nop' => 0];
+                    $data['lich_hoc_tuan']     = [];
+
+                    // Nếu có thông tin học sinh → lấy đầy đủ thống kê
+                    if (!empty($data['student_info'])) {
+                        $ma_hs  = $data['student_info']['ma_hoc_sinh'];
+                        $ma_lop = $data['student_info']['ma_lop'] ?? null;
+
+                        if ($ma_lop && $ma_lop !== 'N/A') {
+                            $data['bai_tap_stats'] = $hsModel->getStatsBaiTap($ma_hs, $ma_lop);
+                            $data['bai_chua_nop']       = $data['bai_tap_stats']['chua_nop'] ?? 0;
+
+                            $data['diem_tb_mon']   = $hsModel->getDiemTrungBinhMon($ma_hs);
+                            $data['diem_tb_hk']         = $hsModel->getDiemTongKetHK($ma_hs);
+
+                            $data['lich_hoc_tuan']   = $hsModel->getLichHocTuan($ma_lop);
+                            $data['lich_tuan_count']      = count($data['lich_hoc_tuan']);
+                        }
+                    }
+
+                    echo $this->loadView('HocSinh/dashboard', $data);
+                    break;
+                            
+            case 'PhuHuynh':
+                // ✅ Load Model và check lỗi
+                $phuHuynhModel = $this->loadModel('PhuHuynhModel');
+                if (!$phuHuynhModel) {
+                    die("Lỗi nghiêm trọng: Không thể load PhuHuynhModel.php");
+                }
+                
+                // ✅ Lấy thông tin học sinh (con của phụ huynh)
+                $data['hoc_sinh_info'] = $phuHuynhModel->getHocSinhInfo($user_id);
+                
+                // ✅ DEBUG: Log thông tin HS
+                error_log("PhuHuynh - user_id: $user_id, hoc_sinh_info: " . json_encode($data['hoc_sinh_info']));
+                
+                // ✅ Lấy bảng điểm
+                $data['bang_diem'] = $phuHuynhModel->getBangDiem($user_id);
+                
+                // ✅ DEBUG: Log bảng điểm
+                error_log("PhuHuynh - bang_diem count: " . count($data['bang_diem']));
+                
+                // ✅ Lấy thống kê khác
+                $data['hoa_don_count'] = $phuHuynhModel->getHoaDonCount($user_id);
+                $data['phieu_vang_count'] = $phuHuynhModel->getPhieuVangCount($user_id);
+                $data['school_name'] = $phuHuynhModel->getTenTruongCuaCon($user_id);
+                
+                $_SESSION['school_name'] = $data['school_name'];
+                
+                // ✅ DEBUG: Uncomment để xem toàn bộ data
+                // echo "<pre>"; print_r($data); echo "</pre>"; die();
+                
+                echo $this->loadView('PhuHuynh/dashboard', $data);
+                break;
+                $phuHuynhModel = $this->loadModel('PhuHuynhModel');
+                $data['hoc_sinh_info'] = $phuHuynhModel->getHocSinhInfo($user_id);
+                $data['hoa_don_count'] = $phuHuynhModel->getHoaDonCount($user_id);
+                $data['phieu_vang_count'] = $phuHuynhModel->getPhieuVangCount($user_id);
+                $data['bang_diem'] = $phuHuynhModel->getBangDiem($user_id);
+
+                $data['school_name'] = $phuHuynhModel->getTenTruongCuaCon($user_id);
+                $_SESSION['school_name'] = $data['school_name']; // nếu muốn dùng ở trang khác
+                
+                echo $this->loadView('PhuHuynh/dashboard', $data);
+                break;
             
-            case 'QuanTriVien':
-                // (Code của Quản Trị Viên)
-                $data['tk_count'] = $this->userModel->getTotalUsers();
-                $data['lop_count'] = $this->userModel->getTotalLop(); 
-                $data['hs_count'] = $this->userModel->getTotalHs(); 
-                $data['tk_role_data'] = $this->userModel->getTkByRole();
-                $data['si_so_khoi'] = $this->userModel->getSiSoKhoi(); 
-                $data['users_list'] = $this->userModel->getAllUsers(10);
-                $content = $this->loadView('QuanTri/dashboard', $data);
-                break;
+            case 'ThiSinh':
+                // =============================================================
+                // [AUTO SWITCH] TỰ ĐỘNG CHUYỂN ĐỔI: THÍ SINH -> HỌC SINH
+                // =============================================================
                 
-            case 'NhanVienSoGD':
-                $content = $this->loadView('SoGD/dashboard', $data);
-                break;
+                // 1. Load Model Học Sinh để kiểm tra
+                $hsModelCheck = $this->loadModel('HocSinhModel');
                 
+                // 2. Kiểm tra: Nếu thí sinh này đã có ID trong bảng 'hoc_sinh' (tức là đã được xếp lớp)
+                if ($hsModelCheck && $hsModelCheck->checkIsHocSinh($user_id)) {
+                    
+                    // A. Cập nhật Role trong Database vĩnh viễn (để lần sau đăng nhập đúng role luôn)
+                    // Hàm updateRole này bác nhớ thêm vào UserModel như hướng dẫn ở Bước 1 nhé
+                    if ($this->userModel) {
+                        $this->userModel->updateRole($user_id, 'HocSinh');
+                    }
+
+                    // B. Cập nhật Session hiện tại ngay lập tức
+                    $_SESSION['user_role'] = 'HocSinh';
+                    
+                    // C. (Tùy chọn) Xóa các session rác của thí sinh nếu cần
+                    // unset($_SESSION['some_old_key']);
+
+                    // D. Reload lại trang Dashboard (Lúc này nó sẽ nhảy vào case 'HocSinh')
+                    header('Location: ' . BASE_URL . '/dashboard');
+                    exit;
+                }
+                
+                // =============================================================
+                // NẾU VẪN LÀ THÍ SINH (CHƯA XẾP LỚP) THÌ CHẠY TIẾP CODE DƯỚI
+                // =============================================================
+
+                $tsModel = $this->loadModel('ThiSinhModel');
+                if (!$tsModel) { die("Lỗi: Không tìm thấy ThiSinhModel"); }
+                
+                // 1. Thông tin cá nhân
+                $data['info'] = $tsModel->getThongTinCaNhan($user_id);
+                
+                // 2. Danh sách nguyện vọng
+                $data['nguyen_vong'] = $tsModel->getDanhSachNguyenVong($user_id);
+                $data['nv_count'] = count($data['nguyen_vong']);
+                
+                // 3. Điểm thi
+                $data['diem'] = $tsModel->getDiemThi($user_id);
+                
+                // 4. Kết quả tuyển sinh
+                $ketQua = $tsModel->getKetQuaTuyenSinh($user_id);
+                $data['ket_qua'] = $ketQua;
+                
+                // Xử lý hiển thị trạng thái (Text & Màu sắc)
+                if ($ketQua) {
+                    if ($ketQua['trang_thai'] == 'Dau') {
+                        $data['kq_text'] = 'Đậu - ' . htmlspecialchars($ketQua['truong_trung_tuyen']);
+                        $data['kq_class'] = 'text-success';
+                        
+                        // Trạng thái xác nhận nhập học
+                        $xn = $ketQua['trang_thai_xac_nhan'];
+                        if($xn == 'Xac_nhan_nhap_hoc') {
+                            $data['xn_text'] = 'Đã Xác Nhận';
+                            $data['xn_class'] = 'text-success fw-bold';
+                        } elseif($xn == 'Tu_choi_nhap_hoc') {
+                            $data['xn_text'] = 'Đã Từ Chối';
+                            $data['xn_class'] = 'text-danger fw-bold';
+                        } else {
+                            $data['xn_text'] = 'Chờ Xác Nhận';
+                            $data['xn_class'] = 'text-warning fw-bold';
+                        }
+                    } else {
+                        $data['kq_text'] = 'Trượt';
+                        $data['kq_class'] = 'text-danger';
+                        $data['xn_text'] = '---';
+                    }
+                } else {
+                    $data['kq_text'] = 'Chưa công bố';
+                    $data['kq_class'] = 'text-warning';
+                    $data['xn_text'] = '---';
+                }
+
+                // Load View Dashboard dành cho Thí sinh
+                echo $this->loadView('ThiSinh/dashboard', $data);
+                break;
+
             default:
-                // Nếu vai trò lạ, hủy session và về trang login
                 session_destroy();
                 header('Location: ' . BASE_URL . '/auth/index?error=invalid_role');
                 exit;
         }
-
-        // Kiểm tra nếu loadView fail (debug)
-        if (empty($content)) {
-            // Sửa thông báo lỗi
-            echo "Error: View không tìm thấy cho role '$role' (Chuc vu: '$chuc_vu'). Kiểm tra thư mục: app/views/";
-            exit;
-        }
-        
-        echo $content;
     }
 }
 ?>

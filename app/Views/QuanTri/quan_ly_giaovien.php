@@ -72,6 +72,8 @@
                             <th>Họ Tên</th>
                             <th>SĐT</th>
                             <th>Email (Username)</th>
+                            <th>Môn dạy</th>
+                            <th>Lớp dạy</th>
                             <th>Chức vụ</th>
                             <th>Trình độ</th>
                             <th>Ngày vào trường</th>
@@ -80,44 +82,112 @@
                         </tr>
                     </thead>
                     <tbody id="accountTableBody">
-                        <?php if (empty($data['giao_vien'])): ?>
-                            <tr>
-                                <td colspan="8" class="text-center p-5 text-muted">Không tìm thấy giáo viên nào.</td>
-                            </tr>
-                        <?php else: ?>
-                            <?php foreach ($data['giao_vien'] as $gv): ?>
-                                <tr class="account-row" 
-                                    data-ma-nguoi-dung="<?php echo $gv['ma_nguoi_dung']; ?>"
-                                    data-ma-tai-khoan="<?php echo $gv['ma_tai_khoan']; ?>">
-                                    
-                                    <td class="fw-bold ho-ten"><?php echo htmlspecialchars($gv['ho_ten']); ?></td>
-                                    <td class="so-dien-thoai"><?php echo htmlspecialchars($gv['so_dien_thoai']); ?></td>
-                                    <td><?php echo htmlspecialchars($gv['email']); ?></td>
-                                    <td><?php echo htmlspecialchars($gv['chuc_vu']); ?></td>
-                                    <td><?php echo htmlspecialchars($gv['trinh_do_chuyen_mon']); ?></td>
-                                    <td><?php echo htmlspecialchars(date('d/m/Y', strtotime($gv['ngay_vao_truong']))); ?></td>
-                                    <td>
-                                        <?php if ($gv['trang_thai'] == 'HoatDong'): ?>
-                                            <span class="badge bg-success">Hoạt Động</span>
-                                        <?php else: ?>
-                                            <span class="badge bg-warning text-dark"><?php echo htmlspecialchars($gv['trang_thai']); ?></span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <button class="btn btn-sm btn-outline-primary btn-action" onclick="openEditModal(<?php echo $gv['ma_nguoi_dung']; ?>)">
-                                            <i class="bi bi-pencil-fill"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-danger btn-action" onclick="openDeleteModal(<?php echo $gv['ma_tai_khoan']; ?>, '<?php echo htmlspecialchars($gv['ho_ten'], ENT_QUOTES); ?>')">
-                                            <i class="bi bi-trash-fill"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
+    <?php if (empty($data['giao_vien_list'])): ?>
+        <tr>
+            <td colspan="10" class="text-center p-5 text-muted">Không tìm thấy giáo viên nào.</td>
+        </tr>
+    <?php else: ?>
+        <?php foreach ($data['giao_vien_list'] as $gv): ?>
+            <tr class="account-row" 
+                data-ma-nguoi-dung="<?php echo $gv['ma_nguoi_dung']; ?>"
+                data-ma-tai-khoan="<?php echo $gv['ma_tai_khoan']; ?>">
+                
+                <td class="fw-bold ho-ten"><?php echo htmlspecialchars($gv['ho_ten']); ?></td>
+                <td class="so-dien-thoai"><?php echo htmlspecialchars($gv['so_dien_thoai']); ?></td>
+                <td><?php echo htmlspecialchars($gv['username']); ?></td>
+                <td><small><?php 
+                    if (!empty($gv['mon_day']) && is_array($gv['mon_day'])) {
+                        $mon_names = array_column($gv['mon_day'], 'ten_mon_hoc');
+                        echo htmlspecialchars(implode(', ', $mon_names));
+                    } else {
+                        echo '<em class="text-muted">Chưa phân công</em>';
+                    }
+                ?></small></td>
+                <td><small><?php 
+                    if (!empty($gv['lop_day']) && is_array($gv['lop_day'])) {
+                        $lop_names = array_column($gv['lop_day'], 'ten_lop');
+                        echo htmlspecialchars(implode(', ', $lop_names));
+                    } else {
+                        echo '<em class="text-muted">Chưa có lớp</em>';
+                    }
+                ?></small></td>
+                <td><?php echo htmlspecialchars($gv['chuc_vu'] ?? 'Giáo viên bộ môn'); ?></td>
+                <td><?php echo htmlspecialchars($gv['trinh_do_chuyen_mon'] ?? ''); ?></td>
+                <td><?php echo $gv['ngay_vao_truong'] ? htmlspecialchars(date('d/m/Y', strtotime($gv['ngay_vao_truong']))) : ''; ?></td>
+                <td>
+                    <?php if ($gv['trang_thai'] == 'HoatDong'): ?>
+                        <span class="badge bg-success">Hoạt Động</span>
+                    <?php else: ?>
+                        <span class="badge bg-warning text-dark"><?php echo htmlspecialchars($gv['trang_thai']); ?></span>
+                    <?php endif; ?>
+                </td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary btn-action" onclick="openEditModal(<?php echo $gv['ma_nguoi_dung']; ?>)">
+                        <i class="bi bi-pencil-fill"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger btn-action" onclick="openDeleteModal(<?php echo $gv['ma_tai_khoan']; ?>, '<?php echo htmlspecialchars($gv['ho_ten'], ENT_QUOTES); ?>')">
+                        <i class="bi bi-trash-fill"></i>
+                    </button>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+    <?php endif; ?>
+</tbody>
                 </table>
             </div>
         </div>
+        
+        <!-- Pagination -->
+        <?php if ($data['total_pages'] > 1): ?>
+            <div class="card-footer">
+                <nav aria-label="Phân trang giáo viên">
+                    <ul class="pagination justify-content-center mb-0">
+                        <!-- Nút Previous -->
+                        <li class="page-item <?php echo ($data['current_page'] <= 1) ? 'disabled' : ''; ?>">
+                            <a class="page-link" href="?page=<?php echo $data['current_page'] - 1; ?>">
+                                <i class="bi bi-chevron-left"></i> Trước
+                            </a>
+                        </li>
+                        
+                        <!-- Các trang số -->
+                        <?php 
+                        $start_page = max(1, $data['current_page'] - 2);
+                        $end_page = min($data['total_pages'], $data['current_page'] + 2);
+                        
+                        if ($start_page > 1): ?>
+                            <li class="page-item"><a class="page-link" href="?page=1">1</a></li>
+                            <?php if ($start_page > 2): ?>
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                        
+                        <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                            <li class="page-item <?php echo ($i == $data['current_page']) ? 'active' : ''; ?>">
+                                <a class="page-link" href="?page=<?php echo $i; ?>"><?php echo $i; ?></a>
+                            </li>
+                        <?php endfor; ?>
+                        
+                        <?php if ($end_page < $data['total_pages']): ?>
+                            <?php if ($end_page < $data['total_pages'] - 1): ?>
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            <?php endif; ?>
+                            <li class="page-item"><a class="page-link" href="?page=<?php echo $data['total_pages']; ?>"><?php echo $data['total_pages']; ?></a></li>
+                        <?php endif; ?>
+                        
+                        <!-- Nút Next -->
+                        <li class="page-item <?php echo ($data['current_page'] >= $data['total_pages']) ? 'disabled' : ''; ?>">
+                            <a class="page-link" href="?page=<?php echo $data['current_page'] + 1; ?>">
+                                Sau <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+                <div class="text-center mt-2 text-muted small">
+                    Trang <?php echo $data['current_page']; ?> / <?php echo $data['total_pages']; ?> 
+                    (Tổng <?php echo $data['total_giao_vien']; ?> giáo viên)
+                </div>
+            </div>
+        <?php endif; ?>
     </div>
 
     <!-- Modal Thêm/Sửa Giáo Viên -->
@@ -159,6 +229,26 @@
                              <div class="col-12">
                                 <label for="dia_chi" class="form-label">Địa chỉ</label>
                                 <input type="text" class="form-control" id="dia_chi" name="dia_chi" placeholder="Nhập địa chỉ...">
+                            </div>
+                            
+                            <h6 class="col-12 text-primary fw-bold border-bottom pb-2 mt-4">Phân công dạy học</h6>
+                            <div class="col-md-6">
+                                <label for="khoi" class="form-label">Khối <span class="text-danger">*</span></label>
+                                <select class="form-select" id="khoi" name="khoi">
+                                    <option value="">-- Chọn khối --</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="ma_lop" class="form-label">Lớp <span class="text-danger">*</span></label>
+                                <select class="form-select" id="ma_lop" name="ma_lop">
+                                    <option value="">-- Chọn lớp --</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label for="ma_mon_hoc" class="form-label">Môn dạy <span class="text-danger">*</span></label>
+                                <select class="form-select" id="ma_mon_hoc" name="ma_mon_hoc">
+                                    <option value="">-- Chọn môn --</option>
+                                </select>
                             </div>
                             
                             <h6 class="col-12 text-primary fw-bold border-bottom pb-2 mt-4">Thông tin công tác & tài khoản</h6>
@@ -268,6 +358,100 @@
              el.textContent = msg;
         }
 
+        // --- HÀM LOAD KHỐI ---
+        async function loadDsKhoi() {
+            try {
+                const response = await fetch(`${BASE_URL}/quantri/getDsKhoiGiaoVienApi`);
+                const result = await response.json();
+                if (result.success) {
+                    const khoiSelect = document.getElementById('khoi');
+                    khoiSelect.innerHTML = '<option value="">-- Chọn khối --</option>';
+                    result.data.forEach(khoi => {
+                        const opt = document.createElement('option');
+                        opt.value = khoi;
+                        opt.textContent = `Khối ${khoi}`;
+                        khoiSelect.appendChild(opt);
+                    });
+                }
+            } catch (error) {
+                console.error("Lỗi fetch khối:", error);
+            }
+        }
+
+        // --- HÀM LOAD LỚP THEO KHỐI ---
+        async function loadDsLopTheoKhoi() {
+            const khoi = document.getElementById('khoi').value;
+            const lopSelect = document.getElementById('ma_lop');
+            
+            if (!khoi) {
+                lopSelect.innerHTML = '<option value="">-- Chọn lớp --</option>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${BASE_URL}/quantri/getDsLopGiaoVienApi/${khoi}`);
+                const result = await response.json();
+                if (result.success) {
+                    lopSelect.innerHTML = '<option value="">-- Chọn lớp --</option>';
+                    result.data.forEach(lop => {
+                        const opt = document.createElement('option');
+                        opt.value = lop.ma_lop;
+                        opt.textContent = lop.ten_lop;
+                        lopSelect.appendChild(opt);
+                    });
+                }
+            } catch (error) {
+                console.error("Lỗi fetch lớp:", error);
+            }
+        }
+
+        // --- HÀM LOAD MÔN THEO LỚP ---
+        async function loadDsMonTheoLop() {
+            const ma_lop = document.getElementById('ma_lop').value;
+            const monSelect = document.getElementById('ma_mon_hoc');
+            
+            if (!ma_lop) {
+                monSelect.innerHTML = '<option value="">-- Chọn môn --</option>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${BASE_URL}/quantri/getDsMonTheoLopGiaoVienApi/${ma_lop}`);
+                const result = await response.json();
+                if (result.success) {
+                    monSelect.innerHTML = '<option value="">-- Chọn môn --</option>';
+                    result.data.forEach(mon => {
+                        const opt = document.createElement('option');
+                        opt.value = mon.ma_mon_hoc;
+                        opt.textContent = mon.ten_mon_hoc;
+                        monSelect.appendChild(opt);
+                    });
+                }
+            } catch (error) {
+                console.error("Lỗi fetch môn theo lớp:", error);
+            }
+        }
+
+        // --- HÀM LOAD MÔN HỌC ---
+        async function loadDsMonHoc() {
+            try {
+                const response = await fetch(`${BASE_URL}/quantri/getDsMonHocApi`);
+                const result = await response.json();
+                if (result.success) {
+                    const monSelect = document.getElementById('ma_mon_hoc');
+                    monSelect.innerHTML = '<option value="">-- Chọn môn --</option>';
+                    result.data.forEach(mon => {
+                        const opt = document.createElement('option');
+                        opt.value = mon.ma_mon_hoc;
+                        opt.textContent = mon.ten_mon_hoc;
+                        monSelect.appendChild(opt);
+                    });
+                }
+            } catch (error) {
+                console.error("Lỗi fetch môn:", error);
+            }
+        }
+
         // --- LOGIC THÊM MỚI ---
         function prepareAddModal() {
             document.getElementById('userForm').reset(); // Xóa sạch form
@@ -279,10 +463,20 @@
             document.getElementById('password').required = true; // Bắt buộc nhập pass
             document.getElementById('saveButton').textContent = 'Tạo Mới';
             setFormNotification('', 'danger');
+            
+            // Load khối, lớp, môn
+            loadDsKhoi();
+            loadDsMonHoc();
+            
+            // Bind event listeners
+            document.getElementById('khoi').addEventListener('change', loadDsLopTheoKhoi);
+            document.getElementById('ma_lop').addEventListener('change', loadDsMonTheoLop);
         }
         
         // --- LOGIC SỬA ---
         async function openEditModal(ma_nguoi_dung) {
+            console.log('openEditModal called', ma_nguoi_dung);
+
             prepareAddModal(); // Xóa form cũ
             document.getElementById('modalTitle').textContent = 'Cập Nhật Thông Tin Giáo Viên';
             document.getElementById('password').placeholder = 'Để trống nếu không đổi';
@@ -292,13 +486,16 @@
             setFormNotification('Đang tải dữ liệu...', 'info');
 
             try {
+                console.log('BASE_URL:', BASE_URL, 'ma_nguoi_dung:', ma_nguoi_dung);
                 const response = await fetch(`${BASE_URL}/quantri/getGiaoVienDetailsApi/${ma_nguoi_dung}`);
+                console.log('fetch sent');
                 if (!response.ok) throw new Error('Lỗi mạng khi tải dữ liệu.');
                 const result = await response.json();
                 if (!result.success) throw new Error(result.message);
 
                 const gv = result.data;
-                // Điền dữ liệu vào form
+
+                // Điền thông tin cá nhân
                 document.getElementById('ma_nguoi_dung').value = gv.ma_nguoi_dung;
                 document.getElementById('ma_tai_khoan').value = gv.ma_tai_khoan;
                 document.getElementById('ho_ten').value = gv.ho_ten;
@@ -310,16 +507,40 @@
                 document.getElementById('chuc_vu').value = gv.chuc_vu;
                 document.getElementById('trinh_do').value = gv.trinh_do_chuyen_mon;
                 document.getElementById('ngay_vao_truong').value = gv.ngay_vao_truong;
-                
+
+                // --- Điền phân công dạy học ---
+                // Lấy lớp và môn đầu tiên (nếu có)
+                const lopDay = result.lop_day && result.lop_day.length ? result.lop_day[0] : null;
+                const monDay = result.mon_day && result.mon_day.length ? result.mon_day[0] : null;
+
+                // Lấy khối từ trường khoi hoặc tách từ tên lớp
+                let khoiValue = '';
+                if (lopDay && lopDay.khoi) {
+                    khoiValue = lopDay.khoi;
+                } else if (lopDay && lopDay.ten_lop) {
+                    khoiValue = lopDay.ten_lop.match(/^\d+/)?.[0] || '';
+                }
+
+                await loadDsKhoi();
+                document.getElementById('khoi').value = khoiValue;
+                await loadDsLopTheoKhoi();
+                document.getElementById('ma_lop').value = lopDay ? lopDay.ma_lop : '';
+                await loadDsMonTheoLop();
+                if (monDay && monDay.ma_mon_hoc) {
+                    document.getElementById('ma_mon_hoc').value = monDay.ma_mon_hoc;
+                } else {
+                    document.getElementById('ma_mon_hoc').value = '';
+                }
+
                 setFormNotification('', 'danger'); // Xóa text "Đang tải"
                 userModal.show();
-                
+
             } catch (error) {
                 console.error("Lỗi openEditModal:", error);
                 showGlobalNotification(`Lỗi: ${error.message}`, 'danger');
             }
         }
-        
+                
         // --- XỬ LÝ SUBMIT FORM (THÊM VÀ SỬA) ---
         document.getElementById('userForm').addEventListener('submit', async function(e) {
             e.preventDefault(); // Ngăn form submit

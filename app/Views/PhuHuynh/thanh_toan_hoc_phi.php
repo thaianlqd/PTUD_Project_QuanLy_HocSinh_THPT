@@ -4,12 +4,140 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thanh Toán Học Phí</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <style>
-        body { background-color: #f0f8ff; }
-        .card:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: 0.3s; }
-        .qr-box { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background-color: #fff; }
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --card-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+            --border-radius: 16px;
+        }
+
+        body {
+            background-color: #f3f4f6; /* Màu nền xám nhẹ dịu mắt */
+            font-family: 'Inter', sans-serif;
+            color: #4b5563;
+        }
+
+        /* Header Style */
+        .page-header {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 0 0 30px 30px;
+            margin-bottom: -3rem; /* Để card trồi lên */
+            box-shadow: 0 4px 20px rgba(118, 75, 162, 0.3);
+        }
+
+        /* Card Style - Hiện đại hóa */
+        .card {
+            border: none;
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+            background: var(--glass-bg);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            overflow: hidden;
+        }
+        
+        /* Filter Tabs Custom */
+        .filter-group {
+            background: #f1f5f9;
+            padding: 5px;
+            border-radius: 12px;
+            display: inline-flex;
+        }
+        .btn-check:checked + .btn-custom-filter {
+            background-color: #fff;
+            color: #764ba2;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .btn-custom-filter {
+            border: none;
+            border-radius: 8px;
+            padding: 6px 16px;
+            font-weight: 600;
+            color: #64748b;
+            transition: all 0.2s;
+        }
+        .btn-custom-filter:hover {
+            color: #764ba2;
+        }
+
+        /* Table Styling */
+        .table thead th {
+            background-color: #f8fafc;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e2e8f0;
+            padding: 1rem;
+        }
+        .table tbody td {
+            padding: 1rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .invoice-item:hover {
+            background-color: #f8fafc;
+        }
+        
+        /* Status Badge */
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .status-valid { background-color: #dcfce7; color: #166534; }
+        .status-expired { background-color: #fee2e2; color: #991b1b; }
+        .status-pending { background-color: #fef9c3; color: #854d0e; }
+        .status-paid { background-color: #e0f2fe; color: #075985; }
+
+        /* Button Gradients */
+        .btn-gradient {
+            background: var(--primary-gradient);
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 8px 20px;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        .btn-gradient:hover {
+            opacity: 0.9;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3);
+        }
+
+        /* QR Box */
+        .qr-box {
+            border: 2px dashed #cbd5e1;
+            padding: 20px;
+            border-radius: 16px;
+            background-color: #f8fafc;
+        }
+
+        /* Success Animation (Giữ nguyên của bác vì nó đẹp rồi) */
+        .success-checkmark { width: 80px; height: 80px; margin: 0 auto; }
+        .check-icon { width: 80px; height: 80px; position: relative; border-radius: 50%; box-sizing: content-box; border: 4px solid #4CAF50; }
+        .check-icon::before { top: 3px; left: -2px; width: 30px; transform-origin: 100% 50%; border-radius: 100px 0 0 100px; }
+        .check-icon::after { top: 0; left: 30px; width: 60px; transform-origin: 0 50%; border-radius: 0 100px 100px 0; animation: rotate-circle 4.25s ease-in; }
+        .check-icon::before, .check-icon::after { content: ''; height: 100px; position: absolute; background: #fff; transform: rotate(-45deg); }
+        .icon-line { height: 5px; background-color: #4CAF50; display: block; border-radius: 2px; position: absolute; z-index: 10; }
+        .line-tip { top: 46px; left: 14px; width: 25px; transform: rotate(45deg); animation: icon-line-tip 0.75s; }
+        .line-long { top: 38px; right: 8px; width: 47px; transform: rotate(-45deg); animation: icon-line-long 0.75s; }
+        .icon-circle { top: -4px; left: -4px; z-index: 10; width: 80px; height: 80px; border-radius: 50%; position: absolute; box-sizing: content-box; border: 4px solid rgba(76, 175, 80, .5); }
+        .icon-fix { top: 8px; width: 5px; left: 26px; z-index: 1; height: 85px; position: absolute; transform: rotate(-45deg); background-color: #fff; }
+        @keyframes icon-line-tip { 0% { width: 0; left: 1px; top: 19px; } 54% { width: 0; left: 1px; top: 19px; } 70% { width: 50px; left: -8px; top: 37px; } 84% { width: 17px; left: 21px; top: 48px; } 100% { width: 25px; left: 14px; top: 46px; } }
+        @keyframes icon-line-long { 0% { width: 0; right: 46px; top: 54px; } 65% { width: 0; right: 46px; top: 54px; } 84% { width: 55px; right: 0px; top: 35px; } 100% { width: 47px; right: 8px; top: 38px; } }
     </style>
 </head>
 <body>
@@ -21,67 +149,91 @@ $data['hoa_don_da_tt'] = $data['hoa_don_da_tt'] ?? [];
 $data['hoa_don_cho_xac_nhan'] = $data['hoa_don_cho_xac_nhan'] ?? [];
 ?>
 
-<div class="container-fluid p-4">
-    <header class="mb-4 p-4 bg-white rounded-3 shadow-sm">
-        <h1 class="fw-bold text-center text-primary"><i class="bi bi-wallet2 me-2"></i> THANH TOÁN HỌC PHÍ</h1>
-        <p class="text-center text-muted">
-            Chào mừng Phụ huynh, <?php echo htmlspecialchars($data['user_name'] ?? 'Khách'); ?>!
-        </p>
-        <a href="<?php echo BASE_URL; ?>/dashboard" class="btn btn-outline-secondary btn-sm float-end" style="margin-top: -50px;">
-            <i class="bi bi-arrow-left"></i> Dashboard
-        </a>
-    </header>
+<div class="page-header text-center">
+    <h1 class="fw-bold mb-2"><i class="bi bi-mortarboard-fill me-2"></i> Cổng Thanh Toán Học Phí</h1>
+    <p class="opacity-75 mb-4">Xin chào, <strong><?php echo htmlspecialchars($data['user_name'] ?? 'Quý Phụ Huynh'); ?></strong></p>
+    <a href="<?php echo BASE_URL; ?>/dashboard" class="btn btn-light btn-sm rounded-pill px-4 shadow-sm text-primary fw-bold">
+        <i class="bi bi-arrow-left me-1"></i> Quay lại Dashboard
+    </a>
+</div>
 
+<div class="container pb-5" style="margin-top: 2rem;">
+    
     <?php if (isset($data['flash_message'])): ?>
-        <div class="alert alert-<?php echo $data['flash_message']['type']; ?> alert-dismissible fade show" role="alert">
-            <?php echo htmlspecialchars($data['flash_message']['message']); ?>
+        <div class="alert alert-<?php echo $data['flash_message']['type']; ?> alert-dismissible fade show shadow-sm border-0 rounded-4 mb-4" role="alert">
+            <i class="bi bi-info-circle-fill me-2"></i> <?php echo htmlspecialchars($data['flash_message']['message']); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <?php endif; ?>
 
-    <!-- Hóa đơn chưa thanh toán -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-warning text-dark">
-            <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>
-                Hóa đơn chưa thanh toán (<?php echo count($data['hoa_don_chua_tt']); ?>)
-            </h5>
+    <div class="card mb-5">
+        <div class="card-header bg-white border-0 pt-4 px-4 d-flex flex-wrap justify-content-between align-items-center">
+            <div>
+                <h5 class="fw-bold text-dark mb-1"><i class="bi bi-receipt-cutoff text-primary me-2"></i>Hóa đơn cần thanh toán</h5>
+                <small class="text-muted">Vui lòng thanh toán trước thời hạn để tránh bị khóa.</small>
+            </div>
+            
+            <div class="filter-group mt-2 mt-md-0">
+                <input type="radio" class="btn-check" name="filter_status" id="filter_all" value="all" checked>
+                <label class="btn btn-custom-filter" for="filter_all">Tất cả</label>
+
+                <input type="radio" class="btn-check" name="filter_status" id="filter_valid" value="valid">
+                <label class="btn btn-custom-filter" for="filter_valid">Còn hạn</label>
+
+                <input type="radio" class="btn-check" name="filter_status" id="filter_expired" value="expired">
+                <label class="btn btn-custom-filter" for="filter_expired">Quá hạn</label>
+            </div>
         </div>
+
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0 align-middle">
-                    <thead class="table-light">
+                <table class="table mb-0">
+                    <thead>
                         <tr>
-                            <th>Mã HĐ</th>
+                            <th class="ps-4">Mã HĐ</th>
                             <th>Ngày Lập</th>
-                            <th>Nội Dung</th>
+                            <th>Nội Dung Thu</th>
                             <th>Số Tiền</th>
-                            <th>Thời Hạn Đóng</th>
-                            <th class="text-center">Hành Động</th>
+                            <th>Hạn Đóng</th>
+                            <th class="text-center pe-4">Thao Tác</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="invoice_list_body">
                         <?php if (empty($data['hoa_don_chua_tt'])): ?>
-                            <tr><td colspan="6" class="text-center p-5 text-muted">Không có hóa đơn nào chưa thanh toán 🎉</td></tr>
+                            <tr>
+                                <td colspan="6" class="text-center py-5">
+                                    <div class="text-muted">
+                                        <i class="bi bi-check-circle display-4 text-success opacity-50"></i>
+                                        <p class="mt-3 fw-medium">Tuyệt vời! Không có hóa đơn nào cần thanh toán.</p>
+                                    </div>
+                                </td>
+                            </tr>
                         <?php else: ?>
                             <?php foreach ($data['hoa_don_chua_tt'] as $hd): ?>
-                                <tr class="<?php echo !empty($hd['qua_han']) ? 'table-danger' : ''; ?>">
-                                    <td><strong>#<?php echo htmlspecialchars($hd['ma_hoa_don']); ?></strong></td>
+                                <tr class="invoice-item <?php echo !empty($hd['qua_han']) ? 'row-expired' : 'row-valid'; ?>">
+                                    <td class="ps-4 fw-bold text-primary">#<?php echo htmlspecialchars($hd['ma_hoa_don']); ?></td>
                                     <td><?php echo date("d/m/Y", strtotime($hd['ngay_lap_hoa_don'])); ?></td>
                                     <td><?php echo htmlspecialchars($hd['ghi_chu'] ?? 'Học phí'); ?></td>
-                                    <td class="fw-bold text-danger"><?php echo number_format($hd['thanh_tien'], 0, ',', '.'); ?> VNĐ</td>
-                                    <td class="<?php echo !empty($hd['qua_han']) ? 'text-danger fw-bold' : 'text-warning'; ?>">
-                                        <?php echo date("d/m/Y", strtotime($hd['ngay_het_han'])); ?>
-                                        <?php if (!empty($hd['qua_han'])): ?><br><small>(Quá hạn)</small><?php endif; ?>
+                                    <td class="fw-bold text-danger fs-6"><?php echo number_format($hd['thanh_tien'], 0, ',', '.'); ?> ₫</td>
+                                    <td>
+                                        <?php if (!empty($hd['qua_han'])): ?>
+                                            <span class="status-badge status-expired"><i class="bi bi-exclamation-triangle-fill"></i> Quá hạn</span>
+                                            <div class="small text-muted mt-1"><?php echo date("d/m/Y", strtotime($hd['ngay_het_han'])); ?></div>
+                                        <?php else: ?>
+                                            <span class="status-badge status-valid"><i class="bi bi-clock"></i> Còn hạn</span>
+                                            <div class="small text-muted mt-1"><?php echo date("d/m/Y", strtotime($hd['ngay_het_han'])); ?></div>
+                                        <?php endif; ?>
                                     </td>
-                                    <td class="text-center">
-                                        <button class="btn btn-success btn-sm"
-                                            onclick="openThanhToanModal(
-                                                <?php echo (int)$hd['ma_hoa_don']; ?>,
-                                                <?php echo (float)$hd['thanh_tien']; ?>,
-                                                '<?php echo addslashes(htmlspecialchars($hd['ghi_chu'] ?? 'Học phí')); ?>'
-                                            )">
-                                            <i class="bi bi-credit-card-fill me-2"></i> Thanh Toán Ngay
-                                        </button>
+                                    <td class="text-center pe-4">
+                                        <?php if (!empty($hd['qua_han'])): ?>
+                                            <button class="btn btn-secondary btn-sm rounded-pill px-3" disabled>
+                                                <i class="bi bi-lock-fill"></i> Đã khóa
+                                            </button>
+                                        <?php else: ?>
+                                            <button class="btn btn-gradient btn-sm" onclick="openThanhToanModal(<?php echo (int)$hd['ma_hoa_don']; ?>, <?php echo (float)$hd['thanh_tien']; ?>, '<?php echo addslashes(htmlspecialchars($hd['ghi_chu'] ?? 'Học phí')); ?>')">
+                                                Thanh Toán <i class="bi bi-chevron-right ms-1"></i>
+                                            </button>
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -92,32 +244,23 @@ $data['hoa_don_cho_xac_nhan'] = $data['hoa_don_cho_xac_nhan'] ?? [];
         </div>
     </div>
 
-    <!-- Hóa đơn chờ xác nhận tiền mặt -->
     <?php if (!empty($data['hoa_don_cho_xac_nhan'])): ?>
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-info text-dark">
-            <h5 class="mb-0"><i class="bi bi-hourglass-split me-2"></i>
-                Hóa đơn chờ xác nhận tại trường (<?php echo count($data['hoa_don_cho_xac_nhan']); ?>)
-            </h5>
+    <div class="card mb-5 border-warning border-start border-4">
+        <div class="card-header bg-white border-0 pt-3">
+            <h6 class="fw-bold text-warning"><i class="bi bi-hourglass-split me-2"></i>Đang chờ xác nhận tại trường</h6>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0 align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Mã HĐ</th><th>Ngày Lập</th><th>Nội Dung</th>
-                            <th>Số Tiền</th><th>Thời Hạn Đóng</th><th>Trạng Thái</th>
-                        </tr>
-                    </thead>
+                <table class="table mb-0">
+                    <thead class="bg-light"><tr><th class="ps-4">Mã HĐ</th><th>Nội Dung</th><th>Số Tiền</th><th>Trạng Thái</th><th class="text-center pe-4">Phiếu</th></tr></thead>
                     <tbody>
                         <?php foreach ($data['hoa_don_cho_xac_nhan'] as $hd): ?>
                             <tr>
-                                <td><strong>#<?php echo htmlspecialchars($hd['ma_hoa_don']); ?></strong></td>
-                                <td><?php echo date("d/m/Y", strtotime($hd['ngay_lap_hoa_don'])); ?></td>
+                                <td class="ps-4 fw-bold">#<?php echo htmlspecialchars($hd['ma_hoa_don']); ?></td>
                                 <td><?php echo htmlspecialchars($hd['ghi_chu'] ?? 'Học phí'); ?></td>
-                                <td class="fw-bold text-info"><?php echo number_format($hd['thanh_tien'], 0, ',', '.'); ?> VNĐ</td>
-                                <td><?php echo date("d/m/Y", strtotime($hd['ngay_het_han'])); ?></td>
-                                <td><span class="badge bg-warning text-dark">Chờ xác nhận tiền mặt</span></td>
+                                <td class="fw-bold"><?php echo number_format($hd['thanh_tien'], 0, ',', '.'); ?> ₫</td>
+                                <td><span class="status-badge status-pending">Chờ nộp tiền mặt</span></td>
+                                <td class="text-center pe-4"><a href="<?php echo BASE_URL; ?>/thanhtoan/inPhieu?ma_hoa_don=<?php echo $hd['ma_hoa_don']; ?>" target="_blank" class="btn btn-outline-dark btn-sm rounded-circle"><i class="bi bi-printer"></i></a></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -127,35 +270,26 @@ $data['hoa_don_cho_xac_nhan'] = $data['hoa_don_cho_xac_nhan'] ?? [];
     </div>
     <?php endif; ?>
 
-    <!-- Lịch sử đã thanh toán -->
-    <div class="card shadow-sm">
-        <div class="card-header bg-success text-white">
-            <h5 class="mb-0"><i class="bi bi-check-circle me-2"></i>
-                Lịch sử hóa đơn đã thanh toán (<?php echo count($data['hoa_don_da_tt']); ?>)
-            </h5>
+    <div class="card">
+        <div class="card-header bg-white border-0 pt-4 px-4">
+            <h5 class="fw-bold text-dark mb-0"><i class="bi bi-clock-history text-success me-2"></i>Lịch sử giao dịch</h5>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0 align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Mã HĐ</th><th>Ngày Lập</th><th>Nội Dung</th>
-                            <th>Số Tiền</th><th>Thời Hạn</th><th>Ngày Thanh Toán</th><th>Phương Thức</th>
-                        </tr>
-                    </thead>
+                <table class="table table-hover mb-0">
+                    <thead><tr><th class="ps-4">Mã HĐ</th><th>Nội Dung</th><th>Số Tiền</th><th>Thời Gian</th><th>Kênh TT</th><th class="text-center pe-4">Biên Lai</th></tr></thead>
                     <tbody>
                         <?php if (empty($data['hoa_don_da_tt'])): ?>
-                            <tr><td colspan="7" class="text-center p-5 text-muted">Chưa có hóa đơn nào đã thanh toán.</td></tr>
+                            <tr><td colspan="6" class="text-center py-4 text-muted">Chưa có lịch sử giao dịch nào.</td></tr>
                         <?php else: ?>
                             <?php foreach ($data['hoa_don_da_tt'] as $hd): ?>
                                 <tr>
-                                    <td><strong>#<?php echo htmlspecialchars($hd['ma_hoa_don']); ?></strong></td>
-                                    <td><?php echo date("d/m/Y", strtotime($hd['ngay_lap_hoa_don'])); ?></td>
+                                    <td class="ps-4 text-muted">#<?php echo htmlspecialchars($hd['ma_hoa_don']); ?></td>
                                     <td><?php echo htmlspecialchars($hd['ghi_chu'] ?? 'Học phí'); ?></td>
-                                    <td class="fw-bold text-success"><?php echo number_format($hd['thanh_tien'], 0, ',', '.'); ?> VNĐ</td>
-                                    <td><?php echo date("d/m/Y", strtotime($hd['ngay_het_han'])); ?></td>
-                                    <td><?php echo date("d/m/Y H:i", strtotime($hd['ngay_thanh_toan'])); ?></td>
-                                    <td><span class="badge bg-info"><?php echo htmlspecialchars($hd['hinh_thuc_thanh_toan'] ?? 'Không rõ'); ?></span></td>
+                                    <td class="fw-bold text-success"><?php echo number_format($hd['thanh_tien'], 0, ',', '.'); ?> ₫</td>
+                                    <td><?php echo date("H:i - d/m/Y", strtotime($hd['ngay_thanh_toan'])); ?></td>
+                                    <td><span class="status-badge status-paid"><?php echo htmlspecialchars($hd['hinh_thuc_thanh_toan'] ?? 'Không rõ'); ?></span></td>
+                                    <td class="text-center pe-4"><a href="<?php echo BASE_URL; ?>/thanhtoan/inPhieu?ma_hoa_don=<?php echo $hd['ma_hoa_don']; ?>" target="_blank" class="btn btn-light btn-sm text-secondary rounded-circle shadow-sm"><i class="bi bi-printer-fill"></i></a></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -166,85 +300,112 @@ $data['hoa_don_cho_xac_nhan'] = $data['hoa_don_cho_xac_nhan'] ?? [];
     </div>
 </div>
 
-<!-- Modal chọn phương thức thanh toán -->
 <div class="modal fade" id="modalThanhToan" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title fw-bold">Xác Nhận Thanh Toán</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-white border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark">Chọn hình thức thanh toán</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <div id="notificationModal" class="alert alert-danger" style="display:none;"></div>
-                <p>Bạn sắp thanh toán cho hóa đơn:</p>
-                <ul class="list-group mb-3">
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Nội dung: <strong id="modal_noi_dung">Học phí</strong>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Số tiền: <strong class="text-danger fs-5" id="modal_so_tien">0 VNĐ</strong>
-                    </li>
-                </ul>
+            <div class="modal-body p-4">
+                <div class="text-center mb-4">
+                    <p class="text-muted mb-1">Thanh toán cho: <strong id="modal_noi_dung" class="text-dark"></strong></p>
+                    <h3 class="fw-bold text-primary" id="modal_so_tien"></h3>
+                </div>
+                
                 <form id="formThanhToan">
                     <input type="hidden" id="modal_ma_hoa_don" name="ma_hoa_don">
-                    <label class="form-label fw-bold">Chọn phương thức:</label>
-                    <div class="list-group">
-                        <label class="list-group-item list-group-item-action">
-                            <input class="form-check-input me-2" type="radio" name="phuong_thuc" value="VNPAY" checked>
-                            <i class="bi bi-qr-code text-primary"></i> Thanh toán qua VNPAY
+                    <div class="d-grid gap-3">
+                        <label class="btn btn-outline-light text-start p-3 border rounded-3 d-flex align-items-center shadow-sm position-relative">
+                            <input class="form-check-input position-absolute top-50 end-0 me-3 translate-middle-y" type="radio" name="phuong_thuc" value="VNPAY" checked>
+                            <div class="bg-white p-2 rounded shadow-sm me-3"><img src="https://vinadesign.vn/uploads/images/2023/05/vnpay-logo-vinadesign-25-12-57-55.png" height="30" alt="VNPAY"></div>
+                            <div>
+                                <div class="fw-bold text-dark">Ví VNPAY / Ngân hàng</div>
+                                <div class="small text-muted">Thẻ ATM, Visa, Mobile Banking</div>
+                            </div>
                         </label>
-                        <label class="list-group-item list-group-item-action">
-                            <input class="form-check-input me-2" type="radio" name="phuong_thuc" value="SepayQR">
-                            <i class="bi bi-bank2 text-info"></i> Thanh toán bằng QR Ngân hàng (Sepay)
+
+                        <label class="btn btn-outline-light text-start p-3 border rounded-3 d-flex align-items-center shadow-sm position-relative">
+                            <input class="form-check-input position-absolute top-50 end-0 me-3 translate-middle-y" type="radio" name="phuong_thuc" value="SepayQR">
+                            <div class="bg-white p-2 rounded shadow-sm me-3"><i class="bi bi-qr-code-scan fs-4 text-primary"></i></div>
+                            <div>
+                                <div class="fw-bold text-dark">Chuyển khoản QR</div>
+                                <div class="small text-muted">Tự động xác nhận 24/7</div>
+                            </div>
                         </label>
-                        <label class="list-group-item list-group-item-action">
-                            <input class="form-check-input me-2" type="radio" name="phuong_thuc" value="TienMat">
-                            <i class="bi bi-cash-coin text-success"></i> Tiền mặt tại trường
+
+                        <label class="btn btn-outline-light text-start p-3 border rounded-3 d-flex align-items-center shadow-sm position-relative">
+                            <input class="form-check-input position-absolute top-50 end-0 me-3 translate-middle-y" type="radio" name="phuong_thuc" value="TienMat">
+                            <div class="bg-white p-2 rounded shadow-sm me-3"><i class="bi bi-cash-stack fs-4 text-success"></i></div>
+                            <div>
+                                <div class="fw-bold text-dark">Tiền mặt</div>
+                                <div class="small text-muted">Đóng trực tiếp tại phòng tài vụ</div>
+                            </div>
                         </label>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-success fw-bold" id="btnXacNhanTT" onclick="submitThanhToan()">
-                    Tiếp Tục Thanh Toán <i class="bi bi-arrow-right-short"></i>
-                </button>
+            <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-gradient rounded-pill px-5 shadow" id="btnXacNhanTT" onclick="submitThanhToan()">Tiếp Tục <i class="bi bi-arrow-right"></i></button>
             </div>
             <div id="loaderSepay" class="text-center p-3" style="display:none;">
-                <span class="spinner-border spinner-border-sm me-2"></span> Đang tạo mã QR...
+                <div class="spinner-border text-primary" role="status"></div>
+                <div class="mt-2 text-muted small">Đang khởi tạo giao dịch...</div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal hiển thị QR Sepay -->
-<div class="modal fade" id="modalSepayQR" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+<div class="modal fade" id="modalSepayQR" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title fw-bold"><i class="bi bi-qr-code-scan me-2"></i> THANH TOÁN BẰNG VIETQR</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" 
-                    onclick="clearInterval(window.pollInterval); window.location.reload();"></button>
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-scan me-2"></i>Quét mã QR để thanh toán</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="clearInterval(window.pollInterval); window.location.reload();"></button>
             </div>
-            <div class="modal-body text-center">
-                <div class="alert alert-danger" id="qr_error_message" style="display:none;"></div>
-                <div class="qr-box mx-auto mb-3">
-                    <img id="qr_image" src="" alt="Mã QR Thanh toán" style="width: 100%; max-width: 250px;">
+            <div class="modal-body text-center p-4">
+                <div class="qr-box mx-auto mb-3 bg-white p-3 rounded-3 shadow-sm" style="max-width: 280px;">
+                    <img id="qr_image" src="" style="width:100%;">
                 </div>
-                <h4 class="text-danger fw-bold" id="qr_amount">0 VNĐ</h4>
-                <p class="text-muted">Quét mã QR bằng bất kỳ ứng dụng Ngân hàng nào.</p>
-                <ul class="list-group mb-3 text-start">
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Mã HĐ: <span id="qr_order_id" class="fw-bold text-primary">#0</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Nội dung chuyển khoản (BẮT BUỘC): <span id="qr_ref_code" class="fw-bold text-success">HOCPHI_0</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Trạng thái: <span id="qr_status" class="badge bg-warning text-dark">Đang chờ thanh toán...</span>
-                    </li>
-                </ul>
-                <p class="text-secondary small">Lưu ý: Hệ thống đang tự động kiểm tra giao dịch, không cần F5.</p>
+                <h3 class="text-danger fw-bold mb-1" id="qr_amount"></h3>
+                <p class="text-muted">Nội dung CK: <strong id="qr_ref_code" class="text-primary bg-light px-2 py-1 rounded"></strong></p>
+                
+                <div class="mt-4">
+                    <span id="qr_status" class="badge bg-warning text-dark px-3 py-2 rounded-pill">
+                        <span class="spinner-grow spinner-grow-sm me-1" role="status" aria-hidden="true"></span>
+                        Đang chờ thanh toán...
+                    </span>
+                    <p class="small text-muted mt-2 mb-0">Hệ thống sẽ tự động xác nhận khi tiền về.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalSuccess" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 text-center p-4">
+            <div class="modal-body">
+                <div class="success-checkmark">
+                    <div class="check-icon">
+                        <span class="icon-line line-tip"></span>
+                        <span class="icon-line line-long"></span>
+                        <div class="icon-circle"></div>
+                        <div class="icon-fix"></div>
+                    </div>
+                </div>
+                <h3 class="fw-bold text-success mt-4">Thanh toán thành công!</h3>
+                <p class="text-muted mb-4">Giao dịch đã được ghi nhận vào hệ thống nhà trường.</p>
+                
+                <div class="d-grid gap-2 col-10 mx-auto">
+                    <button class="btn btn-primary btn-lg rounded-pill shadow" id="btnViewInvoice">
+                        <i class="bi bi-file-earmark-pdf me-2"></i> XEM BIÊN LAI
+                    </button>
+                    <button class="btn btn-outline-secondary rounded-pill" onclick="window.location.reload()">
+                        Về danh sách
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -252,33 +413,49 @@ $data['hoa_don_cho_xac_nhan'] = $data['hoa_don_cho_xac_nhan'] ?? [];
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    const modalThanhToan = new bootstrap.Modal('#modalThanhToan');
-    const modalSepayQR = new bootstrap.Modal('#modalSepayQR');
-    const notif = document.getElementById('notificationModal');
-    const loader = document.getElementById('loaderSepay');
-    const btnXacNhan = document.getElementById('btnXacNhanTT');
     const BASE_URL = "<?php echo BASE_URL; ?>";
+    const modalSuccess = new bootstrap.Modal(document.getElementById('modalSuccess'));
+    const btnViewInvoice = document.getElementById('btnViewInvoice');
+    let invoiceIdToPrint = null;
 
-    window.pollInterval = null;
-
-    window.openThanhToanModal = (maHD, soTien, noiDung) => {
-        document.getElementById('modal_ma_hoa_don').value = maHD;
-        document.getElementById('modal_so_tien').textContent = new Intl.NumberFormat('vi-VN').format(soTien) + ' VNĐ';
-        document.getElementById('modal_noi_dung').textContent = noiDung || 'Học phí';
-        notif.style.display = 'none';
-        if (window.pollInterval) clearInterval(window.pollInterval);
-        modalThanhToan.show();
+    // Hàm hiển thị Modal thành công
+    window.showSuccessModal = (invoiceId) => {
+        invoiceIdToPrint = invoiceId;
+        // Ẩn các modal khác nếu đang mở
+        bootstrap.Modal.getInstance(document.getElementById('modalThanhToan'))?.hide();
+        bootstrap.Modal.getInstance(document.getElementById('modalSepayQR'))?.hide();
+        
+        // Hiện modal thành công
+        modalSuccess.show();
     };
 
-    function startPolling(maHoaDon) {
+    // Sự kiện bấm nút "Xem & In"
+    btnViewInvoice.addEventListener('click', () => {
+        if (invoiceIdToPrint) {
+            window.open(`${BASE_URL}/thanhtoan/inPhieu?ma_hoa_don=${invoiceIdToPrint}`, '_blank');
+        }
+    });
+
+    // -----------------------------------------------------------
+    // 1. XỬ LÝ VNPAY (TỪ SESSION)
+    // -----------------------------------------------------------
+    <?php if (isset($_SESSION['print_invoice_id'])): ?>
+        const vnpayInvoiceId = <?php echo $_SESSION['print_invoice_id']; ?>;
+        showSuccessModal(vnpayInvoiceId); // Hiện modal thay vì tự mở tab
+        <?php unset($_SESSION['print_invoice_id']); ?>
+    <?php endif; ?>
+
+    // -----------------------------------------------------------
+    // 2. XỬ LÝ SEPAY (POLLING)
+    // -----------------------------------------------------------
+    window.pollInterval = null;
+    window.startPolling = (maHoaDon) => {
         const statusEl = document.getElementById('qr_status');
         if (window.pollInterval) clearInterval(window.pollInterval);
-
-        statusEl.className = 'badge bg-warning text-dark';
-        statusEl.textContent = 'Đang chờ thanh toán...';
-
+        
         window.pollInterval = setInterval(() => {
             $.ajax({
                 url: `${BASE_URL}/thanhtoan/checkSepayStatus`,
@@ -288,71 +465,78 @@ document.addEventListener("DOMContentLoaded", () => {
                 success: function(res) {
                     if (res.trang_thai_hoa_don === "DaThanhToan") {
                         clearInterval(window.pollInterval);
-                        modalSepayQR.hide();
-                        alert("✅ Thanh toán thành công! Trang sẽ tải lại...");
-                        window.location.reload();
+                        showSuccessModal(maHoaDon); // Hiện modal thành công
                     } else if (res.trang_thai_hoa_don === "order_not_found") {
                         clearInterval(window.pollInterval);
                         statusEl.className = 'badge bg-danger';
-                        statusEl.textContent = 'Hóa đơn không tồn tại';
+                        statusEl.textContent = 'Lỗi hóa đơn';
                     }
-                },
-                error: () => console.error('Lỗi kiểm tra trạng thái QR')
+                }
             });
         }, 2000);
     }
 
+    // -----------------------------------------------------------
+    // 3. CÁC HÀM CŨ (MODAL THANH TOÁN, LỌC...)
+    // -----------------------------------------------------------
+    const modalThanhToan = new bootstrap.Modal('#modalThanhToan');
+    const modalSepayQR = new bootstrap.Modal('#modalSepayQR');
+    
+    // Lọc
+    document.querySelectorAll('input[name="filter_status"]').forEach(r => {
+        r.addEventListener('change', e => {
+            const v = e.target.value;
+            document.querySelectorAll('.invoice-item').forEach(row => {
+                if (v === 'all') row.style.display = '';
+                else if (v === 'valid') row.style.display = row.classList.contains('row-valid') ? '' : 'none';
+                else if (v === 'expired') row.style.display = row.classList.contains('row-expired') ? '' : 'none';
+            });
+        });
+    });
+
+    window.openThanhToanModal = (id, tien, nd) => {
+        document.getElementById('modal_ma_hoa_don').value = id;
+        document.getElementById('modal_so_tien').textContent = new Intl.NumberFormat('vi-VN').format(tien) + ' VNĐ';
+        document.getElementById('modal_noi_dung').textContent = nd;
+        if(window.pollInterval) clearInterval(window.pollInterval);
+        modalThanhToan.show();
+    };
+
     window.submitThanhToan = async () => {
         const form = document.getElementById('formThanhToan');
         const formData = new FormData(form);
-        const phuong_thuc = document.querySelector('input[name="phuong_thuc"]:checked').value;
+        const type = document.querySelector('input[name="phuong_thuc"]:checked').value;
+        const btn = document.getElementById('btnXacNhanTT');
+        
+        btn.disabled = true; btn.innerHTML = 'Đang xử lý...';
+        document.getElementById('loaderSepay').style.display = (type === 'SepayQR' ? 'block' : 'none');
 
-        notif.style.display = 'none';
-        loader.style.display = phuong_thuc === 'SepayQR' ? 'block' : 'none';
-        btnXacNhan.disabled = true;
-        btnXacNhan.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Đang xử lý...';
-
-        let endpoint = '';
-        if (phuong_thuc === 'VNPAY') endpoint = `${BASE_URL}/thanhtoan/taoYeuCau`;
-        else if (phuong_thuc === 'SepayQR') endpoint = `${BASE_URL}/thanhtoan/taoYeuCauSepay`;
-        else if (phuong_thuc === 'TienMat') endpoint = `${BASE_URL}/thanhtoan/taoYeuCauTienMat`;
+        let url = '';
+        if (type === 'VNPAY') url = `${BASE_URL}/thanhtoan/taoYeuCau`;
+        else if (type === 'SepayQR') url = `${BASE_URL}/thanhtoan/taoYeuCauSepay`;
+        else url = `${BASE_URL}/thanhtoan/taoYeuCauTienMat`;
 
         try {
-            const res = await fetch(endpoint, {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await res.json();
-
-            if (res.ok && data.success) {
+            const res = await fetch(url, { method: 'POST', body: formData });
+            const d = await res.json();
+            if (res.ok && d.success) {
                 modalThanhToan.hide();
-
-                if (phuong_thuc === 'TienMat') {
-                    if (data.print_url) window.open(data.print_url, '_blank');
+                if (type === 'TienMat') {
+                    if (d.print_url) window.open(d.print_url, '_blank');
                     window.location.reload();
-                } else if (phuong_thuc === 'VNPAY') {
-                    setTimeout(() => window.location.href = data.redirect_url, 500);
-                } else if (phuong_thuc === 'SepayQR') {
-                    const d = data.payment_details;
-                    document.getElementById('qr_order_id').textContent = '#' + d.ma_hoa_don;
-                    document.getElementById('qr_amount').textContent = new Intl.NumberFormat('vi-VN').format(d.so_tien) + ' VNĐ';
-                    document.getElementById('qr_ref_code').textContent = d.ref_code;
-                    document.getElementById('qr_image').src = d.qr_img_url;
+                } else if (type === 'VNPAY') {
+                    window.location.href = d.redirect_url;
+                } else if (type === 'SepayQR') {
+                    const dt = d.payment_details;
+                    document.getElementById('qr_image').src = dt.qr_img_url;
+                    document.getElementById('qr_amount').textContent = new Intl.NumberFormat('vi-VN').format(dt.so_tien) + ' VNĐ';
+                    document.getElementById('qr_ref_code').textContent = dt.ref_code;
                     modalSepayQR.show();
-                    startPolling(d.ma_hoa_don);
+                    startPolling(dt.ma_hoa_don);
                 }
-            } else {
-                throw new Error(data.message || 'Lỗi không xác định');
-            }
-        } catch (err) {
-            notif.textContent = 'Lỗi: ' + (err.message || 'Kết nối thất bại');
-            notif.style.display = 'block';
-        } finally {
-            loader.style.display = 'none';
-            btnXacNhan.disabled = false;
-            btnXacNhan.innerHTML = 'Tiếp Tục Thanh Toán <i class="bi bi-arrow-right-short"></i>';
-        }
+            } else { alert(d.message); }
+        } catch (e) { alert('Lỗi kết nối'); } 
+        finally { btn.disabled = false; btn.innerHTML = 'Tiếp Tục <i class="bi bi-arrow-right"></i>'; document.getElementById('loaderSepay').style.display = 'none'; }
     };
 });
 </script>

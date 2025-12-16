@@ -66,63 +66,97 @@
                 <table class="table table-striped table-hover mb-0 align-middle">
                     <thead class="table-light">
                         <tr>
-                            <th>#</th>
+                            <th width="50">#</th>
                             <th>Ngày Lập</th>
                             <th>Giáo Viên YC</th>
                             <th>Học Sinh</th>
                             <th>Môn Học</th>
-                            <th>Chi Tiết Điểm</th>
+                            <th>Học Kỳ</th>
+                            <th width="250">Chi Tiết Điểm</th>
                             <th>Lý Do</th>
-                            <th>Trạng Thái</th> <th class="text-center">Hành Động</th>
+                            <th width="100">Trạng Thái</th>
+                            <th width="180" class="text-center">Hành Động</th>
                         </tr>
                     </thead>
                     <tbody id="phieuTableBody">
                         <?php if (empty($data['danh_sach_phieu'])): ?>
                             <tr>
-                                <td colspan="9" class="text-center p-5 text-muted">Không có phiếu nào.</td>
+                                <td colspan="10" class="text-center p-5 text-muted">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                    <strong>Không có phiếu nào</strong>
+                                </td>
                             </tr>
                         <?php else: ?>
-                            <?php foreach ($data['danh_sach_phieu'] as $phieu): ?>
+                            <?php foreach ($data['danh_sach_phieu'] as $index => $phieu): ?>
                                 <tr id="row-phieu-<?php echo $phieu['ma_phieu']; ?>">
-                                    <td><?php echo $phieu['ma_phieu']; ?></td>
+                                    <td><?php echo $index + 1; ?></td>
                                     <td><?php echo date("d/m/Y", strtotime($phieu['ngay_lap_phieu'])); ?></td>
                                     <td><?php echo htmlspecialchars($phieu['ten_giao_vien_yeu_cau']); ?></td>
                                     <td><?php echo htmlspecialchars($phieu['ten_hoc_sinh']); ?></td>
                                     <td><?php echo htmlspecialchars($phieu['ten_mon_hoc']); ?></td>
+                                    <td><span class="badge bg-secondary"><?php echo $phieu['ma_hoc_ky'] ?? 'N/A'; ?></span></td>
                                     <td>
-                                        <span class="diem-cu"><?php echo $phieu['diem_cu']; ?></span>
-                                        <i class="bi bi-arrow-right-short"></i>
-                                        <span class="diem-moi"><?php echo $phieu['diem_de_nghi']; ?></span>
-                                        <br><small class="text-muted">(<?php echo $phieu['loai_diem']; ?>)</small>
+                                        <?php 
+                                        // Hiển thị chi tiết điểm thay đổi
+                                        $fields = [
+                                            'Miệng' => 'diem_mieng',
+                                            '15p' => 'diem_15phut',
+                                            '1T' => 'diem_1tiet',
+                                            'GK' => 'diem_gua_ky',
+                                            'CK' => 'diem_cuoi_ky'
+                                        ];
+                                        
+                                        echo '<small>';
+                                        foreach ($fields as $label => $field) {
+                                            $cu = $phieu[$field . '_cu'] ?? '--';
+                                            $moi = $phieu[$field . '_moi'] ?? '--';
+                                            
+                                            // Chỉ hiển thị nếu có thay đổi
+                                            if ($cu != $moi && $moi !== '--') {
+                                                echo "<strong>{$label}:</strong> ";
+                                                echo "<span class='diem-cu'>{$cu}</span> ";
+                                                echo "<i class='bi bi-arrow-right-short'></i> ";
+                                                echo "<span class='diem-moi'>{$moi}</span><br>";
+                                            }
+                                        }
+                                        echo '</small>';
+                                        ?>
                                     </td>
-                                    <td><?php echo htmlspecialchars($phieu['ly_do_chinh_sua']); ?></td>
-                                    
+                                    <td>
+                                        <small class="text-muted fst-italic">
+                                            <?php echo htmlspecialchars(mb_substr($phieu['ly_do_chinh_sua'] ?? 'N/A', 0, 50)); ?>
+                                            <?php echo mb_strlen($phieu['ly_do_chinh_sua'] ?? '') > 50 ? '...' : ''; ?>
+                                        </small>
+                                    </td>
                                     <td>
                                         <?php
                                             $status = $phieu['trang_thai_phieu'];
                                             if ($status == 'ChoDuyet') {
-                                                echo '<span class="badge bg-warning text-dark">Chờ Duyệt</span>';
+                                                echo '<span class="badge bg-warning text-dark badge-status-' . $phieu['ma_phieu'] . '">Chờ Duyệt</span>';
                                             } elseif ($status == 'DaDuyet') {
-                                                echo '<span class="badge bg-success">Đã Duyệt</span>';
+                                                echo '<span class="badge bg-success badge-status-' . $phieu['ma_phieu'] . '">Đã Duyệt</span>';
                                             } elseif ($status == 'TuChoi') {
-                                                echo '<span class="badge bg-danger">Từ Chối</span>';
+                                                echo '<span class="badge bg-danger badge-status-' . $phieu['ma_phieu'] . '">Từ Chối</span>';
                                             }
                                         ?>
                                     </td>
-                                    
                                     <td class="text-center">
-                                        <?php if ($phieu['trang_thai_phieu'] == 'ChoDuyet'): ?>
-                                            <button class="btn btn-sm btn-success btn-action" 
-                                                    onclick="openConfirmModal('duyet', <?php echo $phieu['ma_phieu']; ?>, '<?php echo htmlspecialchars($phieu['ten_hoc_sinh']); ?>', <?php echo $phieu['diem_de_nghi']; ?>)">
-                                                <i class="bi bi-check-circle"></i> Duyệt
-                                            </button>
-                                            <button class="btn btn-sm btn-danger btn-action" 
-                                                    onclick="openConfirmModal('tuchoi', <?php echo $phieu['ma_phieu']; ?>, '<?php echo htmlspecialchars($phieu['ten_hoc_sinh']); ?>')">
-                                                <i class="bi bi-x-circle"></i> Từ chối
-                                            </button>
-                                        <?php else: ?>
-                                            <span class="text-muted fst-italic small">Đã xử lý</span>
-                                        <?php endif; ?>
+                                        <div class="btn-group-<?php echo $phieu['ma_phieu']; ?>">
+                                            <?php if ($phieu['trang_thai_phieu'] == 'ChoDuyet'): ?>
+                                                <button class="btn btn-sm btn-success btn-action" 
+                                                        onclick="openConfirmModal('duyet', <?php echo $phieu['ma_phieu']; ?>, '<?php echo htmlspecialchars($phieu['ten_hoc_sinh']); ?>')">
+                                                    <i class="bi bi-check-circle"></i> Duyệt
+                                                </button>
+                                                <button class="btn btn-sm btn-danger btn-action" 
+                                                        onclick="openConfirmModal('tuchoi', <?php echo $phieu['ma_phieu']; ?>, '<?php echo htmlspecialchars($phieu['ten_hoc_sinh']); ?>')">
+                                                    <i class="bi bi-x-circle"></i> Từ chối
+                                                </button>
+                                            <?php else: ?>
+                                                <small class="text-muted">
+                                                    <i class="bi bi-check-all"></i> Đã xử lý
+                                                </small>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -174,7 +208,7 @@
             }
         });
 
-        function openConfirmModal(action, maPhieu, tenHS, diemMoi = null) {
+        function openConfirmModal(action, maPhieu, tenHS) {
             // Kiểm tra nếu modal chưa được khởi tạo thì báo lỗi
             if (!confirmModal) {
                 alert("Lỗi: Không thể khởi tạo Pop-up (Modal). Kiểm tra F12/Console.");
@@ -199,7 +233,7 @@
 
             if (action === 'duyet') {
                 modalTitle.textContent = 'Xác nhận DUYỆT chỉnh sửa điểm';
-                modalBody.textContent = `Bạn có chắc chắn muốn duyệt sửa điểm cho học sinh "${tenHS}" thành ${diemMoi} điểm?`;
+                modalBody.textContent = `Bạn có chắc chắn muốn duyệt yêu cầu sửa điểm cho học sinh "${tenHS}"?`;
                 modalHeader.className = 'modal-header bg-success text-white';
                 confirmBtn.className = 'btn btn-success';
                 confirmBtn.textContent = 'Xác nhận Duyệt';
@@ -223,51 +257,67 @@
             confirmNotif.textContent = '';
 
             if (action === 'tuchoi' && lyDo === '') {
-                confirmNotif.textContent = 'Lý do từ chối không được để trống.';
+                confirmNotif.textContent = '⚠️ Lý do từ chối không được để trống.';
                 return;
             }
 
+            // ✅ SỬA: Tạo object JSON thay vì FormData
             const payload = {
                 ma_phieu: maPhieu,
-                action: action,
-                ly_do: lyDo
+                action: action
             };
+            
+            if (action === 'tuchoi') {
+                payload.ly_do = lyDo;
+            }
 
             try {
                 const response = await fetch(`${BASE_URL}/bgh/xuLyPhieuDiem`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify(payload)
                 });
 
                 const result = await response.json();
 
-                if (response.ok) {
+                if (result.success) {
+                    // Đóng modal
                     confirmModal.hide();
+                    
+                    // Hiển thị thông báo thành công
                     showGlobalNotification(result.message, 'success');
                     
-                    // --- SỬA LẠI LOGIC SAU KHI DUYỆT ---
-                    // Thay vì xóa, chúng ta sẽ làm mờ nó đi và vô hiệu hóa nút
+                    // Cập nhật UI hàng
                     const row = document.getElementById(`row-phieu-${maPhieu}`);
                     if (row) {
-                        row.style.opacity = '0.5'; // Làm mờ hàng
-                        row.querySelector('.btn-success').disabled = true;
-                        row.querySelector('.btn-danger').disabled = true;
+                        row.style.opacity = '0.5';
                         
-                        // Cập nhật trạng thái (tùy chọn)
-                        const statusCell = row.cells[7]; // Cột Trạng Thái
-                        if(action === 'duyet') {
-                            statusCell.innerHTML = '<span class="badge bg-success">Đã Duyệt</span>';
-                        } else {
-                            statusCell.innerHTML = '<span class="badge bg-danger">Từ Chối</span>';
+                        // Đổi badge trạng thái
+                        const badge = row.querySelector('.badge-status-' + maPhieu);
+                        if (badge) {
+                            if (action === 'duyet') {
+                                badge.className = 'badge bg-success badge-status-' + maPhieu;
+                                badge.textContent = 'Đã Duyệt';
+                            } else {
+                                badge.className = 'badge bg-danger badge-status-' + maPhieu;
+                                badge.textContent = 'Từ Chối';
+                            }
+                        }
+                        
+                        // Vô hiệu hóa nút
+                        const btnGroup = row.querySelector('.btn-group-' + maPhieu);
+                        if (btnGroup) {
+                            btnGroup.innerHTML = '<small class="text-muted"><i class="bi bi-check-all"></i> Đã xử lý</small>';
                         }
                     }
                 } else {
-                    confirmNotif.textContent = result.message || 'Lỗi không xác định.';
+                    confirmNotif.textContent = '❌ ' + (result.message || 'Lỗi không xác định.');
                 }
             } catch (error) {
                 console.error("Lỗi fetch xuLyPhieuDiem:", error);
-                confirmNotif.textContent = 'Lỗi kết nối máy chủ. Vui lòng thử lại.';
+                confirmNotif.textContent = '❌ Lỗi kết nối máy chủ. Vui lòng thử lại.';
             }
         }
         

@@ -7,6 +7,9 @@ class DiemDanhModel {
     private $db;
 
     public function __construct() {
+        // SET TIMEZONE CHO PHP
+        date_default_timezone_set('Asia/Ho_Chi_Minh');
+        
         // Danh sách các port cần thử (Ưu tiên 3307 trước, nếu lỗi thì thử 3306)
         $ports = [3307, 3306]; 
         $connected = false;
@@ -24,6 +27,8 @@ class DiemDanhModel {
                 $this->db->setAttribute(PDO::ATTR_EMULATE_PREPARES, true); 
                 
                 $this->db->exec("SET NAMES 'utf8mb4'");
+                // SET TIMEZONE CHO MySQL
+                $this->db->exec("SET time_zone = '+07:00'");
                 
                 $connected = true;
                 break; 
@@ -64,15 +69,36 @@ class DiemDanhModel {
     /**
      * Lấy danh sách Học Sinh của 1 lớp
      */
+    // public function getHocSinhTheoLop($ma_lop) {
+    //     $sql = "SELECT nd.ma_nguoi_dung, nd.ho_ten, hs.trang_thai 
+    //             FROM hoc_sinh hs
+    //             JOIN nguoi_dung nd ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
+    //             WHERE hs.ma_lop = ? AND hs.trang_thai = 'DangHoc'
+    //             ORDER BY nd.ho_ten";
+    //     $stmt = $this->db->prepare($sql);
+    //     $stmt->execute([$ma_lop]);
+    //     return $stmt->fetchAll();
+    // }
     public function getHocSinhTheoLop($ma_lop) {
-        $sql = "SELECT nd.ma_nguoi_dung, nd.ho_ten, hs.trang_thai 
+        if ($this->db === null) return [];
+        
+        $sql = "SELECT 
+                    hs.ma_hoc_sinh,
+                    nd.ho_ten,
+                    nd.email
                 FROM hoc_sinh hs
                 JOIN nguoi_dung nd ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
-                WHERE hs.ma_lop = ? AND hs.trang_thai = 'DangHoc'
+                WHERE hs.ma_lop = ?
                 ORDER BY nd.ho_ten";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$ma_lop]);
-        return $stmt->fetchAll();
+        
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_lop]);
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("Lỗi getHocSinhTheoLop: " . $e->getMessage());
+            return [];
+        }
     }
     
     /**
@@ -121,12 +147,14 @@ class DiemDanhModel {
     }
 
     /**
-     * CẬP NHẬT: Tạo một phiên điểm danh mới (hỗ trợ 2 loại)
+     * CẬP NHẬT: Tạo một phiên điểm danh mới (hỗ trợ 2 loại + mật khẩu cho HS)
      */
-    public function taoPhienDiemDanhMoi($ma_lop, $ma_giao_vien, $tieu_de, $ghi_chu, $loai_phien, $thoi_gian_mo, $thoi_gian_dong) {
+    public function taoPhienDiemDanhMoi($ma_lop, $ma_giao_vien, $tieu_de, $ghi_chu, $loai_phien, $thoi_gian_mo, $thoi_gian_dong, $yeu_cau_mat_khau = false, $mat_khau = null) {
         
         $trang_thai_phien = 'DangDiemDanh'; // Mặc định cho GV
         
+        // Mật khẩu CHỈ áp dụng cho chế độ HocSinh
+        $mat_khau_hash = null;
         if ($loai_phien == 'HocSinh') {
             // Nếu thời gian mở là tương lai
             if (strtotime($thoi_gian_mo) > time()) {
@@ -135,18 +163,25 @@ class DiemDanhModel {
             // Nếu null, gán thời gian mặc định
             if (empty($thoi_gian_mo)) $thoi_gian_mo = date('Y-m-d H:i:s');
             if (empty($thoi_gian_dong)) $thoi_gian_dong = date('Y-m-d H:i:s', time() + 15 * 60); // Mặc định 15 phút
+            
+            // Mã hóa mật khẩu nếu có
+            if ($yeu_cau_mat_khau && !empty($mat_khau)) {
+                $mat_khau_hash = password_hash($mat_khau, PASSWORD_BCRYPT);
+            }
         } else {
-            // Nếu là GV tự điểm danh, set time_mo/dong là NULL
+            // Nếu là GV tự điểm danh, set time_mo/dong là NULL và KHÔNG dùng mật khẩu
             $thoi_gian_mo = null;
             $thoi_gian_dong = null;
+            $yeu_cau_mat_khau = false;
+            $mat_khau_hash = null;
         }
 
         $sql = "INSERT INTO phien_diem_danh 
-                    (ngay_diem_danh, thoi_gian, tieu_de, ghi_chu, trang_thai_phien, ma_lop_hoc, ma_giao_vien, loai_phien, thoi_gian_mo, thoi_gian_dong)
-                VALUES (CURDATE(), CURTIME(), ?, ?, ?, ?, ?, ?, ?, ?)";
+                    (ngay_diem_danh, thoi_gian, tieu_de, ghi_chu, trang_thai_phien, ma_lop_hoc, ma_giao_vien, loai_phien, thoi_gian_mo, thoi_gian_dong, yeu_cau_mat_khau, mat_khau_phien)
+                VALUES (CURDATE(), CURTIME(), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try {
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([$tieu_de, $ghi_chu, $trang_thai_phien, $ma_lop, $ma_giao_vien, $loai_phien, $thoi_gian_mo, $thoi_gian_dong]);
+            $stmt->execute([$tieu_de, $ghi_chu, $trang_thai_phien, $ma_lop, $ma_giao_vien, $loai_phien, $thoi_gian_mo, $thoi_gian_dong, $yeu_cau_mat_khau ? 1 : 0, $mat_khau_hash]);
             return $this->db->lastInsertId();
         } catch (PDOException $e) {
             error_log("Lỗi taoPhienDiemDanhMoi: " . $e->getMessage());
@@ -178,21 +213,45 @@ class DiemDanhModel {
     /**
      * CẬP NHẬT: Lấy chi tiết điểm danh (thêm thông tin HS)
      */
+    // public function getChiTietDiemDanh($ma_phien, $ma_lop) {
+    //     $sql = "SELECT 
+    //                 nd.ma_nguoi_dung, 
+    //                 nd.ho_ten,
+    //                 ct.trang_thai_diem_danh,
+    //                 ct.thoi_gian_nop
+    //             FROM hoc_sinh hs
+    //             JOIN nguoi_dung nd ON hs.ma_nguoi_dung = nd.ma_nguoi_dung
+    //             LEFT JOIN chi_tiet_diem_danh ct ON hs.ma_nguoi_dung = ct.ma_nguoi_dung AND ct.ma_phien = ?
+    //             WHERE hs.ma_lop = ? AND hs.trang_thai = 'DangHoc'
+    //             ORDER BY nd.ho_ten";
+        
+    //     $stmt = $this->db->prepare($sql);
+    //     $stmt->execute([$ma_phien, $ma_lop]);
+    //     return $stmt->fetchAll();
+    // }
     public function getChiTietDiemDanh($ma_phien, $ma_lop) {
+        if ($this->db === null) return [];
+        
         $sql = "SELECT 
-                    nd.ma_nguoi_dung, 
+                    hs.ma_hoc_sinh,
                     nd.ho_ten,
-                    ct.trang_thai_diem_danh,
-                    ct.thoi_gian_nop -- Giả sử bạn thêm cột này để HSDĐ
+                    COALESCE(ct.trang_thai_diem_danh, 'ChuaDiemDanh') AS trang_thai,
+                    ct.thoi_gian_nop
                 FROM hoc_sinh hs
                 JOIN nguoi_dung nd ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
-                LEFT JOIN chi_tiet_diem_danh ct ON hs.ma_hoc_sinh = ct.ma_nguoi_dung AND ct.ma_phien = ?
-                WHERE hs.ma_lop = ? AND hs.trang_thai = 'DangHoc'
+                LEFT JOIN chi_tiet_diem_danh ct 
+                    ON ct.ma_phien = ? AND ct.ma_nguoi_dung = hs.ma_hoc_sinh
+                WHERE hs.ma_lop = ?
                 ORDER BY nd.ho_ten";
         
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$ma_phien, $ma_lop]);
-        return $stmt->fetchAll();
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_phien, $ma_lop]);
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("Lỗi getChiTietDiemDanh: " . $e->getMessage());
+            return [];
+        }
     }
     
     /**
@@ -263,6 +322,187 @@ class DiemDanhModel {
         } catch (PDOException $e) {
             error_log("Lỗi getLopMonHocInfo (DiemDanh): " . $e->getMessage());
             return false;
+        }
+    }
+
+    /**
+     * MỚI: Kiểm tra mật khẩu phiên (CHỈ cho chế độ HocSinh)
+     */
+    public function kiemTraMatKhauPhien($ma_phien, $mat_khau_nhap = null) {
+        $sql = "SELECT yeu_cau_mat_khau, mat_khau_phien, loai_phien, trang_thai_phien 
+                FROM phien_diem_danh WHERE ma_phien = ?";
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_phien]);
+            $phien = $stmt->fetch();
+
+            if (!$phien) {
+                return ['success' => false, 'message' => 'Phiên không tồn tại'];
+            }
+
+            // Chỉ cho phép HS điểm danh ở chế độ HocSinh
+            if ($phien['loai_phien'] != 'HocSinh') {
+                return ['success' => false, 'message' => 'Phiên này không dành cho học sinh điểm danh'];
+            }
+
+            // Kiểm tra trạng thái phiên
+            if ($phien['trang_thai_phien'] != 'DangDiemDanh') {
+                return ['success' => false, 'message' => 'Phiên điểm danh chưa mở hoặc đã đóng'];
+            }
+
+            // Nếu không yêu cầu mật khẩu → Pass
+            if (!$phien['yeu_cau_mat_khau']) {
+                return ['success' => true, 'message' => 'Không cần mật khẩu'];
+            }
+
+            // Nếu yêu cầu mật khẩu → Kiểm tra
+            if (empty($mat_khau_nhap)) {
+                return ['success' => false, 'message' => 'Vui lòng nhập mật khẩu'];
+            }
+
+            if (password_verify($mat_khau_nhap, $phien['mat_khau_phien'])) {
+                return ['success' => true, 'message' => 'Mật khẩu đúng'];
+            } else {
+                return ['success' => false, 'message' => 'Mật khẩu sai'];
+            }
+        } catch (PDOException $e) {
+            error_log("Lỗi kiemTraMatKhauPhien: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Lỗi hệ thống'];
+        }
+    }
+
+    /**
+     * MỚI: Học sinh tự điểm danh (CHỈ dùng cho loai_phien = HocSinh)
+     */
+    public function diemDanhHocSinh($ma_phien, $ma_hoc_sinh, $mat_khau_nhap = null) {
+        // Bước 1: Kiểm tra mật khẩu (nếu có)
+        $check = $this->kiemTraMatKhauPhien($ma_phien, $mat_khau_nhap);
+        if (!$check['success']) {
+            return $check; // Trả về lỗi
+        }
+
+        // Bước 2: Kiểm tra HS đã điểm danh chưa
+        $sql_check = "SELECT ma_ctdd FROM chi_tiet_diem_danh 
+                      WHERE ma_phien = ? AND ma_nguoi_dung = ?";
+        try {
+            $stmt = $this->db->prepare($sql_check);
+            $stmt->execute([$ma_phien, $ma_hoc_sinh]);
+            if ($stmt->fetch()) {
+                return ['success' => false, 'message' => 'Bạn đã điểm danh rồi'];
+            }
+        } catch (PDOException $e) {
+            error_log("Lỗi kiểm tra điểm danh: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Lỗi hệ thống'];
+        }
+
+        // Bước 3: Lưu điểm danh
+        $sql = "INSERT INTO chi_tiet_diem_danh (ma_phien, ma_nguoi_dung, trang_thai_diem_danh, thoi_gian_nop) 
+                VALUES (?, ?, 'CoMat', NOW())";
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$ma_phien, $ma_hoc_sinh]);
+            return ['success' => true, 'message' => 'Điểm danh thành công'];
+        } catch (PDOException $e) {
+            error_log("Lỗi diemDanhHocSinh: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Lỗi khi lưu điểm danh'];
+        }
+    }
+
+    /**
+     * MỚI: Cập nhật phiên điểm danh
+     */
+    public function capNhatPhien($ma_phien, $ma_giao_vien, $tieu_de, $ghi_chu, $thoi_gian_mo = null, $thoi_gian_dong = null, $yeu_cau_mat_khau = false, $mat_khau = null) {
+        // Kiểm tra phiên có thuộc GV này không
+        $sql_check = "SELECT loai_phien, yeu_cau_mat_khau FROM phien_diem_danh 
+                      WHERE ma_phien = ? AND ma_giao_vien = ?";
+        try {
+            $stmt = $this->db->prepare($sql_check);
+            $stmt->execute([$ma_phien, $ma_giao_vien]);
+            $phien = $stmt->fetch();
+
+            if (!$phien) {
+                return ['success' => false, 'message' => 'Phiên không tồn tại hoặc bạn không có quyền'];
+            }
+
+            $loai_phien = $phien['loai_phien'];
+
+            // Build SQL động
+            $fields = ["tieu_de = ?", "ghi_chu = ?"];
+            $params = [$tieu_de, $ghi_chu];
+
+            // Nếu là phiên HS → Cho phép cập nhật thời gian + mật khẩu
+            if ($loai_phien == 'HocSinh') {
+                if (!empty($thoi_gian_mo)) {
+                    $fields[] = "thoi_gian_mo = ?";
+                    $params[] = $thoi_gian_mo;
+                }
+                if (!empty($thoi_gian_dong)) {
+                    $fields[] = "thoi_gian_dong = ?";
+                    $params[] = $thoi_gian_dong;
+                }
+
+                // Cập nhật mật khẩu
+                $fields[] = "yeu_cau_mat_khau = ?";
+                $params[] = $yeu_cau_mat_khau ? 1 : 0;
+
+                if ($yeu_cau_mat_khau && !empty($mat_khau)) {
+                    $fields[] = "mat_khau_phien = ?";
+                    $params[] = password_hash($mat_khau, PASSWORD_BCRYPT);
+                } elseif (!$yeu_cau_mat_khau) {
+                    $fields[] = "mat_khau_phien = NULL";
+                }
+            }
+
+            $params[] = $ma_phien;
+            $params[] = $ma_giao_vien;
+
+            $sql = "UPDATE phien_diem_danh SET " . implode(", ", $fields) . " 
+                    WHERE ma_phien = ? AND ma_giao_vien = ?";
+
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+
+            return ['success' => true, 'message' => 'Cập nhật phiên thành công'];
+        } catch (PDOException $e) {
+            error_log("Lỗi capNhatPhien: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * MỚI: Xóa phiên điểm danh (chỉ được xóa nếu chưa có ai điểm danh)
+     */
+    public function xoaPhien($ma_phien, $ma_giao_vien) {
+        try {
+            // Kiểm tra quyền sở hữu
+            $sql_check = "SELECT ma_phien FROM phien_diem_danh 
+                          WHERE ma_phien = ? AND ma_giao_vien = ?";
+            $stmt = $this->db->prepare($sql_check);
+            $stmt->execute([$ma_phien, $ma_giao_vien]);
+
+            if (!$stmt->fetch()) {
+                return ['success' => false, 'message' => 'Phiên không tồn tại hoặc bạn không có quyền'];
+            }
+
+            // Kiểm tra có ai đã điểm danh chưa
+            $sql_count = "SELECT COUNT(*) as total FROM chi_tiet_diem_danh WHERE ma_phien = ?";
+            $stmt_count = $this->db->prepare($sql_count);
+            $stmt_count->execute([$ma_phien]);
+            $result = $stmt_count->fetch();
+
+            if ($result['total'] > 0) {
+                return ['success' => false, 'message' => 'Không thể xóa phiên đã có học sinh điểm danh'];
+            }
+
+            // Xóa phiên
+            $sql_delete = "DELETE FROM phien_diem_danh WHERE ma_phien = ? AND ma_giao_vien = ?";
+            $stmt_delete = $this->db->prepare($sql_delete);
+            $stmt_delete->execute([$ma_phien, $ma_giao_vien]);
+
+            return ['success' => true, 'message' => 'Xóa phiên thành công'];
+        } catch (PDOException $e) {
+            error_log("Lỗi xoaPhien: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()];
         }
     }
 }
