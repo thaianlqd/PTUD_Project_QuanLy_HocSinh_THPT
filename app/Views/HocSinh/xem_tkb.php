@@ -9,17 +9,6 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
     <style>
-                .recess-row {
-            grid-column: 1 / -1;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 8px 0;
-            font-size: 0.85rem;
-            font-weight: 600;
-            text-align: center;
-            letter-spacing: 0.5px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
         :root { --primary: #0d6efd; --bg: #f8f9fa; --sidebar-width: 280px; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: var(--bg); }
         
@@ -38,19 +27,26 @@
         .session-sep { grid-column: 1 / -1; background-color: #fff3cd; color: #856404; font-weight: bold; text-align: center; padding: 5px; font-size: 0.85rem; letter-spacing: 1px; text-transform: uppercase; }
         
         /* Card Môn Học */
-        .mon-card { border-left: 4px solid var(--primary); padding-left: 10px; height: 100%; display: flex; flex-direction: column; justify-content: center; background: #eef2ff; }
+        .mon-card { border-left: 4px solid var(--primary); padding-left: 10px; height: 100%; display: flex; flex-direction: column; justify-content: center; background: #eef2ff; transition: all 0.2s; }
         .mon-card.fixed-session { border-left-color: #b91c1c; background: #fee2e2; }
         .mon-card.hoc { border-left-color: #15803d; background: #c5f0d6; }
         .mon-card.thi { border-left-color: #c2410c; background: #ffe0b3; }
+        .mon-card.day_bu { border-left-color: #0d6efd; background: #cfe2ff; }
         .mon-card.tam_nghi { border-left-color: #b91c1c; background: #ffc6c6; }
+        
         .mon-card .ten-mon { font-weight: 700; color: #1f2937; font-size: 0.92rem; margin-bottom: 2px; }
         .mon-card.fixed-session .ten-mon { color: #b91c1c; }
         .mon-card.tam_nghi .ten-mon { color: #b91c1c; }
         .mon-card.thi .ten-mon { color: #b45309; }
         .mon-card.hoc .ten-mon { color: #166534; }
-        .mon-card .info { font-size: 0.75rem; color: #6c757d; display: block; line-height: 1.3; }
-        .mon-card .note { font-size: 0.75rem; color: #6c757d; margin-top: 2px; }
         
+        .mon-card .info { font-size: 0.75rem; color: #6c757d; display: block; line-height: 1.3; }
+        .mon-card .note { font-size: 0.75rem; color: #6c757d; margin-top: 2px; font-style: italic; }
+        
+        /* Style cho tiết thay đổi */
+        .mon-card.changed { border: 2px dashed #f59e0b !important; position: relative; }
+        .icon-warn { color: #f59e0b; margin-left: 4px; font-size: 0.9rem; }
+
         /* Mobile List View */
         @media (max-width: 768px) {
             .tkb-grid { display: none; } 
@@ -134,6 +130,54 @@
             <?php endforeach; ?>
 
             <div class="session-sep">Buổi Sáng</div>
+            
+            <?php 
+            // Hàm render ô (dùng chung cho sáng/chiều để code gọn)
+            function renderSlot($tkb_data, $thu, $tiet) {
+                $s = isset($tkb_data[$thu][$tiet]) ? $tkb_data[$thu][$tiet] : null;
+                
+                // Logic Chào cờ & Sinh hoạt cứng
+                $is_fixed_sys = false;
+                if ($thu == 2 && $tiet == 1) {
+                    $s = ['mon' => 'Chào cờ', 'gv' => 'Toàn trường', 'phong' => 'Sân trường', 'loai_tiet' => 'hoc'];
+                    $is_fixed_sys = true;
+                } elseif ($thu == 2 && $tiet == 2) {
+                    $s = ['mon' => 'Sinh hoạt', 'gv' => 'GVCN', 'phong' => 'Tại lớp', 'loai_tiet' => 'hoc'];
+                    $is_fixed_sys = true;
+                }
+
+                if ($s) {
+                    $loai = $s['loai_tiet'] ?? 'hoc';
+                    $cls_sys = $is_fixed_sys ? 'fixed-session' : $loai;
+                    
+                    // Thêm class 'changed' nếu là lịch thay đổi
+                    $changed_class = (!empty($s['is_changed'])) ? 'changed' : '';
+                    
+                    echo "<div class='mon-card {$cls_sys} {$changed_class}'>";
+                    echo "<div class='ten-mon'>" . htmlspecialchars($s['mon']);
+                    
+                    // Icon cảnh báo
+                    if (!empty($s['is_changed'])) {
+                        echo "<i class='bi bi-exclamation-circle-fill icon-warn' title='Lịch thay đổi'></i>";
+                    }
+                    echo "</div>";
+
+                    if (!$is_fixed_sys) {
+                        echo "<span class='info'><i class='bi bi-person me-1'></i>" . htmlspecialchars($s['gv']) . "</span>";
+                    } else {
+                        echo "<span class='info'><i class='bi bi-people me-1'></i>" . htmlspecialchars($s['gv']) . "</span>";
+                    }
+                    
+                    echo "<span class='info'><i class='bi bi-geo-alt me-1'></i>" . htmlspecialchars($s['phong']) . "</span>";
+                    
+                    if (!empty($s['ghi_chu'])) {
+                        echo "<div class='note'>" . htmlspecialchars($s['ghi_chu']) . "</div>";
+                    }
+                    echo "</div>";
+                }
+            }
+            ?>
+
             <?php for ($tiet = 1; $tiet <= 4; $tiet++): ?>
                 <div class="tkb-tiet-col">
                     <span class="fs-6"><?= $tiet ?></span>
@@ -143,34 +187,13 @@
                 </div>
                 <?php for ($thu = 2; $thu <= 8; $thu++): ?>
                     <div class="tkb-cell">
-                        <?php 
-                            $s = isset($tkb_data[$thu][$tiet]) ? $tkb_data[$thu][$tiet] : null;
-                            $is_fixed = false;
-
-                            if ($thu == 2 && $tiet == 1) {
-                                $s = ['mon' => 'Chào cờ', 'gv' => 'Toàn trường', 'phong' => 'Sân trường'];
-                                $is_fixed = true;
-                            } elseif ($thu == 2 && $tiet == 2) {
-                                $s = ['mon' => 'Sinh hoạt', 'gv' => 'GVCN', 'phong' => 'Tại lớp'];
-                                $is_fixed = true;
-                            }
-                        ?>
-                        <?php if ($s): ?>
-                            <?php $loai = $s['loai_tiet'] ?? 'hoc'; $cls = $is_fixed ? 'fixed-session' : $loai; ?>
-                            <div class="mon-card <?= $cls ?>">
-                                <div class="ten-mon"><?= htmlspecialchars($s['mon']) ?></div>
-                                <span class="info"><i class="bi bi-person me-1"></i><?= htmlspecialchars($s['gv']) ?></span>
-                                <span class="info"><i class="bi bi-geo-alt me-1"></i><?= htmlspecialchars($s['phong']) ?></span>
-                                <?php if (!empty($s['ghi_chu'])): ?>
-                                    <div class="note"><i class="bi bi-info-circle me-1"></i><?= htmlspecialchars($s['ghi_chu']) ?></div>
-                                <?php endif; ?>
-                            </div>
-                        <?php endif; ?>
+                        <?php renderSlot($tkb_data, $thu, $tiet); ?>
                     </div>
                 <?php endfor; ?>
             <?php endfor; ?>
 
             <div class="session-sep bg-info bg-opacity-10 text-primary">Buổi Chiều</div>
+            
             <?php for ($tiet = 5; $tiet <= 7; $tiet++): ?>
                 <div class="tkb-tiet-col">
                     <span class="fs-6"><?= $tiet ?></span>
@@ -180,20 +203,7 @@
                 </div>
                 <?php for ($thu = 2; $thu <= 8; $thu++): ?>
                     <div class="tkb-cell">
-                        <?php 
-                            $s = isset($tkb_data[$thu][$tiet]) ? $tkb_data[$thu][$tiet] : null; 
-                        ?>
-                        <?php if ($s): ?>
-                            <?php $loai = $s['loai_tiet'] ?? 'hoc'; ?>
-                            <div class="mon-card <?= $loai ?>">
-                                <div class="ten-mon text-dark"><?= htmlspecialchars($s['mon']) ?></div>
-                                <span class="info"><i class="bi bi-person me-1"></i><?= htmlspecialchars($s['gv']) ?></span>
-                                <span class="info"><i class="bi bi-geo-alt me-1"></i><?= htmlspecialchars($s['phong']) ?></span>
-                                <?php if (!empty($s['ghi_chu'])): ?>
-                                    <div class="note"><i class="bi bi-info-circle me-1"></i><?= htmlspecialchars($s['ghi_chu']) ?></div>
-                                <?php endif; ?>
-                            </div>
-                        <?php endif; ?>
+                        <?php renderSlot($tkb_data, $thu, $tiet); ?>
                     </div>
                 <?php endfor; ?>
             <?php endfor; ?>
@@ -216,9 +226,9 @@
                         $s = isset($tkb_data[$thu][$tiet]) ? $tkb_data[$thu][$tiet] : null;
                         
                         if ($thu == 2 && $tiet == 1) {
-                            $s = ['mon' => 'Chào cờ', 'gv' => 'Toàn trường', 'phong' => 'Sân trường'];
+                            $s = ['mon' => 'Chào cờ', 'gv' => 'Toàn trường', 'phong' => 'Sân trường', 'loai_tiet' => 'hoc'];
                         } elseif ($thu == 2 && $tiet == 2) {
-                            $s = ['mon' => 'Sinh hoạt', 'gv' => 'GVCN', 'phong' => 'Tại lớp'];
+                            $s = ['mon' => 'Sinh hoạt', 'gv' => 'GVCN', 'phong' => 'Tại lớp', 'loai_tiet' => 'hoc'];
                         }
 
                         if ($s): 
@@ -231,14 +241,22 @@
                                 </small>
                             </div>
                             <div class="flex-grow-1">
-                                <?php $loai = $s['loai_tiet'] ?? 'hoc'; ?>
-                                <h6 class="fw-bold mb-1 <?php echo ($loai==='tam_nghi') ? 'text-danger' : (($loai==='thi') ? 'text-warning' : 'text-primary'); ?> <?= ($thu==2 && $tiet<=2) ? 'text-danger' : '' ?>">
+                                <?php 
+                                    $loai = $s['loai_tiet'] ?? 'hoc'; 
+                                    $is_changed = !empty($s['is_changed']);
+                                    $text_color = ($loai==='tam_nghi') ? 'text-danger' : (($loai==='thi') ? 'text-warning' : 'text-primary');
+                                    if ($thu==2 && $tiet<=2) $text_color = 'text-danger';
+                                ?>
+                                <h6 class="fw-bold mb-1 <?= $text_color ?>">
                                     <?= htmlspecialchars($s['mon']) ?>
+                                    <?php if($is_changed): ?>
+                                        <i class="bi bi-exclamation-circle-fill text-warning ms-1"></i>
+                                    <?php endif; ?>
                                 </h6>
                                 <div class="small text-muted"><i class="bi bi-person-fill me-1"></i> <?= htmlspecialchars($s['gv']) ?></div>
                                 <div class="small text-muted"><i class="bi bi-geo-alt-fill me-1"></i> Phòng: <?= htmlspecialchars($s['phong']) ?></div>
                                 <?php if (!empty($s['ghi_chu'])): ?>
-                                    <div class="small text-muted"><i class="bi bi-info-circle me-1"></i><?= htmlspecialchars($s['ghi_chu']) ?></div>
+                                    <div class="small text-muted fst-italic"><i class="bi bi-info-circle me-1"></i><?= htmlspecialchars($s['ghi_chu']) ?></div>
                                 <?php endif; ?>
                             </div>
                         </div>
