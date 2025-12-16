@@ -201,12 +201,21 @@
             
             <li class="nav-item">
                 <a class="nav-link text-primary fw-bold bg-light" href="<?php echo BASE_URL; ?>/quanlytuyensinh">
-                    <i class="bi bi-mortarboard-fill"></i>Quản Lý Tuyển Sinh
+                    <i class="bi bi-mortarboard-fill"></i>Quản Lý Kết Quả Tuyển Sinh
                 </a>
             </li>
             
             <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/TruongHoc"><i class="bi bi-bank"></i>Quản Lý Trường Học THPT</a></li>
-            <li class="nav-item"><a class="nav-link" href="#"><i class="bi bi-journal-bookmark"></i>Chương Trình Khung</a></li>
+               <li class="nav-item">
+                    <a class="nav-link text-info fw-bold bg-light" href="<?php echo BASE_URL; ?>/quanlytuyensinh/xeplopnhaphoc">
+                        <i class="bi bi-people-fill"></i>Quản Lý Xếp Lớp & Nhập Học
+                    </a>
+                </li>
+            <li class="nav-item">
+                <a class="nav-link text-success fw-bold bg-light" href="<?php echo BASE_URL; ?>/quanlytintuc">
+                    <i class="bi bi-newspaper"></i> Quản Lý Tin Tức & Bài Viết
+                </a>
+            </li>
             
             <li class="nav-header text-uppercase small text-muted ms-3 mt-3 mb-1">Hệ Thống</li>
             <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>/quantri/quanlytaikhoan"><i class="bi bi-people-fill"></i>Tài Khoản Toàn Tỉnh</a></li>
@@ -360,6 +369,17 @@
                             </div>
                             <i class="bi bi-chevron-right ms-auto text-primary"></i>
                         </a>
+
+                           <a href="<?php echo BASE_URL; ?>/quanlytuyensinh/xeplopnhaphoc" class="list-group-item list-group-item-action py-3 d-flex align-items-center bg-info bg-opacity-10 border-bottom-0">
+                                <div class="bg-info text-white p-2 rounded me-3 shadow-sm">
+                                    <i class="bi bi-people-fill"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-0 text-info fw-bold">Quản Lý Xếp Lớp & Nhập Học</h6>
+                                    <small class="text-muted">Phân lớp, chốt hồ sơ, xem danh sách lớp</small>
+                                </div>
+                                <i class="bi bi-chevron-right ms-auto text-info"></i>
+                            </a>
 
                         <a href="#" class="list-group-item list-group-item-action py-3 d-flex align-items-center">
                             <div class="bg-primary bg-opacity-10 p-2 rounded me-3 text-primary"><i class="bi bi-plus-circle-fill"></i></div>

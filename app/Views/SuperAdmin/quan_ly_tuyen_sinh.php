@@ -48,7 +48,7 @@
         <div id="globalNotification" class="alert" style="display: none;" role="alert"></div>
 
         <div id="mainMenu">
-            <div class="row">
+            <div class="row justify-content-center">
                 <div class="col-md-4 mb-3">
                     <div class="card function-card" onclick="showChiTieuForm()">
                         <div class="card-body text-center">
@@ -68,30 +68,13 @@
                         </div>
                     </div>
                 </div>
+
                 <div class="col-md-4 mb-3">
                     <div class="card function-card" onclick="showLocAoForm()">
                         <div class="card-body text-center">
                             <i class="bi bi-funnel"></i>
                             <h5 class="mt-3">Lọc ảo & Xem danh sách</h5>
                             <p class="text-muted">Chạy lọc ảo và xem danh sách học sinh đậu</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <div class="card function-card" onclick="showXepLopForm()">
-                        <div class="card-body text-center">
-                            <i class="bi bi-people-fill"></i>
-                            <h5 class="mt-3">Xếp Lớp & Chốt Hồ Sơ</h5>
-                            <p class="text-muted">Phân lớp thủ công hoặc tự động cho học sinh</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <div class="card function-card" onclick="showXemLopForm()">
-                        <div class="card-body text-center">
-                            <i class="bi bi-list-columns-reverse"></i>
-                            <h5 class="mt-3">Danh Sách Lớp & Học Sinh</h5>
-                            <p class="text-muted">Xem sĩ số và danh sách học sinh các lớp</p>
                         </div>
                     </div>
                 </div>
@@ -286,144 +269,6 @@
             </div>
         </div>
 
-        <div id="xepLopForm" style="display: none;">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-people-fill me-2"></i>Xếp Lớp Học Sinh</span>
-                    <button class="btn btn-sm btn-light" onclick="backToMenu()"><i class="bi bi-arrow-left"></i> Quay lại</button>
-                </div>
-                <div class="card-body">
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Chọn Trường THPT cần xếp lớp:</label>
-                            <select class="form-select border-primary" id="selectTruongXepLop" onchange="loadStudentsForAssignment()">
-                                <option value="">-- Vui lòng chọn trường --</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <hr>
-
-                    <div id="assignmentArea" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="fw-bold mb-0 text-primary">Danh sách học sinh ĐÃ XÁC NHẬN:</h6>
-                            <span class="badge bg-danger" id="waitingCountBadge">0 học sinh</span>
-                        </div>
-
-                        <div class="card p-2 mb-3 bg-light border-0">
-                            <div class="d-flex gap-2 flex-wrap" id="filterButtonArea">
-                                </div>
-                        </div>
-
-                        <div class="table-container mb-3" style="max-height: 400px; overflow-y: auto;">
-                            <table class="table table-bordered table-hover">
-                                <thead class="table-light sticky-top">
-                                    <tr>
-                                        <th style="width: 40px; text-align: center;">
-                                            <input type="checkbox" id="checkAllAssign" onchange="toggleCheckAllAssign()">
-                                        </th>
-                                        <th>SBD</th>
-                                        <th>Họ tên</th>
-                                        <th>Điểm</th>
-                                        <th>Tổ hợp (Nguyện vọng)</th>
-                                        <th>Trạng thái</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="studentAssignmentBody"></tbody>
-                            </table>
-                        </div>
-
-                        <div class="row g-2">
-                            <div class="col-md-7">
-                                <div class="card border-success">
-                                    <div class="card-body d-flex align-items-center p-2">
-                                        <div style="flex-grow: 1;" class="me-2">
-                                            <select class="form-select border-success" id="selectLopDestination">
-                                                <option value="">-- Chọn lớp thủ công --</option>
-                                            </select>
-                                        </div>
-                                        <div class="d-flex align-items-center">
-                                            <span id="selectedAssignCount" class="me-2 fw-bold text-success small">0 chọn</span>
-                                            <button class="btn btn-success text-nowrap" onclick="executeAssignment()">
-                                                <i class="bi bi-box-arrow-in-down-right"></i> Xếp lớp
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-5">
-                                <div class="card border-primary bg-primary text-white h-100">
-                                    <button class="btn btn-primary h-100 fw-bold w-100" onclick="executeAutoAssignment()">
-                                        <i class="bi bi-lightning-charge-fill text-warning"></i> PHÂN LỚP TỰ ĐỘNG
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <small class="text-muted mt-2 d-block">* Phân lớp tự động: Hệ thống sẽ tự tìm lớp phù hợp với Tổ hợp của từng học sinh để xếp vào (Ưu tiên cân bằng sĩ số).</small>
-                    </div>
-                    
-                    <div id="assignmentEmptyState" class="text-center py-5 text-muted" style="display: none;">
-                        <i class="bi bi-arrow-up-circle fs-1"></i>
-                        <p class="mt-2">Vui lòng chọn trường ở trên để xem dữ liệu.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="xemLopForm" style="display: none;">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span><i class="bi bi-list-ol me-2"></i>Danh Sách Học Sinh Trong Lớp</span>
-                    <button class="btn btn-sm btn-light" onclick="backToMenu()"><i class="bi bi-arrow-left"></i> Quay lại</button>
-                </div>
-                <div class="card-body">
-                    <div class="row mb-3">
-                        <div class="col-md-5">
-                            <label class="form-label fw-bold">Chọn Trường:</label>
-                            <select class="form-select" id="viewTruongSelect" onchange="loadLopForView()">
-                                <option value="">-- Chọn trường --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-5">
-                            <label class="form-label fw-bold">Chọn Lớp:</label>
-                            <select class="form-select" id="viewLopSelect" onchange="loadHocSinhInClass()">
-                                <option value="">-- Chọn lớp --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2 d-flex align-items-end">
-                            <button class="btn btn-primary w-100" onclick="loadHocSinhInClass()">
-                                <i class="bi bi-search"></i> Xem
-                            </button>
-                        </div>
-                    </div>
-
-                    <hr>
-
-                    <div id="classDetailArea" style="display: none;">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="fw-bold mb-0">Danh sách học sinh lớp <span id="currentClassName" class="text-primary"></span>:</h6>
-                            <span class="badge bg-info text-dark" id="currentClassCount">0 học sinh</span>
-                        </div>
-                        <div class="table-container">
-                            <table class="table table-striped table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>STT</th>
-                                        <th>SBD</th>
-                                        <th>Họ và Tên</th>
-                                        <th>Ngày Sinh</th>
-                                        <th>Ngày Vào Lớp</th>
-                                        <th>Ghi chú</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="classStudentBody"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <footer class="text-center py-4 text-muted">
@@ -438,9 +283,6 @@
         
         const loadingSpinner = document.getElementById('loadingSpinner');
         let dsTruongData = [];
-        // Biến cho phần Xếp Lớp
-        let allLopCuaTruong = [];
-        let currentStudentList = [];
 
         // --- Helper Functions ---
         function showLoading() { loadingSpinner.style.display = 'flex'; }
@@ -534,15 +376,12 @@
                 selectTruong.innerHTML += `<option value="${truong.ma_truong}">${escapeHtml(truong.ten_truong)}</option>`;
             });
         }
+        
         function backToMenu() {
             document.getElementById('mainMenu').style.display = 'block';
             document.getElementById('chiTieuForm').style.display = 'none';
             document.getElementById('diemForm').style.display = 'none';
             document.getElementById('locAoForm').style.display = 'none';
-            document.getElementById('xepLopForm').style.display = 'none';
-
-            // THÊM DÒNG NÀY:
-            document.getElementById('xemLopForm').style.display = 'none';
         }
 
         // --- Logic Chỉ Tiêu & Điểm ---
@@ -705,7 +544,6 @@
                             badgeClass = 'bg-success text-white';
                             statusValue = 'confirmed';
                         }
-                        // Hỗ trợ cả 'Tu_choi_nhap_hoc' và 'Tu_choi'
                         else if (ts.trang_thai_xac_nhan === 'Tu_choi_nhap_hoc' || ts.trang_thai_xac_nhan === 'Tu_choi') {
                             statusText = 'ĐÃ TỪ CHỐI';
                             badgeClass = 'bg-danger text-white';
@@ -733,332 +571,56 @@
             document.querySelectorAll('#locAoTableBody tr').forEach(row => row.style.display = '');
         }
 
-        // --- Logic Xếp Lớp (SMART) ---
-        async function showXepLopForm() {
-            document.getElementById('mainMenu').style.display = 'none';
-            document.getElementById('xepLopForm').style.display = 'block';
-            document.getElementById('assignmentArea').style.display = 'none';
-            document.getElementById('assignmentEmptyState').style.display = 'block';
-            
-            const select = document.getElementById('selectTruongXepLop');
-            select.innerHTML = '<option value="">-- Vui lòng chọn trường --</option>';
-            if (dsTruongData.length === 0) {
-                try { const res = await apiCall(`${API_URL}/getDsTruongApi`); dsTruongData = res.data; } catch(e) {}
-            }
-            dsTruongData.forEach(tr => {
-                select.innerHTML += `<option value="${tr.ma_truong}">${escapeHtml(tr.ten_truong)}</option>`;
-            });
-        }
-
-        async function loadStudentsForAssignment() {
-            const ma_truong = document.getElementById('selectTruongXepLop').value;
-            if (!ma_truong) {
-                document.getElementById('assignmentArea').style.display = 'none';
-                document.getElementById('assignmentEmptyState').style.display = 'block';
-                return;
-            }
-
+        // --- LOAD TAB TRƯỢT & ĐIỂM CHUẨN ---
+        async function loadDanhSachTruot() {
             try {
-                // Load song song học sinh và danh sách lớp
-                const [resStudents, resClasses] = await Promise.all([
-                    apiCall(`${API_URL}/getHocSinhChoXepLopApi`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ ma_truong }) }),
-                    apiCall(`${API_URL}/getDsLopApi`)
-                ]);
-
-                // Lưu dữ liệu toàn cục
-                allLopCuaTruong = (resClasses.data || []).filter(c => c.ma_truong == ma_truong);
-                currentStudentList = resStudents.data || [];
-
-                // Render giao diện
-                renderFilterButtons();
-                renderStudentTable(currentStudentList);
-                renderClassOptions(allLopCuaTruong);
-
-                document.getElementById('assignmentArea').style.display = 'block';
-                document.getElementById('assignmentEmptyState').style.display = 'none';
-
-            } catch(e) { console.error(e); }
-        }
-
-        // Tạo nút lọc nhóm
-        function renderFilterButtons() {
-            const filterArea = document.getElementById('filterButtonArea');
-            const groups = [...new Set(currentStudentList.map(item => item.ten_to_hop))];
-            
-            let html = `<button class="btn btn-sm btn-secondary active" onclick="filterByGroup('all', this)">Tất cả (${currentStudentList.length})</button>`;
-            groups.forEach(g => {
-                const count = currentStudentList.filter(s => s.ten_to_hop === g).length;
-                html += `<button class="btn btn-sm btn-outline-primary" onclick="filterByGroup('${g}', this)">${g} (${count})</button>`;
-            });
-            filterArea.innerHTML = html;
-        }
-
-        // Xử lý lọc nhóm
-        function filterByGroup(groupName, btn) {
-            document.querySelectorAll('#filterButtonArea button').forEach(b => {
-                b.classList.remove('btn-secondary', 'active');
-                b.classList.add('btn-outline-primary');
-            });
-            btn.classList.remove('btn-outline-primary');
-            btn.classList.add('btn-secondary', 'active');
-
-            if (groupName === 'all') {
-                renderStudentTable(currentStudentList);
-                renderClassOptions(allLopCuaTruong);
-            } else {
-                const filtered = currentStudentList.filter(s => s.ten_to_hop === groupName);
-                renderStudentTable(filtered);
-                // Lọc dropdown lớp theo nhóm này luôn
-                if (filtered.length > 0) {
-                    const maToHop = filtered[0].ma_to_hop_mon;
-                    // FIX SO SÁNH CHUỖI/SỐ
-                    const filteredClasses = allLopCuaTruong.filter(c => String(c.ma_to_hop_mon) === String(maToHop));
-                    renderClassOptions(filteredClasses);
+                const res = await apiCall(`${API_URL}/getDuLieuTruotVaDiemChuanApi`);
+                if (!res.success) {
+                    showNotification(res.message || 'Không tải được danh sách trượt', 'danger');
+                    return;
                 }
-            }
-        }
 
-        function renderStudentTable(data) {
-            const tbody = document.getElementById('studentAssignmentBody');
-            tbody.innerHTML = '';
-            document.getElementById('waitingCountBadge').textContent = `${data.length} học sinh`;
+                const diemChuanData = res.bang_diem_chuan || [];
+                const dsTruot = res.ds_truot || [];
 
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center">Không có dữ liệu</td></tr>';
-                return;
-            }
-
-            data.forEach(hs => {
-                let badgeColor = 'bg-info';
-                if ((hs.ten_to_hop || '').includes('TN')) badgeColor = 'bg-success';
-                if ((hs.ten_to_hop || '').includes('XH')) badgeColor = 'bg-warning text-dark';
-
-                tbody.innerHTML += `
+                // Render bảng điểm chuẩn
+                const diemChuanBody = document.getElementById('diemChuanTableBody');
+                diemChuanBody.innerHTML = diemChuanData.length ? diemChuanData.map(t => `
                     <tr>
-                        <td class="text-center">
-                            <input type="checkbox" class="assign-cb" value="${hs.ma_nguoi_dung}" data-tohop="${hs.ma_to_hop_mon || ''}" onchange="updateAssignCount()">
-                        </td>
-                        <td>${escapeHtml(hs.so_bao_danh)}</td>
-                        <td class="fw-bold">${escapeHtml(hs.ho_ten)}</td>
-                        <td class="text-danger fw-bold">${hs.tong_diem}</td>
-                        <td><span class="badge ${badgeColor}">${hs.ten_to_hop || 'Chưa rõ'}</span></td>
-                        <td><span class="badge bg-secondary">Chưa xếp</span></td>
+                        <td>${escapeHtml(t.ten_truong)}</td>
+                        <td>${t.chi_tieu_hoc_sinh ?? '-'}</td>
+                        <td>${t.da_tuyen ?? 0}</td>
+                        <td class="text-danger fw-bold">${t.diem_chuan ? parseFloat(t.diem_chuan).toFixed(2) : '-'}</td>
                     </tr>
-                `;
-            });
-        }
+                `).join('') : '<tr><td colspan="4" class="text-center text-muted">Không có dữ liệu</td></tr>';
 
-        function renderClassOptions(classes) {
-            const select = document.getElementById('selectLopDestination');
-            select.innerHTML = '<option value="">-- Chọn lớp thủ công --</option>';
-            if (classes.length === 0) {
-                select.innerHTML += '<option disabled>Không tìm thấy lớp phù hợp</option>';
-                return;
-            }
-            classes.forEach(c => {
-                select.innerHTML += `<option value="${c.ma_lop}">${escapeHtml(c.ten_lop)}</option>`;
-            });
-        }
-
-        function toggleCheckAllAssign() {
-            const state = document.getElementById('checkAllAssign').checked;
-            document.querySelectorAll('.assign-cb').forEach(cb => cb.checked = state);
-            updateAssignCount();
-        }
-
-        function updateAssignCount() {
-            const count = document.querySelectorAll('.assign-cb:checked').length;
-            document.getElementById('selectedAssignCount').textContent = `${count} chọn`;
-        }
-
-        // XẾP LỚP THỦ CÔNG
-        async function executeAssignment() {
-            const ma_lop = document.getElementById('selectLopDestination').value;
-            const checkboxes = document.querySelectorAll('.assign-cb:checked');
-            const ids = Array.from(checkboxes).map(cb => cb.value);
-
-            if (!ma_lop) { showNotification('Vui lòng chọn lớp đích!', 'warning'); return; }
-            if (ids.length === 0) { showNotification('Chưa chọn học sinh nào!', 'warning'); return; }
-            if (!confirm(`Xếp ${ids.length} học sinh vào lớp này?`)) return;
-
-            try {
-                const res = await apiCall(`${API_URL}/thucHienXepLopApi`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ ma_lop: ma_lop, danh_sach_ma_hoc_sinh: ids })
-                });
-                showNotification(res.message, 'success');
-                loadStudentsForAssignment();
-                document.getElementById('checkAllAssign').checked = false;
-                document.getElementById('selectedAssignCount').textContent = '0 chọn';
-            } catch(e) {}
-        }
-
-        // XẾP LỚP TỰ ĐỘNG
-        async function executeAutoAssignment() {
-            const checkboxes = document.querySelectorAll('.assign-cb:checked');
-            const ids = Array.from(checkboxes).map(cb => cb.value);
-
-            if (ids.length === 0) { alert('Vui lòng chọn ít nhất 1 học sinh để phân lớp tự động!'); return; }
-            if (!confirm(`Hệ thống sẽ tự động tìm lớp phù hợp cho ${ids.length} học sinh này dựa trên Tổ hợp môn.\n\nBạn có chắc chắn muốn chạy không?`)) return;
-
-            try {
-                const ma_truong = document.getElementById('selectTruongXepLop').value;
-                const res = await apiCall(`${API_URL}/autoPhanLopApi`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ ma_truong: ma_truong, danh_sach_hs: ids })
-                });
-                if (res.success) {
-                    alert(res.message);
-                    loadStudentsForAssignment();
-                    showXemLopForm();
+                // Render danh sách trượt
+                const truotBody = document.getElementById('thiSinhTruotTableBody');
+                if (!dsTruot.length) {
+                    truotBody.innerHTML = '<tr><td colspan="7" class="text-center">Không có thí sinh trượt.</td></tr>';
                 } else {
-                    alert('Lỗi: ' + res.message);
-                }
-            } catch(e) { alert('Lỗi hệ thống!'); }
-        }
-
-
-        // --- LOGIC XEM DANH SÁCH LỚP ---
-    async function showXemLopForm() {
-        document.getElementById('mainMenu').style.display = 'none';
-        document.getElementById('xepLopForm').style.display = 'none'; // Ẩn các form khác
-        document.getElementById('xemLopForm').style.display = 'block';
-        
-        // Load danh sách trường
-        const select = document.getElementById('viewTruongSelect');
-        select.innerHTML = '<option value="">-- Chọn trường --</option>';
-        if (dsTruongData.length === 0) {
-            try { const res = await apiCall(`${API_URL}/getDsTruongApi`); dsTruongData = res.data; } catch(e) {}
-        }
-        dsTruongData.forEach(tr => {
-            select.innerHTML += `<option value="${tr.ma_truong}">${escapeHtml(tr.ten_truong)}</option>`;
-        });
-    }
-
-    async function loadLopForView() {
-        const ma_truong = document.getElementById('viewTruongSelect').value;
-        const selectLop = document.getElementById('viewLopSelect');
-        selectLop.innerHTML = '<option value="">-- Đang tải... --</option>';
-        
-        if (!ma_truong) { selectLop.innerHTML = '<option value="">-- Chọn trường trước --</option>'; return; }
-
-        try {
-            const resClasses = await apiCall(`${API_URL}/getDsLopApi`);
-            const classes = resClasses.data.filter(c => c.ma_truong == ma_truong);
-            
-            selectLop.innerHTML = '<option value="">-- Chọn lớp --</option>';
-            classes.forEach(c => {
-                // Hiện tên lớp kèm sĩ số
-                selectLop.innerHTML += `<option value="${c.ma_lop}">${c.ten_lop} (Sĩ số: ${c.si_so})</option>`;
-            });
-        } catch(e) {}
-    }
-
-    async function loadHocSinhInClass() {
-        const ma_lop = document.getElementById('viewLopSelect').value;
-        const ten_lop = document.getElementById('viewLopSelect').options[document.getElementById('viewLopSelect').selectedIndex].text;
-        
-        if (!ma_lop) return;
-
-        try {
-            const res = await apiCall(`${API_URL}/getDsHocSinhTrongLopApi`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ ma_lop: ma_lop })
-            });
-
-            document.getElementById('classDetailArea').style.display = 'block';
-            document.getElementById('currentClassName').textContent = ten_lop;
-            document.getElementById('currentClassCount').textContent = `${res.data.length} học sinh`;
-            
-            const tbody = document.getElementById('classStudentBody');
-            tbody.innerHTML = '';
-
-            if (res.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Lớp chưa có học sinh nào.</td></tr>';
-            } else {
-                res.data.forEach((hs, index) => {
-                    let dob = hs.ngay_sinh ? new Date(hs.ngay_sinh).toLocaleDateString('vi-VN') : '';
-                    let joinDate = hs.ngay_nhap_hoc ? new Date(hs.ngay_nhap_hoc).toLocaleDateString('vi-VN') : '';
-                    
-                    // HIGHLIGHT: Nếu là học sinh mới (is_new = 1) -> Hiện Badge "Mới tuyển"
-                    let statusBadge = '';
-                    let rowClass = '';
-                    if (hs.is_new == 1) {
-                        statusBadge = '<span class="badge bg-danger blink_me">🔥 Mới tuyển sinh</span>';
-                        rowClass = 'table-warning'; // Tô màu vàng nhạt cho dòng này
-                    } else {
-                        statusBadge = '<span class="badge bg-success">Học sinh cũ</span>';
-                    }
-
-                    tbody.innerHTML += `
-                        <tr class="${rowClass}">
-                            <td>${index + 1}</td>
-                            <td>${escapeHtml(hs.so_bao_danh)}</td>
-                            <td class="fw-bold">${escapeHtml(hs.ho_ten)}</td>
-                            <td>${dob}</td>
-                            <td>${joinDate}</td>
-                            <td>${statusBadge}</td>
+                    truotBody.innerHTML = dsTruot.map(ts => `
+                        <tr>
+                            <td>${escapeHtml(ts.so_bao_danh)}</td>
+                            <td>${escapeHtml(ts.ho_ten)}</td>
+                            <td class="fw-bold">${ts.tong_diem ?? '-'}</td>
+                            <td>${escapeHtml(ts.nv1 || '-')}</td>
+                            <td>${escapeHtml(ts.nv2 || '-')}</td>
+                            <td>${escapeHtml(ts.nv3 || '-')}</td>
+                            <td class="text-muted">${ts.ly_do || 'Không đủ điểm'}</td>
                         </tr>
-                    `;
-                });
-            }
-        } catch(e) {}
-    }
-
-    // --- LOAD TAB TRƯỢT & ĐIỂM CHUẨN ---
-    async function loadDanhSachTruot() {
-        try {
-            const res = await apiCall(`${API_URL}/getDuLieuTruotVaDiemChuanApi`);
-            if (!res.success) {
-                showNotification(res.message || 'Không tải được danh sách trượt', 'danger');
-                return;
-            }
-
-            const diemChuanData = res.bang_diem_chuan || [];
-            const dsTruot = res.ds_truot || [];
-
-            // Render bảng điểm chuẩn
-            const diemChuanBody = document.getElementById('diemChuanTableBody');
-            diemChuanBody.innerHTML = diemChuanData.length ? diemChuanData.map(t => `
-                <tr>
-                    <td>${escapeHtml(t.ten_truong)}</td>
-                    <td>${t.chi_tieu_hoc_sinh ?? '-'}</td>
-                    <td>${t.da_tuyen ?? 0}</td>
-                    <td class="text-danger fw-bold">${t.diem_chuan ? parseFloat(t.diem_chuan).toFixed(2) : '-'}</td>
-                </tr>
-            `).join('') : '<tr><td colspan="4" class="text-center text-muted">Không có dữ liệu</td></tr>';
-
-            // Render danh sách trượt
-            const truotBody = document.getElementById('thiSinhTruotTableBody');
-            if (!dsTruot.length) {
-                truotBody.innerHTML = '<tr><td colspan="7" class="text-center">Không có thí sinh trượt.</td></tr>';
-            } else {
-                truotBody.innerHTML = dsTruot.map(ts => `
-                    <tr>
-                        <td>${escapeHtml(ts.so_bao_danh)}</td>
-                        <td>${escapeHtml(ts.ho_ten)}</td>
-                        <td class="fw-bold">${ts.tong_diem ?? '-'}</td>
-                        <td>${escapeHtml(ts.nv1 || '-')}</td>
-                        <td>${escapeHtml(ts.nv2 || '-')}</td>
-                        <td>${escapeHtml(ts.nv3 || '-')}</td>
-                        <td class="text-muted">${ts.ly_do || 'Không đủ điểm'}</td>
-                    </tr>
-                `).join('');
-            }
-        } catch (e) {
-            // apiCall đã show notification, chỉ log thêm nếu cần
-            console.error(e);
+                    `).join('');
+                }
+            } catch (e) { console.error(e); }
         }
-    }
 
-    // Gắn sự kiện khi nhấn tab "Danh sách Trượt"
-    document.addEventListener('DOMContentLoaded', () => {
-        const tabTruotBtn = document.getElementById('tabTruot-tab');
-        if (tabTruotBtn) {
-            tabTruotBtn.addEventListener('click', loadDanhSachTruot);
-        }
-    });
+        // Gắn sự kiện khi nhấn tab "Danh sách Trượt"
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabTruotBtn = document.getElementById('tabTruot-tab');
+            if (tabTruotBtn) {
+                tabTruotBtn.addEventListener('click', loadDanhSachTruot);
+            }
+        });
     </script>
 </body>
 </html>

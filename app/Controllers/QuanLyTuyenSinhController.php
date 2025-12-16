@@ -66,6 +66,11 @@ class QuanLyTuyenSinhController { // Chạy độc lập, không cần extends C
         }
     }
 
+    public function xepLopNhapHoc() {
+        $this->renderView('SuperAdmin/quan_ly_xep_lop_nhap_hoc', []);
+    }
+        
+
     // ===========================================================
     // PHẦN 1: GIAO DIỆN CHÍNH (Single Page)
     // ===========================================================

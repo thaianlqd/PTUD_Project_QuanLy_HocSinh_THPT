@@ -297,17 +297,43 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <div class="card p-4" id="tin-tuc">
+                    <div class="card p-4 h-100" id="tin-tuc">
                         <h5 class="fw-bold text-primary mb-3"><i class="bi bi-megaphone me-2"></i>Tin Tức Nổi Bật</h5>
-                        <div class="d-flex align-items-center mb-3 border-bottom pb-3">
-                            <i class="bi bi-newspaper text-primary fs-3 me-3"></i>
-                            <div>
-                                <h6 class="fw-bold mb-0">Chỉ Tiêu Tuyển Sinh 2025 Đã Công Bố</h6>
-                                <small class="text-muted">Ngày 15/04/2025</small>
+                        
+                        <?php if (!empty($tin_tuc)): ?>
+                            <?php foreach ($tin_tuc as $tin): ?>
+                                <div class="d-flex align-items-start mb-3 border-bottom pb-3">
+                                    <?php 
+                                        $icon = 'bi-newspaper';
+                                        if ($tin['loai_bai_viet'] == 'TuyenSinh') $icon = 'bi-mortarboard';
+                                        if ($tin['loai_bai_viet'] == 'HoatDong') $icon = 'bi-activity';
+                                    ?>
+                                    <i class="bi <?php echo $icon; ?> text-primary fs-3 me-3 mt-1"></i>
+                                    
+                                    <div>
+                                        <h6 class="fw-bold mb-1 text-dark">
+                                            <?php echo htmlspecialchars($tin['tieu_de']); ?>
+                                        </h6>
+                                        
+                                        <small class="text-muted d-block mb-1" style="font-size: 0.85rem;">
+                                            <i class="bi bi-clock"></i> <?php echo date('d/m/Y', strtotime($tin['ngay_dang'])); ?> 
+                                            &bull; 
+                                            <i class="bi bi-person"></i> <?php echo htmlspecialchars($tin['tac_gia']); ?>
+                                        </small>
+                                        
+                                        <p class="text-secondary small mb-0" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                            <?php echo htmlspecialchars($tin['noi_dung']); ?>
+                                        </p>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="text-center py-4 text-muted">
+                                <i class="bi bi-info-circle fs-1 d-block mb-2"></i>
+                                <p>Hiện chưa có tin tức nào mới.</p>
                             </div>
-                        </div>
-                        <p class="text-secondary">Hàng nghìn suất học bổng và chỉ tiêu mới cho lớp 10. Xem chi tiết và đăng ký ngay!</p>
-                        <a href="#" class="btn btn-outline-primary mt-auto">Đọc Thêm</a>
+                        <?php endif; ?>
+                        <a href="#" class="btn btn-outline-primary mt-auto w-100">Xem Tất Cả Tin Tức</a>
                     </div>
                 </div>
             </div>
