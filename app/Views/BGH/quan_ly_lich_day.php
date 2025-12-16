@@ -6,11 +6,14 @@
     <title>Lịch Dạy - Giáo Viên</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
     <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
         font-family: 'Segoe UI', Roboto, sans-serif; 
-        background-color: #f3f4f6; 
+        background-color: #f8f9fa; 
     }
     .sidebar { 
         width: 280px; 
@@ -27,692 +30,432 @@
     }
     .header-card { 
         background: white; 
-        border-radius: 15px; 
-        padding: 25px; 
-        box-shadow: 0 5px 15px rgba(0,0,0,0.03); 
-        margin-bottom: 30px; 
-    }
-    .header-card h5 { 
-        color: #fd7e14; 
-        font-weight: bold; 
-    }
-    .stat-card { 
-        background: white; 
-        border-radius: 12px; 
-        padding: 15px; 
-        border-left: 4px solid #fd7e14; 
-        margin-bottom: 15px; 
-    }
-    .stat-card h6 { 
-        color: #333; 
-        font-weight: 600; 
-        margin-bottom: 5px; 
-    }
-    .stat-card .value { 
-        font-size: 1.8rem; 
-        font-weight: bold; 
-        color: #fd7e14; 
-    }
-
-    /* ====================== BẢNG THỜI KHÓA BIỂU ====================== */
-    .table-tkb { 
-        background: white; 
         border-radius: 12px; 
         padding: 20px; 
-        box-shadow: 0 5px 15px rgba(0,0,0,0.03); 
-        margin-bottom: 30px; 
-        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.03); 
+        margin-bottom: 25px; 
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
-    .table-tkb table { 
-        margin-bottom: 0; 
+    .header-card h5 { 
+        color: #0d6efd; 
+        font-weight: 700; 
+        margin: 0;
+    }
+
+    /* Card Thống kê */
+    .stat-row {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+    .stat-item {
+        flex: 1;
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+        text-align: center;
+        border-bottom: 3px solid transparent;
+        transition: transform 0.2s;
+    }
+    .stat-item:hover { transform: translateY(-3px); }
+    .stat-item.blue { border-color: #0d6efd; }
+    .stat-item.orange { border-color: #fd7e14; }
+    .stat-item.green { border-color: #198754; }
+    .stat-item h6 { font-size: 0.85rem; color: #6c757d; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-item .val { font-size: 1.5rem; font-weight: 800; color: #333; }
+
+    /* Thanh công cụ */
+    .toolbar-card {
+        background: white;
+        padding: 15px 20px;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+        margin-bottom: 25px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .week-navigator {
+        display: flex;
+        align-items: center;
+        background: #f1f3f5;
+        border-radius: 8px;
+        padding: 4px;
+    }
+    .week-navigator button {
+        border: none;
+        background: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #495057;
+        transition: 0.2s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .week-navigator button:hover { background: #e9ecef; }
+    .week-display {
+        font-weight: 600;
+        color: #333;
+        padding: 0 15px;
+        font-size: 0.95rem;
+        cursor: pointer;
+        min-width: 220px;
+        text-align: center;
+    }
+    .week-display:hover { color: #0d6efd; }
+
+    /* Bảng TKB */
+    .table-container {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+        overflow-x: auto;
+    }
+    .table-tkb {
         width: 100%;
-        table-layout: fixed; /* ✅ Bắt buộc các cột chia đều width */
+        border-collapse: separate; 
+        border-spacing: 0;
+        table-layout: fixed;
     }
-    .table-tkb thead th { 
-        background: #f8f9fa; 
-        color: #333; 
-        font-weight: 600; 
-        border: none; 
-        padding: 12px; 
+    .table-tkb th {
+        background: #f8f9fa;
+        color: #495057;
+        font-weight: 600;
+        padding: 15px 10px;
+        text-align: center;
+        border-bottom: 2px solid #e9ecef;
+        border-right: 1px solid #f1f3f5;
+    }
+    .table-tkb th:first-child { width: 80px; border-top-left-radius: 8px; }
+    .table-tkb th:last-child { border-top-right-radius: 8px; border-right: none; }
+    
+    .table-tkb td {
+        padding: 10px;
+        border-bottom: 1px solid #f1f3f5;
+        border-right: 1px solid #f1f3f5;
+        vertical-align: top;
+        height: 100px;
+        transition: 0.2s;
+    }
+    .table-tkb td:first-child { 
         text-align: center; 
-        vertical-align: middle;
-    }
-    
-    /* ✅ Set width cố định cho cột Tiết (đã gộp với Giờ) */
-    .table-tkb thead th:nth-child(1),
-    .table-tkb tbody td:nth-child(1) {
-        width: 80px;
-    }
-    
-    /* ✅ Các cột Thứ 2-CN sẽ tự động chia đều phần còn lại */
-    .table-tkb thead th:nth-child(n+2),
-    .table-tkb tbody td:nth-child(n+2) {
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-    }
-    
-    /* Dòng phân cách buổi học */
-    .buoi-header {
-        background: linear-gradient(135deg, #fd7e14 0%, #ff9800 100%);
-        color: white;
+        vertical-align: middle; 
+        background: #fafafa; 
         font-weight: bold;
+        color: #adb5bd;
+    }
+    .table-tkb td:last-child { border-right: none; }
+    .table-tkb tr:last-child td:first-child { border-bottom-left-radius: 8px; }
+    .table-tkb tr:last-child td:last-child { border-bottom-right-radius: 8px; }
+    .table-tkb tr:hover td { background: #fafafa; }
+
+    /* Thẻ tiết học */
+    .lesson-card {
+        background: #e7f5ff;
+        border-left: 4px solid #0d6efd;
+        padding: 8px 10px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        margin-bottom: 5px;
+        transition: 0.2s;
+    }
+    .lesson-card:hover { transform: translateY(-2px); box-shadow: 0 3px 8px rgba(0,0,0,0.08); }
+    
+    .lesson-card.thi { background: #fff3cd; border-left-color: #ffc107; }
+    .lesson-card.nghi { background: #ffe6e6; border-left-color: #dc3545; opacity: 0.8; }
+    .lesson-card.bu { background: #d1e7dd; border-left-color: #198754; }
+
+    .lesson-mon { font-weight: 700; color: #333; margin-bottom: 4px; display: block; }
+    .lesson-info { display: flex; align-items: center; gap: 5px; color: #666; font-size: 0.75rem; margin-bottom: 2px; }
+    .lesson-note { font-size: 0.7rem; color: #888; font-style: italic; margin-top: 4px; border-top: 1px dashed #ccc; padding-top: 4px; }
+
+    /* Session header */
+    .session-row td {
+        background: #f8f9fa;
         text-align: center;
         padding: 8px;
-        font-size: 0.95rem;
+        font-weight: 600;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 0.8rem;
     }
 
-    /* Quan trọng: Sửa lỗi lệch lạc, to nhỏ */
-    .table-tkb tbody td {
-        padding: 10px 8px;
-        border-bottom: 1px solid #e9ecef;
-        text-align: center;
-        vertical-align: middle !important;
-        height: auto !important;      /* Bỏ height cố định 70px */
-        min-height: 92px;             /* Đủ chỗ cho 3 dòng + phòng */
-        position: relative;
-        line-height: 1.4;
+    .spinner-border { color: #0d6efd; }
+    .nav-link { color: #666; padding: 12px 16px; display: flex; align-items: center; gap: 10px; transition: 0.3s; text-decoration: none; }
+    .nav-link:hover, .nav-link.active { background: #f0f7ff; color: #0d6efd; font-weight: 600; border-right: 4px solid #0d6efd; }
+    .sidebar-header { padding: 25px 20px; text-align: center; border-bottom: 1px solid #f1f1f1; }
+    .sidebar-header img { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 3px solid #e9ecef; }
+    
+    @media (max-width: 991px) { 
+        .sidebar { transform: translateX(-100%); } 
+        .main-content { margin-left: 0; } 
     }
-    .table-tkb tbody tr:hover { 
-        background-color: #f8f9fa; 
-    }
-
-    /* Nền buổi sáng / chiều */
-    .buoi-sang { 
-        background: #eef7ff; 
-        border-left: 4px solid #2196F3; 
-    }
-    .buoi-chieu { 
-        background: #fff7ed; 
-        border-left: 4px solid #ff9800; 
-    }
-
-    /* Nội dung trong ô có tiết dạy */
-    .mon-cell { 
-        font-weight: 700; 
-        color: #1f2937; 
-        font-size: 0.95rem;
-        display: block;
-        margin-bottom: 3px;
-    }
-    .lop-cell { 
-        color: #6b7280; 
-        font-size: 0.83rem;
-        display: block;
-        margin-bottom: 5px;
-    }
-    .phong-cell { 
-        display: inline-block; 
-            background: #e8f5e9; 
-            padding: 4px 9px; 
-            border-radius: 999px; 
-            font-size: 0.78rem; 
-            color: #0f5132; 
-            border: 1px solid #b7e4c7;
-            font-weight: 500;
-        }
-        /* CSS cho loại tiết */
-        .loai-hoc {
-            background-color: #c5f0d6 !important;
-            border-left: 4px solid #15803d !important;
-        }
-        .loai-hoc .mon-cell {
-            color: #166534 !important;
-        }
-
-        .loai-thi {
-            background-color: #ffe0b3 !important;
-            border-left: 4px solid #c2410c !important;
-        }
-        .loai-thi .mon-cell {
-            color: #b45309 !important;
-        }
-
-        .loai-nghi {
-            background-color: #ffc6c6 !important;
-            border-left: 4px solid #b91c1c !important;
-        }
-        .loai-nghi .mon-cell {
-            color: #b91c1c !important;
-        }
-
-        .loai-nghi .lop-cell {
-            color: #b91c1c !important;
-        }
-
-        .ghi-chu-note {
-            font-size: 0.7rem;
-            color: #666;
-            margin-top: 3px;
-            font-style: italic;
-            display: block;
-        }
-        /* Giờ học trong cột tiết */
-        .tiet-number { 
-            font-weight: bold;
-            font-size: 1.1rem;
-            display: block;
-            margin-bottom: 3px;
-        }
-        .gio-cell { 
-            color: #6b7280; 
-            font-size: 0.75rem; 
-            line-height: 1.2; 
-            white-space: nowrap; 
-        }
-
-        /* Ô trống: căn giữa dấu gạch ngang */
-        .table-tkb tbody td:empty::after,
-        .table-tkb tbody td .text-muted {
-            content: "–";
-            color: #adb5bd;
-            font-size: 1.4rem;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-        .table-tkb tbody td .text-muted {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.4rem;
-            color: #adb5bd;
-        }
-
-        /* Các phần còn lại giữ nguyên */
-        .spinner-border { color: #fd7e14; }
-        .nav-link { 
-            color: #666; 
-            text-decoration: none; 
-            padding: 12px 16px; 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            transition: all 0.3s; 
-        }
-        .nav-link:hover { 
-            background: #f3f4f6; 
-            color: #fd7e14; 
-        }
-        .nav-link.active { 
-            color: #fd7e14; 
-            border-left: 4px solid #fd7e14; 
-            background: #fff8f0; 
-            font-weight: 600; 
-        }
-        .sidebar-header { 
-            padding: 20px; 
-            text-align: center; 
-            background: linear-gradient(135deg, #fd7e14 0%, #b35200 100%); 
-            color: white; 
-        }
-        .sidebar-header img { 
-            width: 70px; 
-            margin-bottom: 10px; 
-            border: 3px solid white; 
-            border-radius: 50%; 
-        }
-        .sidebar-header h6 { 
-            font-weight: bold; 
-            margin-bottom: 5px; 
-        }
-        .btn-hoc-ky { 
-            margin: 5px; 
-        }
-
-        @media (max-width: 991px) { 
-            .sidebar { 
-                transform: translateX(-100%); 
-                transition: 0.3s; 
-            } 
-            .main-content { 
-                margin-left: 0; 
-            } 
-        }
-
-        .empty-cell {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 1.8rem;
-            color: #adb5bd;
-            font-weight: 300;
-        }
     </style>
 </head>
 <body>
 
-    <!-- SIDEBAR -->
     <div class="sidebar">
         <div class="sidebar-header">
-            <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" class="border border-3 border-white">
-            <h6 class="mb-1"><?php echo htmlspecialchars($data['user_name'] ?? 'Giáo Viên'); ?></h6>
-            <small>Giáo Viên Bộ Môn</small>
+            <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($data['user_name'] ?? 'GV'); ?>&background=0d6efd&color=fff" alt="Avatar">
+            <h6 class="mb-0 text-dark"><?php echo htmlspecialchars($data['user_name'] ?? 'Giáo Viên'); ?></h6>
+            <small class="text-muted">Giáo Viên Bộ Môn</small>
         </div>
-        <nav class="nav flex-column mt-3 px-2">
-            <a class="nav-link" href="<?php echo BASE_URL; ?>/dashboard"><i class="bi bi-grid-fill me-2"></i>Dashboard</a>
+        <nav class="nav flex-column mt-3">
+            <a class="nav-link" href="<?php echo BASE_URL; ?>/dashboard"><i class="bi bi-grid-fill"></i> Dashboard</a>
             <a class="nav-link active" href="#"><i class="bi bi-calendar-week"></i> Lịch Dạy</a>
             <a class="nav-link" href="<?php echo BASE_URL; ?>/giaovien/diemdanh"><i class="bi bi-upc-scan"></i> Điểm Danh</a>
             <a class="nav-link" href="<?php echo BASE_URL; ?>/giaovien/baitap"><i class="bi bi-journal-text"></i> Bài Tập</a>
         </nav>
-        <div class="mt-auto pt-4 border-top px-2" style="margin-top: 300px;">
-            <a class="nav-link text-danger" href="<?php echo BASE_URL; ?>/auth/logout"><i class="bi bi-box-arrow-right"></i> Đăng Xuất</a>
+        <div class="mt-auto p-3">
+            <a class="nav-link text-danger bg-danger bg-opacity-10 rounded" href="<?php echo BASE_URL; ?>/auth/logout"><i class="bi bi-box-arrow-right"></i> Đăng Xuất</a>
         </div>
     </div>
 
-    <!-- MAIN CONTENT -->
     <div class="main-content">
         
-        <!-- HEADER -->
         <div class="header-card">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="mb-1"><i class="bi bi-calendar-week me-2"></i>Lịch Dạy Của Tôi</h5>
-                    <small class="text-muted">Quản lý thời khóa biểu các lớp đang dạy</small>
-                </div>
-                <button class="btn btn-outline-secondary" onclick="location.reload()"><i class="bi bi-arrow-clockwise"></i> Làm Mới</button>
+            <div>
+                <h5>Lịch Dạy Của Tôi</h5>
+                <small class="text-muted">Xem và quản lý thời khóa biểu giảng dạy</small>
             </div>
+            <button class="btn btn-light text-primary btn-sm fw-bold" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise"></i> Cập nhật
+            </button>
         </div>
 
-        <!-- CHỌN LỚP -->
-        <div class="stat-card d-flex align-items-center gap-3 flex-wrap">
-            <div class="flex-grow-1">
-                <label class="form-label fw-bold mb-2">Chọn Lớp</label>
-                <select class="form-select" id="selectLop" onchange="onChangeLop()" <?php echo isset($data['lop_list']) && empty($data['lop_list']) ? 'disabled' : ''; ?> disabled>
-                    <option value="">-- Chọn lớp để xem --</option>
-                    <?php if (!empty($data['lop_list'])): ?>
-                        <?php foreach ($data['lop_list'] as $lop): ?>
-                            <option value="<?php echo $lop['ma_lop']; ?>">
-                                <?php echo htmlspecialchars($lop['ten_lop']) . ' (Sĩ số: ' . $lop['si_so'] . ')'; ?>
-                            </option>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <option disabled>Không có lớp nào</option>
-                    <?php endif; ?>
-                </select>
-            </div>
-            <div class="text-end">
-                <label class="form-label fw-bold mb-2 d-block">Chế độ</label>
-                <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" id="toggleAll" onchange="toggleAllMode()" checked>
-                    <label class="form-check-label" for="toggleAll">Xem tất cả lớp</label>
-                </div>
-            </div>
-        </div>
-
-        <!-- THỐNG KÊ -->
         <?php if (!empty($data['stats'])): ?>
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <h6>Tổng Tiết Dạy</h6>
-                    <div class="value"><?php echo $data['stats']['tong_tiet_da_xep'] ?? 0; ?></div>
-                </div>
+        <div class="stat-row">
+            <div class="stat-item blue">
+                <h6>Tổng Tiết Dạy</h6>
+                <div class="val"><?php echo $data['stats']['tong_tiet_da_xep'] ?? 0; ?></div>
             </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <h6>Số Lớp</h6>
-                    <div class="value"><?php echo $data['stats']['so_lop'] ?? 0; ?></div>
-                </div>
+            <div class="stat-item orange">
+                <h6>Số Lớp</h6>
+                <div class="val"><?php echo $data['stats']['so_lop'] ?? 0; ?></div>
             </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <h6>Số Môn</h6>
-                    <div class="value"><?php echo $data['stats']['so_mon'] ?? 0; ?></div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <h6>Giờ Vào - Tan</h6>
-                    <div class="value" style="font-size: 1.3rem;">
-                        <?php echo ($data['stats']['gio_vao_som_nhat'] ?? '--') . ' - ' . ($data['stats']['gio_tan_muon_nhat'] ?? '--'); ?>
-                    </div>
-                </div>
+            <div class="stat-item green">
+                <h6>Số Môn</h6>
+                <div class="val"><?php echo $data['stats']['so_mon'] ?? 0; ?></div>
             </div>
         </div>
         <?php endif; ?>
 
-        <!-- CHỌN HỌC KỲ -->
-        <div class="stat-card">
-            <label class="fw-bold mb-2">Học Kỳ</label>
-            <div>
-                <button class="btn btn-warning btn-hoc-ky" onclick="changeHocKy('HK1')" id="btnHK1">HK1</button>
-                <button class="btn btn-outline-warning btn-hoc-ky" onclick="changeHocKy('HK2')" id="btnHK2">HK2</button>
+        <div class="toolbar-card">
+            <div class="d-flex align-items-center gap-3">
+                <label class="fw-bold text-muted mb-0">Thời gian:</label>
+                <div class="week-navigator">
+                    <button onclick="changeWeek(-1)" title="Tuần trước"><i class="bi bi-chevron-left"></i></button>
+                    <div class="week-display" id="weekDisplay" title="Click để chọn ngày nhanh">Đang tải...</div>
+                    <input type="text" id="datePickerHidden" style="display:none;">
+                    <button onclick="changeWeek(1)" title="Tuần sau"><i class="bi bi-chevron-right"></i></button>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="resetToToday()">Hôm nay</button>
+            </div>
+
+            <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="btnradio" id="btnHK1" autocomplete="off" checked onclick="changeHocKy('HK1')">
+                <label class="btn btn-outline-primary" for="btnHK1">Học Kỳ 1</label>
+
+                <input type="radio" class="btn-check" name="btnradio" id="btnHK2" autocomplete="off" onclick="changeHocKy('HK2')">
+                <label class="btn btn-outline-primary" for="btnHK2">Học Kỳ 2</label>
             </div>
         </div>
 
-        <!-- BẢNG TKB -->
-        <div class="table-tkb">
+        <div class="table-container">
             <div id="loadingSpinner" class="text-center py-5">
-                <div class="spinner-border" role="status">
-                    <span class="visually-hidden">Đang tải...</span>
-                </div>
+                <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
             </div>
-            <div id="tkbContent" style="display: none;"></div>
+            <div id="tkbContent"></div>
         </div>
 
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/vn.js"></script>
+
     <script>
         let currentHocKy = '1';
-        let viewAll = true;
+        let currentDate = new Date();
+        let flatpickrInstance;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Khởi tạo lịch
+            flatpickrInstance = flatpickr("#datePickerHidden", {
+                locale: "vn",
+                dateFormat: "Y-m-d",
+                defaultDate: currentDate,
+                onChange: function(selectedDates, dateStr) {
+                    currentDate = new Date(dateStr);
+                    loadData();
+                }
+            });
+
+            document.getElementById('weekDisplay').addEventListener('click', () => {
+                flatpickrInstance.open();
+            });
+
+            loadData();
+        });
+
+        function resetToToday() {
+            currentDate = new Date();
+            loadData();
+        }
 
         function changeHocKy(hk) {
-            // Map HK1 → '1', HK2 → '2'
             const hkMap = { 'HK1': '1', 'HK2': '2' };
             currentHocKy = hkMap[hk] || '1';
-            
-            document.getElementById('btnHK1').classList.toggle('btn-warning', hk === 'HK1');
-            document.getElementById('btnHK1').classList.toggle('btn-outline-warning', hk !== 'HK1');
-            document.getElementById('btnHK2').classList.toggle('btn-warning', hk === 'HK2');
-            document.getElementById('btnHK2').classList.toggle('btn-outline-warning', hk !== 'HK2');
             loadData();
         }
 
-        function toggleAllMode() {
-            viewAll = document.getElementById('toggleAll').checked;
-            document.getElementById('selectLop').disabled = viewAll;
+        function changeWeek(offset) {
+            currentDate.setDate(currentDate.getDate() + (offset * 7));
             loadData();
-        }
-
-        function onChangeLop() {
-            if (!viewAll) loadData();
         }
 
         function loadData() {
-            if (viewAll) return loadTkbAll();
-            return loadTkbByLop();
-        }
-
-        function loadTkbByLop() {
-            const maLop = document.getElementById('selectLop').value;
-            if (!maLop) {
-                document.getElementById('tkbContent').style.display = 'none';
-                document.getElementById('loadingSpinner').style.display = 'none';
-                return;
-            }
-
             document.getElementById('loadingSpinner').style.display = 'block';
-            document.getElementById('tkbContent').style.display = 'none';
+            document.getElementById('tkbContent').style.opacity = '0.3';
 
-            fetch('<?php echo BASE_URL; ?>/giaovien/xemtkbbylopapi', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    ma_lop: maLop,
-                    ma_hoc_ky: currentHocKy
-                })
-            })
-            .then(res => res.json())
-            .then(data => {
-                console.log('API Response:', data);
-                document.getElementById('loadingSpinner').style.display = 'none';
-                
-                if (!data.success) {
-                    alert('Lỗi: ' + data.message);
-                    return;
-                }
-
-                renderTkbTable(data.data, data.tiet_hoc, data.lop_info, data.ma_hoc_ky);
-                document.getElementById('tkbContent').style.display = 'block';
-            })
-            .catch(err => {
-                document.getElementById('loadingSpinner').style.display = 'none';
-                console.error('Lỗi:', err);
-                alert('Lỗi kết nối: ' + err.message);
-            });
-        }
-
-        function loadTkbAll() {
-            document.getElementById('loadingSpinner').style.display = 'block';
-            document.getElementById('tkbContent').style.display = 'none';
+            const dateStr = currentDate.toISOString().slice(0, 10);
+            flatpickrInstance.setDate(dateStr);
 
             fetch('<?php echo BASE_URL; ?>/giaovien/xemtkballapi', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
-                    ma_hoc_ky: currentHocKy
+                    ma_hoc_ky: currentHocKy,
+                    date: dateStr
                 })
             })
             .then(res => res.json())
             .then(data => {
                 document.getElementById('loadingSpinner').style.display = 'none';
+                document.getElementById('tkbContent').style.opacity = '1';
+
                 if (!data.success) {
                     alert('Lỗi: ' + data.message);
                     return;
                 }
 
-                renderTkbTableAll(data.data, data.tiet_hoc, data.ma_hoc_ky);
-                document.getElementById('tkbContent').style.display = 'block';
+                updateWeekDisplay(dateStr);
+                renderTkbTableAll(data.data, data.tiet_hoc);
             })
             .catch(err => {
+                console.error(err);
                 document.getElementById('loadingSpinner').style.display = 'none';
-                console.error('Lỗi:', err);
-                alert('Lỗi kết nối: ' + err.message);
             });
         }
 
-        function renderTkbTable(tkbData, tietHoc, lopInfo, maHocKy) {
-            // ✅ FIX: Convert số thành chuỗi (2 → 'Thu2')
-            const thuMap = {
-                '2': 'Thu2',
-                '3': 'Thu3', 
-                '4': 'Thu4',
-                '5': 'Thu5',
-                '6': 'Thu6',
-                '7': 'Thu7',
-                '8': 'CN'
-            };
+        function updateWeekDisplay(dateStr) {
+            const curr = new Date(dateStr);
+            const first = curr.getDate() - curr.getDay() + 1; // Thứ 2
+            const last = first + 6; // CN
 
-            // Nhóm dữ liệu theo (Thứ, Tiết)
+            const firstDay = new Date(curr.setDate(first)).toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit'});
+            const lastDay = new Date(curr.setDate(last)).toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit'});
+            
+            const weekNumber = getWeekNumber(new Date(dateStr));
+
+            document.getElementById('weekDisplay').innerHTML = `
+                <span>Tuần ${weekNumber}</span> 
+                <span class="text-muted fw-normal mx-1">|</span> 
+                <span class="text-primary">${firstDay} - ${lastDay}</span>
+            `;
+        }
+
+        function getWeekNumber(d) {
+            d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+            d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+            var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+            var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
+            return weekNo;
+        }
+
+        function renderTkbTableAll(tkbData, tietHoc) {
+            // Gom dữ liệu
             const tkbGrouped = {};
             tkbData.forEach(item => {
-                // ✅ Convert: 2 → 'Thu2'
-                const thuKey = thuMap[item.thu] || item.thu;
-                const key = thuKey + '_' + item.tiet;
+                const key = item.thu + '_' + item.tiet;
                 tkbGrouped[key] = item;
             });
 
-            console.log('DEBUG tkbGrouped:', tkbGrouped); // ✅ Debug
-
-            const hkDisplay = maHocKy == '1' ? 'HK1' : 'HK2';
-
             let html = `
-                <h6 class="fw-bold mb-3">Lớp: <span class="text-primary">${lopInfo.ten_lop}</span> - 
-                    Học Kỳ: <span class="text-warning">${hkDisplay}</span></h6>
-                
-                <div style="overflow-x: auto;">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Tiết</th>
-                                <th>Thứ 2</th>
-                                <th>Thứ 3</th>
-                                <th>Thứ 4</th>
-                                <th>Thứ 5</th>
-                                <th>Thứ 6</th>
-                                <th>Thứ 7</th>
-                                <th>Chủ Nhật</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                <table class="table-tkb">
+                    <thead>
+                        <tr>
+                            <th>Tiết</th>
+                            <th>Thứ 2</th><th>Thứ 3</th><th>Thứ 4</th>
+                            <th>Thứ 5</th><th>Thứ 6</th><th>Thứ 7</th><th>Chủ Nhật</th>
+                        </tr>
+                    </thead>
+                    <tbody>
             `;
 
-            const maxTiet = 7;
+            // ✅ FIX: Chỉ hiển thị 7 tiết (4 Sáng, 3 Chiều) theo đúng logic của trường
+            const maxTiet = 7; 
             for (let tiet = 1; tiet <= maxTiet; tiet++) {
-                // Thêm dòng phân cách buổi
-                if (tiet === 1) {
-                    html += `<tr><td colspan="8" class="buoi-header">☀️ Buổi Sáng</td></tr>`;
-                } else if (tiet === 5) {
-                    html += `<tr><td colspan="8" class="buoi-header">🌙 Buổi Chiều</td></tr>`;
-                }
                 
+                // Header phân cách
+                if (tiet === 1) html += `<tr class="session-row"><td colspan="8">☀️ SÁNG</td></tr>`;
+                if (tiet === 5) html += `<tr class="session-row"><td colspan="8">🌙 CHIỀU</td></tr>`;
+
                 const tietInfo = tietHoc.find(t => t.so_tiet == tiet) || {};
-                const buoiClass = tiet <= 4 ? 'buoi-sang' : 'buoi-chieu';
-                
-                html += `<tr class="${buoiClass}">
+                const timeStart = tietInfo.gio_bat_dau ? tietInfo.gio_bat_dau.substring(0, 5) : '--';
+                const timeEnd = tietInfo.gio_ket_thuc ? tietInfo.gio_ket_thuc.substring(0, 5) : '--';
+
+                html += `<tr>
                     <td>
-                        <span class="tiet-number">${tiet}</span>
-                        <small class="gio-cell">${tietInfo.gio_bat_dau || '--'}<br>${tietInfo.gio_ket_thuc || '--'}</small>
+                        <div style="font-size: 1.2rem; font-weight: 800; color: #495057;">${tiet}</div>
+                        <div style="font-size: 0.75rem; color: #adb5bd; margin-top: 4px;">${timeStart}<br>${timeEnd}</div>
                     </td>`;
 
-                const thuArray = ['Thu2', 'Thu3', 'Thu4', 'Thu5', 'Thu6', 'Thu7', 'CN'];
-                thuArray.forEach(thu => {
+                for (let thu = 2; thu <= 8; thu++) {
                     const key = thu + '_' + tiet;
                     const item = tkbGrouped[key];
-                    
-                    // ✅ Hardcode Chào cờ & Sinh hoạt cho Thứ 2, tiết 1-2
-                    if (thu === 'Thu2' && tiet === 1) {
+
+                    if (item) {
+                        const loai = item.loai_tiet || 'hoc';
+                        let cardClass = '';
+                        let icon = '';
+
+                        if (loai === 'thi') { cardClass = 'thi'; icon = '<i class="bi bi-pencil-square text-warning"></i>'; }
+                        else if (loai === 'tam_nghi') { cardClass = 'nghi'; icon = '<i class="bi bi-x-circle text-danger"></i>'; }
+                        else if (loai === 'day_bu') { cardClass = 'bu'; icon = '<i class="bi bi-plus-circle text-success"></i>'; }
+                        else if (item.is_changed) { cardClass = 'bu'; icon = '<i class="bi bi-exclamation-circle text-primary"></i>'; }
+
                         html += `<td>
-                            <div class="mon-cell">Chào cờ</div>
-                            <small class="lop-cell">${lopInfo.ten_lop}</small><br>
-                            <span class="phong-cell">Sân trường</span>
-                        </td>`;
-                    } else if (thu === 'Thu2' && tiet === 2) {
-                        html += `<td>
-                            <div class="mon-cell">Sinh hoạt lớp</div>
-                            <small class="lop-cell">${lopInfo.ten_lop}</small><br>
-                            <span class="phong-cell">Phòng học</span>
-                        </td>`;
-                    } else if (item) {
-                        const loaiTiet = item.loai_tiet || 'hoc';
-                        const loaiClass = loaiTiet === 'thi' ? 'loai-thi' : (loaiTiet === 'tam_nghi' ? 'loai-nghi' : 'loai-hoc');
-                        html += `<td class="${loaiClass}">
-                            <div class="mon-cell">${item.mon}</div>
-                            <small class="lop-cell">${item.lop}</small><br>
-                            <span class="phong-cell">${item.phong || 'N/A'}</span>
-                            ${item.ghi_chu ? `<span class="ghi-chu-note"><i class="bi bi-info-circle"></i> ${item.ghi_chu}</span>` : ''}
+                            <div class="lesson-card ${cardClass}">
+                                <span class="lesson-mon">${item.mon} ${icon}</span>
+                                <div class="lesson-info"><i class="bi bi-people-fill"></i> ${item.lop}</div>
+                                <div class="lesson-info"><i class="bi bi-geo-alt-fill"></i> ${item.phong || 'N/A'}</div>
+                                ${item.ghi_chu ? `<div class="lesson-note">${item.ghi_chu}</div>` : ''}
+                            </div>
                         </td>`;
                     } else {
-                        html += `<td><span class="empty-cell">–</span></td>`;
+                        // Hardcode Chào cờ & SH lớp cho Thứ 2
+                        if (thu === 2 && tiet === 1) html += `<td><div class="lesson-card"><span class="lesson-mon text-center">Chào cờ</span></div></td>`;
+                        else if (thu === 2 && tiet === 2) html += `<td><div class="lesson-card"><span class="lesson-mon text-center">SH Lớp</span></div></td>`;
+                        else html += `<td></td>`;
                     }
-                });
-
-                html += `</tr>`;
-            }
-
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
-
-            document.getElementById('tkbContent').innerHTML = html;
-        }
-
-        function renderTkbTableAll(tkbData, tietHoc, maHocKy) {
-            const thuMap = {
-                '2': 'Thu2',
-                '3': 'Thu3', 
-                '4': 'Thu4',
-                '5': 'Thu5',
-                '6': 'Thu6',
-                '7': 'Thu7',
-                '8': 'CN'
-            };
-
-            const tkbGrouped = {};
-            tkbData.forEach(item => {
-                const thuKey = thuMap[item.thu] || item.thu;
-                const key = thuKey + '_' + item.tiet;
-                tkbGrouped[key] = item;
-            });
-
-            const hkDisplay = maHocKy == '1' ? 'HK1' : 'HK2';
-
-            let html = `
-                <h6 class="fw-bold mb-3">Lịch dạy tất cả lớp - Học Kỳ: <span class="text-warning">${hkDisplay}</span></h6>
-                <div style="overflow-x: auto;">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Tiết</th>
-                                <th>Thứ 2</th>
-                                <th>Thứ 3</th>
-                                <th>Thứ 4</th>
-                                <th>Thứ 5</th>
-                                <th>Thứ 6</th>
-                                <th>Thứ 7</th>
-                                <th>Chủ Nhật</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-
-            const maxTiet = 7;
-            for (let tiet = 1; tiet <= maxTiet; tiet++) {
-                // Thêm dòng phân cách buổi
-                if (tiet === 1) {
-                    html += `<tr><td colspan="8" class="buoi-header">☀️ Buổi Sáng</td></tr>`;
-                } else if (tiet === 5) {
-                    html += `<tr><td colspan="8" class="buoi-header">🌙 Buổi Chiều</td></tr>`;
                 }
-                
-                const tietInfo = tietHoc.find(t => t.so_tiet == tiet) || {};
-                const buoiClass = tiet <= 4 ? 'buoi-sang' : 'buoi-chieu';
-                
-                html += `<tr class="${buoiClass}">
-                    <td>
-                        <span class="tiet-number">${tiet}</span>
-                        <small class="gio-cell">${tietInfo.gio_bat_dau || '--'}<br>${tietInfo.gio_ket_thuc || '--'}</small>
-                    </td>`;
-
-                const thuArray = ['Thu2', 'Thu3', 'Thu4', 'Thu5', 'Thu6', 'Thu7', 'CN'];
-                thuArray.forEach(thu => {
-                    const key = thu + '_' + tiet;
-                    const item = tkbGrouped[key];
-                    
-                    // ✅ Hardcode Chào cờ & Sinh hoạt cho Thứ 2, tiết 1-2 (tất cả lớp)
-                    if (thu === 'Thu2' && tiet === 1) {
-                        html += `<td>
-                            <div class="mon-cell">Chào cờ</div>
-                            <small class="lop-cell">Tất cả lớp</small><br>
-                            <span class="phong-cell">Sân trường</span>
-                        </td>`;
-                    } else if (thu === 'Thu2' && tiet === 2) {
-                        html += `<td>
-                            <div class="mon-cell">Sinh hoạt lớp</div>
-                            <small class="lop-cell">Lớp chủ nhiệm</small><br>
-                            <span class="phong-cell">Phòng học</span>
-                        </td>`;
-                    } else if (item) {
-                        const loaiTiet = item.loai_tiet || 'hoc';
-                        const loaiClass = loaiTiet === 'thi' ? 'loai-thi' : (loaiTiet === 'tam_nghi' ? 'loai-nghi' : 'loai-hoc');
-                        html += `<td class="${loaiClass}">
-                            <div class="mon-cell">${item.mon}</div>
-                            <small class="lop-cell">${item.lop}</small><br>
-                            <span class="phong-cell">${item.phong || 'N/A'}</span>
-                            ${item.ghi_chu ? `<span class="ghi-chu-note"><i class="bi bi-info-circle"></i> ${item.ghi_chu}</span>` : ''}
-                        </td>`;
-                    } else {
-                        html += `<td><span class="empty-cell">–</span></td>`;
-                    }
-                });
-
                 html += `</tr>`;
             }
-
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
-
+            html += `</tbody></table>`;
             document.getElementById('tkbContent').innerHTML = html;
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // Mặc định bật chế độ xem tất cả khi vào trang
-            document.getElementById('toggleAll').checked = true;
-            document.getElementById('selectLop').disabled = true;
-            loadData();
-        });
     </script>
-
 </body>
 </html>

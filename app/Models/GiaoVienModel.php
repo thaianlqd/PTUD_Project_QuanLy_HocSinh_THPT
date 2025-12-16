@@ -690,6 +690,118 @@ class GiaoVienModel {
         }
     }
 
+
+    // --- [LOGIC MỚI: OVERLAY TKB CHO GIÁO VIÊN] ---
+
+    /**
+     * A. Lấy Lịch Cứng của GV (Tất cả lớp)
+     */
+    private function getTkbCungGV($ma_giao_vien, $ma_hoc_ky) {
+        $sql = "SELECT 
+                    t.thu, t.tiet, 
+                    th.gio_bat_dau, th.gio_ket_thuc,
+                    mh.ten_mon_hoc AS mon,
+                    lh.ten_lop AS lop,
+                    p.ten_phong AS phong,
+                    t.loai_tiet, t.ghi_chu
+                FROM tkb_chi_tiet t
+                JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
+                JOIN mon_hoc mh ON bpc.ma_mon_hoc = mh.ma_mon_hoc
+                JOIN lop_hoc lh ON bpc.ma_lop = lh.ma_lop
+                LEFT JOIN tiet_hoc th ON t.tiet = th.ma_tiet_hoc
+                LEFT JOIN phong_hoc p ON t.ma_phong_hoc = p.ma_phong
+                WHERE bpc.ma_giao_vien = ? AND t.ma_hoc_ky = ?";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$ma_giao_vien, $ma_hoc_ky]);
+        
+        $tkb = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $tkb[$row['thu']][$row['tiet']] = $row;
+            $tkb[$row['thu']][$row['tiet']]['is_changed'] = false;
+        }
+        return $tkb;
+    }
+
+    /**
+     * B. Lấy Lịch Thay Đổi của GV trong tuần (Tất cả lớp)
+     */
+    private function getThayDoiGVTrongTuan($ma_giao_vien, $start_date, $end_date) {
+        $sql = "SELECT 
+                    t.ngay_thay_doi, t.tiet, t.loai_tiet, t.ghi_chu,
+                    mh.ten_mon_hoc AS mon,
+                    lh.ten_lop AS lop,
+                    -- Có thể join thêm phòng nếu cần
+                    'Xem chi tiết' as phong
+                FROM tkb_thay_doi t
+                JOIN bang_phan_cong bpc ON t.ma_phan_cong = bpc.ma_phan_cong
+                JOIN mon_hoc mh ON bpc.ma_mon_hoc = mh.ma_mon_hoc
+                JOIN lop_hoc lh ON bpc.ma_lop = lh.ma_lop
+                WHERE bpc.ma_giao_vien = ? 
+                AND t.ngay_thay_doi BETWEEN ? AND ?";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$ma_giao_vien, $start_date, $end_date]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * C. HÀM CHÍNH: Lấy TKB Chính thức cho GV (Theo tuần cụ thể)
+     * Thay thế cho getTkbGVAll cũ
+     */
+    public function getTkbGVChinhThuc($ma_giao_vien, $ma_hoc_ky, $start_date, $end_date) {
+        // 1. Lấy lịch cứng
+        $tkb = $this->getTkbCungGV($ma_giao_vien, $ma_hoc_ky);
+
+        // 2. Lấy thay đổi
+        $changes = $this->getThayDoiGVTrongTuan($ma_giao_vien, $start_date, $end_date);
+
+        // 3. Trộn (Merge)
+        foreach ($changes as $c) {
+            $timestamp = strtotime($c['ngay_thay_doi']);
+            $thu = date('N', $timestamp) + 1; // 2-8
+            $tiet = $c['tiet'];
+
+            // Chuẩn bị data hiển thị
+            $mon_hien_thi = $c['mon'];
+            if ($c['loai_tiet'] == 'tam_nghi') {
+                $mon_hien_thi = "(Nghỉ) " . $c['mon'];
+            }
+
+            // Ghi đè vào mảng TKB
+            // Lưu ý: GV có thể có lịch trống ở lịch cứng nhưng lại có lịch dạy bù -> Tự tạo ô mới
+            if (!isset($tkb[$thu][$tiet])) {
+                $tkb[$thu][$tiet] = []; // Init nếu chưa có
+            }
+
+            $tkb[$thu][$tiet]['mon'] = $mon_hien_thi;
+            $tkb[$thu][$tiet]['lop'] = $c['lop'];
+            $tkb[$thu][$tiet]['phong'] = $c['phong']; // Hoặc logic phòng riêng
+            $tkb[$thu][$tiet]['loai_tiet'] = $c['loai_tiet'];
+            $tkb[$thu][$tiet]['ghi_chu'] = $c['ghi_chu'];
+            $tkb[$thu][$tiet]['is_changed'] = true;
+        }
+
+        // Chuyển đổi định dạng mảng về list phẳng (như API cũ trả về) để View dễ render
+        $resultList = [];
+        foreach ($tkb as $thu => $cac_tiet) {
+            foreach ($cac_tiet as $tiet => $data) {
+                // Chỉ cần thêm trường thu, tiet vào data để khớp format cũ
+                $data['thu'] = $thu;
+                $data['tiet'] = $tiet;
+                $resultList[] = $data;
+            }
+        }
+        
+        // Sắp xếp lại cho đẹp
+        usort($resultList, function($a, $b) {
+            if ($a['thu'] == $b['thu']) return $a['tiet'] - $b['tiet'];
+            return $a['thu'] - $b['thu'];
+        });
+
+        return $resultList;
+    }
+
     /**
      * ✅ HÀM 2 (MỚI): Lấy TKB tất cả lớp của GV (để xem tất cả lịch dạy)
      * ⚠️ TÊN KHÁC: getTkbGVAll() - KHÔNG TRÙNG

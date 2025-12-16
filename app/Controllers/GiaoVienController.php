@@ -797,15 +797,54 @@ class GiaoVienController extends Controller {
         }
     }
 
+    // public function xemTkbAllApi() {
+    //     header('Content-Type: application/json; charset=utf-8');
+        
+    //     $ma_hoc_ky = $_POST['ma_hoc_ky'] ?? '1';  // ✅ ĐỔI: 'HK1' → '1'
+        
+    //     try {
+    //         $giaoVienModel = $this->loadModel('GiaoVienModel');
+            
+    //         $tkb_all = $giaoVienModel->getTkbGVAll($this->ma_giao_vien, $ma_hoc_ky);
+    //         $tiet_hoc_list = $giaoVienModel->getDanhSachTietHoc();
+    //         $stats = $giaoVienModel->getThongKeTkbGV($this->ma_giao_vien, $ma_hoc_ky);
+            
+    //         echo json_encode([
+    //             'success' => true,
+    //             'data' => $tkb_all,
+    //             'tiet_hoc' => $tiet_hoc_list,
+    //             'stats' => $stats,
+    //             'ma_hoc_ky' => $ma_hoc_ky
+    //         ], JSON_UNESCAPED_UNICODE);
+            
+    //     } catch (Exception $e) {
+    //         http_response_code(500);
+    //         echo json_encode([
+    //             'success' => false,
+    //             'message' => 'Lỗi: ' . $e->getMessage()
+    //         ], JSON_UNESCAPED_UNICODE);
+    //     }
+    // }
     public function xemTkbAllApi() {
         header('Content-Type: application/json; charset=utf-8');
         
-        $ma_hoc_ky = $_POST['ma_hoc_ky'] ?? '1';  // ✅ ĐỔI: 'HK1' → '1'
-        
+        // Nhận tham số ngày (nếu người dùng chọn tuần khác)
+        // Nếu không có, mặc định là tuần hiện tại
+        $date_view = $_POST['date'] ?? date('Y-m-d'); 
+        $ma_hoc_ky = $_POST['ma_hoc_ky'] ?? '1';
+
         try {
             $giaoVienModel = $this->loadModel('GiaoVienModel');
             
-            $tkb_all = $giaoVienModel->getTkbGVAll($this->ma_giao_vien, $ma_hoc_ky);
+            // Tính toán start_date và end_date của tuần
+            $dt = new DateTime($date_view);
+            $dw = (int)$dt->format('N');
+            $start_week = (clone $dt)->modify('-' . ($dw - 1) . ' days')->format('Y-m-d');
+            $end_week   = (clone $dt)->modify('+6 days')->format('Y-m-d');
+
+            // Gọi hàm mới (TKB Chính thức đã trộn)
+            $tkb_all = $giaoVienModel->getTkbGVChinhThuc($this->ma_giao_vien, $ma_hoc_ky, $start_week, $end_week);
+            
             $tiet_hoc_list = $giaoVienModel->getDanhSachTietHoc();
             $stats = $giaoVienModel->getThongKeTkbGV($this->ma_giao_vien, $ma_hoc_ky);
             
@@ -814,15 +853,13 @@ class GiaoVienController extends Controller {
                 'data' => $tkb_all,
                 'tiet_hoc' => $tiet_hoc_list,
                 'stats' => $stats,
-                'ma_hoc_ky' => $ma_hoc_ky
+                'ma_hoc_ky' => $ma_hoc_ky,
+                'week_range' => "$start_week đến $end_week" // Trả về để hiển thị header nếu cần
             ], JSON_UNESCAPED_UNICODE);
             
         } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode([
-                'success' => false,
-                'message' => 'Lỗi: ' . $e->getMessage()
-            ], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()]);
         }
     }
 
