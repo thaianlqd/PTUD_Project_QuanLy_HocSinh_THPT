@@ -135,11 +135,72 @@
                                 </tr>
                             </thead>
                             <tbody id="bodyPhanCong">
-                                <tr>
-                                    <td colspan="4" class="text-center text-muted py-4">
-                                        Vui lòng chọn Tổ hợp môn ở trên để tải danh sách môn học.
-                                    </td>
-                                </tr>
+                                <?php if (isset($data['mode']) && $data['mode'] === 'edit' && !empty($data['phan_cong'])): ?>
+                                    <?php 
+                                    // --- LOGIC HIỂN THỊ KHI SỬA (Server-side Rendering) ---
+                                    foreach ($data['phan_cong'] as $idx => $pc): 
+                                        $ma_mon = $pc['ma_mon_hoc'];
+                                        $ten_mon = $pc['ten_mon_hoc'];
+                                        $loai_mon = $pc['loai_mon'] ?? 'Tự chọn';
+                                        $so_tiet = $pc['so_tiet_tuan'];
+                                        $ma_gv_hien_tai = $pc['ma_giao_vien'];
+
+                                        // Badge hiển thị loại môn
+                                        $badge = ($loai_mon === 'Bắt buộc') 
+                                            ? '<span class="badge bg-success ms-2">Bắt buộc</span>' 
+                                            : '<span class="badge bg-info ms-2">Tự chọn</span>';
+                                    ?>
+                                        <tr>
+                                            <td class="text-center fw-bold text-secondary"><?php echo $idx + 1; ?></td>
+                                            <td>
+                                                <span class="fw-bold text-primary"><?php echo htmlspecialchars($ten_mon); ?></span>
+                                                <?php echo $badge; ?>
+                                                <input type="hidden" name="mon_id[<?php echo $idx; ?>]" value="<?php echo $ma_mon; ?>">
+                                                <input type="hidden" name="mon_ten[<?php echo $idx; ?>]" value="<?php echo htmlspecialchars($ten_mon); ?>">
+                                                <input type="hidden" name="mon_loai[<?php echo $idx; ?>]" value="<?php echo htmlspecialchars($loai_mon); ?>">
+                                            </td>
+                                            <td>
+                                                <input type="number" class="form-control form-control-sm text-center" style="max-width: 80px;" 
+                                                    name="mon_so_tiet[<?php echo $idx; ?>]" value="<?php echo $so_tiet; ?>" min="1">
+                                            </td>
+                                            <td>
+                                                <select class="form-select form-select-sm select-gv" name="giao_vien_id[<?php echo $idx; ?>]" required>
+                                                    <option value="">-- Chọn GV --</option>
+                                                    <?php 
+                                                    // Lọc và hiển thị danh sách GV phù hợp với môn này
+                                                    // (Hoặc hiển thị tất cả GV nếu muốn đơn giản)
+                                                    if (!empty($data['giao_vien'])) {
+                                                        // Mảng tạm để tránh duplicate GV trong dropdown
+                                                        $printed_gv = []; 
+                                                        foreach ($data['giao_vien'] as $gv) {
+                                                            // Kiểm tra xem GV này có dạy môn này không (So sánh tên môn gần đúng)
+                                                            // Lưu ý: Logic này tương đối, tốt nhất là check theo ma_mon_hoc nếu data gv có
+                                                            $is_teach = (stripos($gv['ten_mon_hoc'] ?? '', $ten_mon) !== false);
+                                                            
+                                                            // Nếu đúng chuyên môn HOẶC là người đang được phân công (để không bị mất option)
+                                                            if ($is_teach || $gv['ma_giao_vien'] == $ma_gv_hien_tai) {
+                                                                if (!in_array($gv['ma_giao_vien'], $printed_gv)) {
+                                                                    $selected = ($gv['ma_giao_vien'] == $ma_gv_hien_tai) ? 'selected' : '';
+                                                                    echo "<option value='{$gv['ma_giao_vien']}' data-name='{$gv['ho_ten']}' $selected>{$gv['ho_ten']}</option>";
+                                                                    $printed_gv[] = $gv['ma_giao_vien'];
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                    ?>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-4">
+                                            <?php echo (isset($data['mode']) && $data['mode'] === 'edit') 
+                                                ? 'Chưa có dữ liệu phân công.' 
+                                                : 'Vui lòng chọn Tổ hợp môn ở trên để tải danh sách môn học.'; ?>
+                                        </td>
+                                    </tr>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
@@ -205,6 +266,7 @@
 
     <script>
     $(document).ready(function() {
+        // Lấy URL gốc
         const BASE_URL = "<?php echo BASE_URL ?? '/PTUD_Project_QLHS_THPT/PTUD_Project_QuanLy_HocSinh_THPT/public'; ?>";
         const namHoc = $("#ma_nam_hoc").val();
 
@@ -213,7 +275,7 @@
             else $("#mainLoading").hide();
         }
 
-        // ===== 1. XỬ LÝ CHỌN KHỐI =====
+        // ===== 1. XỬ LÝ CHỌN KHỐI (Sinh tên lớp + Lấy phòng) =====
         $("#selectKhoi").change(function() {
             const khoi = $(this).val();
             
@@ -229,8 +291,6 @@
             $.post(BASE_URL + '/LopHoc/ajaxGenerateTenLop', {khoi: khoi, nam_hoc: namHoc}, function(res) {
                 if (res.success) {
                     $("#inputTenLop").val(res.ten_lop);
-                } else {
-                    alert("Lỗi: " + (res.error || "Không thể sinh tên lớp"));
                 }
             });
 
@@ -251,25 +311,15 @@
                 } else {
                     alert("Lỗi: " + (res.error || "Không thể tải phòng"));
                 }
-            }).fail(function(xhr, status, error) {
-                toggleLoading(false);
-                console.error("AJAX Error:", status, error);
-                alert("Lỗi kết nối Server!");
-            });
+            }).fail(function() { toggleLoading(false); });
         });
 
-        // ===== 2. XỬ LÝ CHỌN TỔ HỢP MÔN =====
+        // ===== 2. XỬ LÝ CHỌN TỔ HỢP MÔN (Load Môn + Load Full GVCN) =====
         $("#selectToHop").change(function() {
             const toHop = $(this).val();
             
             if (!toHop) {
-                $("#bodyPhanCong").html(`
-                    <tr>
-                        <td colspan="4" class="text-center text-muted py-4">
-                            Vui lòng chọn Tổ hợp môn để tải danh sách.
-                        </td>
-                    </tr>
-                `);
+                $("#bodyPhanCong").html(`<tr><td colspan="4" class="text-center text-muted py-4">Vui lòng chọn Tổ hợp môn.</td></tr>`);
                 return;
             }
 
@@ -279,39 +329,39 @@
                 toggleLoading(false);
                 
                 if (!res.success) {
-                    alert("Lỗi: " + (res.error || "Không thể tải môn học"));
+                    alert("Lỗi: " + (res.error || "Không thể tải dữ liệu"));
                     return;
                 }
 
-                console.log('Response data:', res); // Debug log
-                
-                let html = '';
-                const gvList = res.giao_vien || [];
+                const gvList = res.giao_vien || []; // Danh sách toàn bộ GV lấy từ API
                 const monList = res.mon_hoc || [];
 
-                console.log('Danh sách GV:', gvList); // Debug log
-                console.log('Danh sách môn:', monList); // Debug log
-
+                // --- A. Render bảng Phân công môn học ---
+                let htmlMon = '';
                 if (monList.length === 0) {
-                    html = `<tr><td colspan="4" class="text-center text-warning">Tổ hợp này không có môn học!</td></tr>`;
+                    htmlMon = `<tr><td colspan="4" class="text-center text-warning">Tổ hợp này không có môn học!</td></tr>`;
                 } else {
                     monList.forEach((mon, idx) => {
+                        // Tạo dropdown GV cho từng môn (vẫn giữ logic lọc GV theo chuyên môn nếu muốn)
+                        // Tuy nhiên để đơn giản và linh hoạt, ta cứ đổ full list GV vào, 
+                        // hoặc lọc nhẹ theo tên môn nếu dữ liệu API có hỗ trợ.
+                        
                         let optGV = '<option value="">-- Chọn GV --</option>';
                         
-                        // Lọc GV theo môn học cụ thể (mỗi GV chỉ hiện 1 lần)
+                        // [Logic cũ] Lọc GV theo môn:
                         const gvTheoMon = gvList.filter(gv => 
-                            gv.ten_mon_hoc && gv.ten_mon_hoc.toLowerCase().includes(mon.ten_mon_hoc.toLowerCase())
+                             gv.ten_mon_hoc && gv.ten_mon_hoc.toLowerCase().includes(mon.ten_mon_hoc.toLowerCase())
                         );
-                        
-                        // Populate dropdown giáo viên (loại bỏ duplicate)
+                        // Lọc trùng
                         const uniqueGV = [...new Map(gvTheoMon.map(gv => [gv.ma_giao_vien, gv])).values()];
-                        
+
                         if (uniqueGV.length > 0) {
                             uniqueGV.forEach(gv => {
-                                optGV += `<option value="${gv.ma_giao_vien}" data-name="${gv.ho_ten}">${gv.ho_ten}</option>`;
+                                optGV += `<option value="${gv.ma_giao_vien}">${gv.ho_ten}</option>`;
                             });
                         } else {
-                            optGV += '<option disabled>Không có GV dạy môn này</option>';
+                            // Nếu không tìm thấy GV chuyên môn, hiển thị fallback hoặc để trống
+                            optGV += '<option disabled>Chưa có GV bộ môn này</option>';
                         }
 
                         const soTiet = mon.so_tiet_hk1 || 3;
@@ -319,7 +369,7 @@
                             ? '<span class="badge bg-success ms-2">Bắt buộc</span>' 
                             : '<span class="badge bg-info ms-2">Tự chọn</span>';
 
-                        html += `
+                        htmlMon += `
                             <tr>
                                 <td class="text-center fw-bold text-secondary">${idx + 1}</td>
                                 <td>
@@ -334,7 +384,7 @@
                                            name="mon_so_tiet[${idx}]" value="${soTiet}" min="1">
                                 </td>
                                 <td>
-                                    <select class="form-select form-select-sm select-gv" name="giao_vien_id[${idx}]" required>
+                                    <select class="form-select form-select-sm" name="giao_vien_id[${idx}]" required>
                                         ${optGV}
                                     </select>
                                 </td>
@@ -342,85 +392,40 @@
                         `;
                     });
                 }
+                $("#bodyPhanCong").html(htmlMon);
 
-                $("#bodyPhanCong").html(html);
-                updateGVCNList();
-            }).fail(function(xhr, status, error) {
+                // --- B. [QUAN TRỌNG] Đổ danh sách GVCN (Cho phép chọn TẤT CẢ) ---
+                // Không dùng updateGVCNList() cũ nữa vì nó sẽ xóa mất các GV không dạy bộ môn
+                
+                let htmlGVCN = '<option value="">-- Chọn GVCN --</option>';
+                
+                // Lấy danh sách duy nhất (vì gvList từ API có thể lặp lại do 1 GV dạy nhiều môn)
+                const uniqueAllGV = [...new Map(gvList.map(gv => [gv.ma_giao_vien, gv])).values()];
+                
+                uniqueAllGV.forEach(gv => {
+                    htmlGVCN += `<option value="${gv.ma_giao_vien}">${gv.ho_ten}</option>`;
+                });
+                
+                $("#selectGVCN").html(htmlGVCN);
+
+            }).fail(function() {
                 toggleLoading(false);
-                console.error("AJAX Error:", status, error);
                 alert("Lỗi kết nối Server!");
             });
         });
 
-        // ===== 3. CẬP NHẬT DANH SÁCH GVCN KHI CHỌN GV =====
-        $(document).on('change', '.select-gv', function() {
-            updateGVCNList();
-        });
-
-        function updateGVCNList() {
-            const listGV = [];
-            
-            $(".select-gv").each(function() {
-                const gvId = $(this).val();
-                const gvName = $(this).find(':selected').data('name');
-                
-                if (gvId && gvName) {
-                    // Check trùng lặp
-                    if (!listGV.find(g => g.id === parseInt(gvId))) {
-                        listGV.push({id: parseInt(gvId), name: gvName});
-                    }
-                }
-            });
-
-            const currentSelected = $("#selectGVCN").val();
-            let html = '<option value="">-- Chọn GVCN --</option>';
-            
-            if (listGV.length > 0) {
-                listGV.forEach(gv => {
-                    const selected = gv.id == currentSelected ? 'selected' : '';
-                    html += `<option value="${gv.id}" ${selected}>${gv.name}</option>`;
-                });
-            } else {
-                html += '<option disabled>(Vui lòng chọn GV bộ môn trước)</option>';
-            }
-            
-            $("#selectGVCN").html(html);
-        }
-
-        // ===== 4. SUBMIT FORM =====
+        // ===== 3. SUBMIT FORM (Sửa để bắt thông báo lỗi đúng) =====
         $("#formTaoLop").submit(function(e) {
             e.preventDefault();
             
-            // Validation
+            // Validation cơ bản phía client
             const khoi = $("#selectKhoi").val();
             const toHop = $("#selectToHop").val();
             const phong = $("#selectPhong").val();
             const gvcn = $("#selectGVCN").val();
 
             if (!khoi || !toHop || !phong || !gvcn) {
-                alert("Vui lòng điền đầy đủ thông tin!");
-                return;
-            }
-
-            // Kiểm tra điều kiện môn tự chọn: >=4 và mỗi nhóm KHTN/KHXH/CN-NT >=1 (chỉ tính môn đã gán GV)
-            const monLoai = $("input[name^='mon_loai']").map(function(){ return $(this).val(); }).get();
-            const gvIds = $("select[name^='giao_vien_id']").map(function(){ return $(this).val(); }).get();
-            const groupCount = { KHTN: 0, KHXH: 0, 'CN-NT': 0 };
-            let elective = 0;
-
-            monLoai.forEach((loai, idx) => {
-                const gv = gvIds[idx] || '';
-                if (!gv) return; // chỉ tính môn đã gán GV
-                const lower = (loai || '').toLowerCase();
-                if (lower.includes('bắt buộc')) return;
-                elective++;
-                ['KHTN','KHXH','CN-NT'].forEach(grp => {
-                    if ((loai || '').indexOf(grp) !== -1) groupCount[grp]++;
-                });
-            });
-
-            if (elective < 4 || groupCount.KHTN === 0 || groupCount.KHXH === 0 || groupCount['CN-NT'] === 0) {
-                alert('Cần ≥4 môn tự chọn và mỗi nhóm KHTN/KHXH/CN-NT phải có ≥1 môn.');
+                alert("Vui lòng điền đầy đủ thông tin (Khối, Tổ hợp, Phòng, GVCN)!");
                 return;
             }
 
@@ -429,7 +434,7 @@
             const formData = new FormData(this);
             formData.append('ma_nam_hoc', namHoc);
             
-            // Xác định URL submit dựa trên mode
+            // Check xem đang là mode Sửa hay Thêm
             const isEdit = $("input[name='ma_lop']").length > 0;
             const submitUrl = isEdit ? (BASE_URL + '/LopHoc/update') : (BASE_URL + '/LopHoc/store');
 
@@ -444,15 +449,16 @@
                     toggleLoading(false);
                     
                     if (res.success) {
-                        alert(res.message || (isEdit ? "Cập nhật lớp thành công!" : "Tạo lớp thành công!"));
+                        alert(res.message || (isEdit ? "Cập nhật thành công!" : "Tạo lớp thành công!"));
                         window.location.href = BASE_URL + '/LopHoc';
                     } else {
-                        alert("Lỗi: " + (res.error || "Không thể xử lý"));
+                        // [QUAN TRỌNG] Hiển thị cả res.error hoặc res.message
+                        alert("Lỗi: " + (res.error || res.message || "Không thể xử lý yêu cầu"));
                     }
                 },
                 error: function(xhr, status, error) {
                     toggleLoading(false);
-                    console.error("AJAX Error:", status, error);
+                    console.error(xhr.responseText);
                     alert("Lỗi hệ thống: " + error);
                 }
             });

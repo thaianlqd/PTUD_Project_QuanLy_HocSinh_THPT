@@ -4,15 +4,128 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thanh Toán Học Phí</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <style>
-        body { background-color: #f0f8ff; }
-        .card:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: 0.3s; }
-        .qr-box { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background-color: #fff; }
-        .invoice-item { transition: all 0.3s ease; }
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --card-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+            --border-radius: 16px;
+        }
+
+        body {
+            background-color: #f3f4f6; /* Màu nền xám nhẹ dịu mắt */
+            font-family: 'Inter', sans-serif;
+            color: #4b5563;
+        }
+
+        /* Header Style */
+        .page-header {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 3rem 2rem;
+            border-radius: 0 0 30px 30px;
+            margin-bottom: -3rem; /* Để card trồi lên */
+            box-shadow: 0 4px 20px rgba(118, 75, 162, 0.3);
+        }
+
+        /* Card Style - Hiện đại hóa */
+        .card {
+            border: none;
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+            background: var(--glass-bg);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            overflow: hidden;
+        }
         
-        /* Animation cho icon thành công */
+        /* Filter Tabs Custom */
+        .filter-group {
+            background: #f1f5f9;
+            padding: 5px;
+            border-radius: 12px;
+            display: inline-flex;
+        }
+        .btn-check:checked + .btn-custom-filter {
+            background-color: #fff;
+            color: #764ba2;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .btn-custom-filter {
+            border: none;
+            border-radius: 8px;
+            padding: 6px 16px;
+            font-weight: 600;
+            color: #64748b;
+            transition: all 0.2s;
+        }
+        .btn-custom-filter:hover {
+            color: #764ba2;
+        }
+
+        /* Table Styling */
+        .table thead th {
+            background-color: #f8fafc;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e2e8f0;
+            padding: 1rem;
+        }
+        .table tbody td {
+            padding: 1rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .invoice-item:hover {
+            background-color: #f8fafc;
+        }
+        
+        /* Status Badge */
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .status-valid { background-color: #dcfce7; color: #166534; }
+        .status-expired { background-color: #fee2e2; color: #991b1b; }
+        .status-pending { background-color: #fef9c3; color: #854d0e; }
+        .status-paid { background-color: #e0f2fe; color: #075985; }
+
+        /* Button Gradients */
+        .btn-gradient {
+            background: var(--primary-gradient);
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 8px 20px;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        .btn-gradient:hover {
+            opacity: 0.9;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3);
+        }
+
+        /* QR Box */
+        .qr-box {
+            border: 2px dashed #cbd5e1;
+            padding: 20px;
+            border-radius: 16px;
+            background-color: #f8fafc;
+        }
+
+        /* Success Animation (Giữ nguyên của bác vì nó đẹp rồi) */
         .success-checkmark { width: 80px; height: 80px; margin: 0 auto; }
         .check-icon { width: 80px; height: 80px; position: relative; border-radius: 50%; box-sizing: content-box; border: 4px solid #4CAF50; }
         .check-icon::before { top: 3px; left: -2px; width: 30px; transform-origin: 100% 50%; border-radius: 100px 0 0 100px; }
@@ -36,68 +149,90 @@ $data['hoa_don_da_tt'] = $data['hoa_don_da_tt'] ?? [];
 $data['hoa_don_cho_xac_nhan'] = $data['hoa_don_cho_xac_nhan'] ?? [];
 ?>
 
-<div class="container-fluid p-4">
-    <header class="mb-4 p-4 bg-white rounded-3 shadow-sm">
-        <h1 class="fw-bold text-center text-primary"><i class="bi bi-wallet2 me-2"></i> THANH TOÁN HỌC PHÍ</h1>
-        <p class="text-center text-muted">
-            Chào mừng Phụ huynh, <?php echo htmlspecialchars($data['user_name'] ?? 'Khách'); ?>!
-        </p>
-        <a href="<?php echo BASE_URL; ?>/dashboard" class="btn btn-outline-secondary btn-sm float-end" style="margin-top: -50px;">
-            <i class="bi bi-arrow-left"></i> Dashboard
-        </a>
-    </header>
+<div class="page-header text-center">
+    <h1 class="fw-bold mb-2"><i class="bi bi-mortarboard-fill me-2"></i> Cổng Thanh Toán Học Phí</h1>
+    <p class="opacity-75 mb-4">Xin chào, <strong><?php echo htmlspecialchars($data['user_name'] ?? 'Quý Phụ Huynh'); ?></strong></p>
+    <a href="<?php echo BASE_URL; ?>/dashboard" class="btn btn-light btn-sm rounded-pill px-4 shadow-sm text-primary fw-bold">
+        <i class="bi bi-arrow-left me-1"></i> Quay lại Dashboard
+    </a>
+</div>
 
+<div class="container pb-5" style="margin-top: 2rem;">
+    
     <?php if (isset($data['flash_message'])): ?>
-        <div class="alert alert-<?php echo $data['flash_message']['type']; ?> alert-dismissible fade show" role="alert">
-            <?php echo htmlspecialchars($data['flash_message']['message']); ?>
+        <div class="alert alert-<?php echo $data['flash_message']['type']; ?> alert-dismissible fade show shadow-sm border-0 rounded-4 mb-4" role="alert">
+            <i class="bi bi-info-circle-fill me-2"></i> <?php echo htmlspecialchars($data['flash_message']['message']); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     <?php endif; ?>
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-warning text-dark d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>
-                Hóa đơn chưa thanh toán (<?php echo count($data['hoa_don_chua_tt']); ?>)
-            </h5>
-            <div class="btn-group" role="group">
+    <div class="card mb-5">
+        <div class="card-header bg-white border-0 pt-4 px-4 d-flex flex-wrap justify-content-between align-items-center">
+            <div>
+                <h5 class="fw-bold text-dark mb-1"><i class="bi bi-receipt-cutoff text-primary me-2"></i>Hóa đơn cần thanh toán</h5>
+                <small class="text-muted">Vui lòng thanh toán trước thời hạn để tránh bị khóa.</small>
+            </div>
+            
+            <div class="filter-group mt-2 mt-md-0">
                 <input type="radio" class="btn-check" name="filter_status" id="filter_all" value="all" checked>
-                <label class="btn btn-outline-dark btn-sm fw-bold bg-light" for="filter_all">Tất cả</label>
+                <label class="btn btn-custom-filter" for="filter_all">Tất cả</label>
 
                 <input type="radio" class="btn-check" name="filter_status" id="filter_valid" value="valid">
-                <label class="btn btn-outline-dark btn-sm fw-bold bg-light" for="filter_valid">Còn hạn</label>
+                <label class="btn btn-custom-filter" for="filter_valid">Còn hạn</label>
 
                 <input type="radio" class="btn-check" name="filter_status" id="filter_expired" value="expired">
-                <label class="btn btn-outline-dark btn-sm fw-bold bg-light" for="filter_expired">Đã quá hạn</label>
+                <label class="btn btn-custom-filter" for="filter_expired">Quá hạn</label>
             </div>
         </div>
 
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0 align-middle">
-                    <thead class="table-light">
+                <table class="table mb-0">
+                    <thead>
                         <tr>
-                            <th>Mã HĐ</th><th>Ngày Lập</th><th>Nội Dung</th><th>Số Tiền</th><th>Thời Hạn Đóng</th><th class="text-center">Hành Động</th>
+                            <th class="ps-4">Mã HĐ</th>
+                            <th>Ngày Lập</th>
+                            <th>Nội Dung Thu</th>
+                            <th>Số Tiền</th>
+                            <th>Hạn Đóng</th>
+                            <th class="text-center pe-4">Thao Tác</th>
                         </tr>
                     </thead>
                     <tbody id="invoice_list_body">
                         <?php if (empty($data['hoa_don_chua_tt'])): ?>
-                            <tr><td colspan="6" class="text-center p-5 text-muted">Không có hóa đơn nào chưa thanh toán 🎉</td></tr>
+                            <tr>
+                                <td colspan="6" class="text-center py-5">
+                                    <div class="text-muted">
+                                        <i class="bi bi-check-circle display-4 text-success opacity-50"></i>
+                                        <p class="mt-3 fw-medium">Tuyệt vời! Không có hóa đơn nào cần thanh toán.</p>
+                                    </div>
+                                </td>
+                            </tr>
                         <?php else: ?>
                             <?php foreach ($data['hoa_don_chua_tt'] as $hd): ?>
-                                <tr class="invoice-item <?php echo !empty($hd['qua_han']) ? 'row-expired table-danger' : 'row-valid'; ?>">
-                                    <td><strong>#<?php echo htmlspecialchars($hd['ma_hoa_don']); ?></strong></td>
+                                <tr class="invoice-item <?php echo !empty($hd['qua_han']) ? 'row-expired' : 'row-valid'; ?>">
+                                    <td class="ps-4 fw-bold text-primary">#<?php echo htmlspecialchars($hd['ma_hoa_don']); ?></td>
                                     <td><?php echo date("d/m/Y", strtotime($hd['ngay_lap_hoa_don'])); ?></td>
                                     <td><?php echo htmlspecialchars($hd['ghi_chu'] ?? 'Học phí'); ?></td>
-                                    <td class="fw-bold text-danger"><?php echo number_format($hd['thanh_tien'], 0, ',', '.'); ?> VNĐ</td>
-                                    <td class="<?php echo !empty($hd['qua_han']) ? 'text-danger fw-bold' : 'text-success'; ?>">
-                                        <?php echo date("d/m/Y", strtotime($hd['ngay_het_han'])); ?>
-                                        <?php if (!empty($hd['qua_han'])): ?><div class="small"><i class="bi bi-exclamation-triangle-fill"></i> Quá hạn</div><?php else: ?><div class="small text-muted"><i class="bi bi-check-circle"></i> Còn hạn</div><?php endif; ?>
-                                    </td>
-                                    <td class="text-center">
+                                    <td class="fw-bold text-danger fs-6"><?php echo number_format($hd['thanh_tien'], 0, ',', '.'); ?> ₫</td>
+                                    <td>
                                         <?php if (!empty($hd['qua_han'])): ?>
-                                            <button class="btn btn-secondary btn-sm" disabled><i class="bi bi-lock-fill me-1"></i> Đã khóa</button>
+                                            <span class="status-badge status-expired"><i class="bi bi-exclamation-triangle-fill"></i> Quá hạn</span>
+                                            <div class="small text-muted mt-1"><?php echo date("d/m/Y", strtotime($hd['ngay_het_han'])); ?></div>
                                         <?php else: ?>
-                                            <button class="btn btn-success btn-sm fw-bold" onclick="openThanhToanModal(<?php echo (int)$hd['ma_hoa_don']; ?>, <?php echo (float)$hd['thanh_tien']; ?>, '<?php echo addslashes(htmlspecialchars($hd['ghi_chu'] ?? 'Học phí')); ?>')"><i class="bi bi-credit-card-fill me-1"></i> Thanh Toán</button>
+                                            <span class="status-badge status-valid"><i class="bi bi-clock"></i> Còn hạn</span>
+                                            <div class="small text-muted mt-1"><?php echo date("d/m/Y", strtotime($hd['ngay_het_han'])); ?></div>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center pe-4">
+                                        <?php if (!empty($hd['qua_han'])): ?>
+                                            <button class="btn btn-secondary btn-sm rounded-pill px-3" disabled>
+                                                <i class="bi bi-lock-fill"></i> Đã khóa
+                                            </button>
+                                        <?php else: ?>
+                                            <button class="btn btn-gradient btn-sm" onclick="openThanhToanModal(<?php echo (int)$hd['ma_hoa_don']; ?>, <?php echo (float)$hd['thanh_tien']; ?>, '<?php echo addslashes(htmlspecialchars($hd['ghi_chu'] ?? 'Học phí')); ?>')">
+                                                Thanh Toán <i class="bi bi-chevron-right ms-1"></i>
+                                            </button>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
@@ -110,22 +245,22 @@ $data['hoa_don_cho_xac_nhan'] = $data['hoa_don_cho_xac_nhan'] ?? [];
     </div>
 
     <?php if (!empty($data['hoa_don_cho_xac_nhan'])): ?>
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-info text-dark">
-            <h5 class="mb-0"><i class="bi bi-hourglass-split me-2"></i> Hóa đơn chờ xác nhận tại trường</h5>
+    <div class="card mb-5 border-warning border-start border-4">
+        <div class="card-header bg-white border-0 pt-3">
+            <h6 class="fw-bold text-warning"><i class="bi bi-hourglass-split me-2"></i>Đang chờ xác nhận tại trường</h6>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0 align-middle">
-                    <thead class="table-light"><tr><th>Mã HĐ</th><th>Nội Dung</th><th>Số Tiền</th><th>Trạng Thái</th><th>In Phiếu</th></tr></thead>
+                <table class="table mb-0">
+                    <thead class="bg-light"><tr><th class="ps-4">Mã HĐ</th><th>Nội Dung</th><th>Số Tiền</th><th>Trạng Thái</th><th class="text-center pe-4">Phiếu</th></tr></thead>
                     <tbody>
                         <?php foreach ($data['hoa_don_cho_xac_nhan'] as $hd): ?>
                             <tr>
-                                <td><strong>#<?php echo htmlspecialchars($hd['ma_hoa_don']); ?></strong></td>
+                                <td class="ps-4 fw-bold">#<?php echo htmlspecialchars($hd['ma_hoa_don']); ?></td>
                                 <td><?php echo htmlspecialchars($hd['ghi_chu'] ?? 'Học phí'); ?></td>
-                                <td class="fw-bold text-info"><?php echo number_format($hd['thanh_tien'], 0, ',', '.'); ?> VNĐ</td>
-                                <td><span class="badge bg-warning text-dark">Chờ xác nhận tiền mặt</span></td>
-                                <td><a href="<?php echo BASE_URL; ?>/thanhtoan/inPhieu?ma_hoa_don=<?php echo $hd['ma_hoa_don']; ?>" target="_blank" class="btn btn-outline-dark btn-sm"><i class="bi bi-printer"></i></a></td>
+                                <td class="fw-bold"><?php echo number_format($hd['thanh_tien'], 0, ',', '.'); ?> ₫</td>
+                                <td><span class="status-badge status-pending">Chờ nộp tiền mặt</span></td>
+                                <td class="text-center pe-4"><a href="<?php echo BASE_URL; ?>/thanhtoan/inPhieu?ma_hoa_don=<?php echo $hd['ma_hoa_don']; ?>" target="_blank" class="btn btn-outline-dark btn-sm rounded-circle"><i class="bi bi-printer"></i></a></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -135,26 +270,26 @@ $data['hoa_don_cho_xac_nhan'] = $data['hoa_don_cho_xac_nhan'] ?? [];
     </div>
     <?php endif; ?>
 
-    <div class="card shadow-sm">
-        <div class="card-header bg-success text-white">
-            <h5 class="mb-0"><i class="bi bi-check-circle me-2"></i> Lịch sử đã thanh toán (<?php echo count($data['hoa_don_da_tt']); ?>)</h5>
+    <div class="card">
+        <div class="card-header bg-white border-0 pt-4 px-4">
+            <h5 class="fw-bold text-dark mb-0"><i class="bi bi-clock-history text-success me-2"></i>Lịch sử giao dịch</h5>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0 align-middle">
-                    <thead class="table-light"><tr><th>Mã HĐ</th><th>Nội Dung</th><th>Số Tiền</th><th>Ngày TT</th><th>Phương Thức</th><th>Phiếu</th></tr></thead>
+                <table class="table table-hover mb-0">
+                    <thead><tr><th class="ps-4">Mã HĐ</th><th>Nội Dung</th><th>Số Tiền</th><th>Thời Gian</th><th>Kênh TT</th><th class="text-center pe-4">Biên Lai</th></tr></thead>
                     <tbody>
                         <?php if (empty($data['hoa_don_da_tt'])): ?>
-                            <tr><td colspan="6" class="text-center p-5 text-muted">Chưa có dữ liệu.</td></tr>
+                            <tr><td colspan="6" class="text-center py-4 text-muted">Chưa có lịch sử giao dịch nào.</td></tr>
                         <?php else: ?>
                             <?php foreach ($data['hoa_don_da_tt'] as $hd): ?>
                                 <tr>
-                                    <td><strong>#<?php echo htmlspecialchars($hd['ma_hoa_don']); ?></strong></td>
+                                    <td class="ps-4 text-muted">#<?php echo htmlspecialchars($hd['ma_hoa_don']); ?></td>
                                     <td><?php echo htmlspecialchars($hd['ghi_chu'] ?? 'Học phí'); ?></td>
-                                    <td class="fw-bold text-success"><?php echo number_format($hd['thanh_tien'], 0, ',', '.'); ?> VNĐ</td>
-                                    <td><?php echo date("d/m/Y H:i", strtotime($hd['ngay_thanh_toan'])); ?></td>
-                                    <td><span class="badge bg-info"><?php echo htmlspecialchars($hd['hinh_thuc_thanh_toan'] ?? 'Không rõ'); ?></span></td>
-                                    <td><a href="<?php echo BASE_URL; ?>/thanhtoan/inPhieu?ma_hoa_don=<?php echo $hd['ma_hoa_don']; ?>" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="bi bi-printer-fill"></i></a></td>
+                                    <td class="fw-bold text-success"><?php echo number_format($hd['thanh_tien'], 0, ',', '.'); ?> ₫</td>
+                                    <td><?php echo date("H:i - d/m/Y", strtotime($hd['ngay_thanh_toan'])); ?></td>
+                                    <td><span class="status-badge status-paid"><?php echo htmlspecialchars($hd['hinh_thuc_thanh_toan'] ?? 'Không rõ'); ?></span></td>
+                                    <td class="text-center pe-4"><a href="<?php echo BASE_URL; ?>/thanhtoan/inPhieu?ma_hoa_don=<?php echo $hd['ma_hoa_don']; ?>" target="_blank" class="btn btn-light btn-sm text-secondary rounded-circle shadow-sm"><i class="bi bi-printer-fill"></i></a></td>
                                 </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -167,44 +302,82 @@ $data['hoa_don_cho_xac_nhan'] = $data['hoa_don_cho_xac_nhan'] ?? [];
 
 <div class="modal fade" id="modalThanhToan" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title fw-bold">Xác Nhận Thanh Toán</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-white border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark">Chọn hình thức thanh toán</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <p>Thanh toán cho hóa đơn: <strong id="modal_noi_dung"></strong></p>
-                <p>Số tiền: <strong class="text-danger fs-4" id="modal_so_tien"></strong></p>
+            <div class="modal-body p-4">
+                <div class="text-center mb-4">
+                    <p class="text-muted mb-1">Thanh toán cho: <strong id="modal_noi_dung" class="text-dark"></strong></p>
+                    <h3 class="fw-bold text-primary" id="modal_so_tien"></h3>
+                </div>
+                
                 <form id="formThanhToan">
                     <input type="hidden" id="modal_ma_hoa_don" name="ma_hoa_don">
-                    <div class="list-group">
-                        <label class="list-group-item list-group-item-action"><input class="form-check-input me-2" type="radio" name="phuong_thuc" value="VNPAY" checked> <i class="bi bi-qr-code text-primary"></i> VNPAY</label>
-                        <label class="list-group-item list-group-item-action"><input class="form-check-input me-2" type="radio" name="phuong_thuc" value="SepayQR"> <i class="bi bi-bank2 text-info"></i> Quét QR Ngân hàng</label>
-                        <label class="list-group-item list-group-item-action"><input class="form-check-input me-2" type="radio" name="phuong_thuc" value="TienMat"> <i class="bi bi-cash-coin text-success"></i> Tiền mặt</label>
+                    <div class="d-grid gap-3">
+                        <label class="btn btn-outline-light text-start p-3 border rounded-3 d-flex align-items-center shadow-sm position-relative">
+                            <input class="form-check-input position-absolute top-50 end-0 me-3 translate-middle-y" type="radio" name="phuong_thuc" value="VNPAY" checked>
+                            <div class="bg-white p-2 rounded shadow-sm me-3"><img src="https://vinadesign.vn/uploads/images/2023/05/vnpay-logo-vinadesign-25-12-57-55.png" height="30" alt="VNPAY"></div>
+                            <div>
+                                <div class="fw-bold text-dark">Ví VNPAY / Ngân hàng</div>
+                                <div class="small text-muted">Thẻ ATM, Visa, Mobile Banking</div>
+                            </div>
+                        </label>
+
+                        <label class="btn btn-outline-light text-start p-3 border rounded-3 d-flex align-items-center shadow-sm position-relative">
+                            <input class="form-check-input position-absolute top-50 end-0 me-3 translate-middle-y" type="radio" name="phuong_thuc" value="SepayQR">
+                            <div class="bg-white p-2 rounded shadow-sm me-3"><i class="bi bi-qr-code-scan fs-4 text-primary"></i></div>
+                            <div>
+                                <div class="fw-bold text-dark">Chuyển khoản QR</div>
+                                <div class="small text-muted">Tự động xác nhận 24/7</div>
+                            </div>
+                        </label>
+
+                        <label class="btn btn-outline-light text-start p-3 border rounded-3 d-flex align-items-center shadow-sm position-relative">
+                            <input class="form-check-input position-absolute top-50 end-0 me-3 translate-middle-y" type="radio" name="phuong_thuc" value="TienMat">
+                            <div class="bg-white p-2 rounded shadow-sm me-3"><i class="bi bi-cash-stack fs-4 text-success"></i></div>
+                            <div>
+                                <div class="fw-bold text-dark">Tiền mặt</div>
+                                <div class="small text-muted">Đóng trực tiếp tại phòng tài vụ</div>
+                            </div>
+                        </label>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                <button type="button" class="btn btn-success fw-bold" id="btnXacNhanTT" onclick="submitThanhToan()">Tiếp Tục <i class="bi bi-arrow-right"></i></button>
+            <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-gradient rounded-pill px-5 shadow" id="btnXacNhanTT" onclick="submitThanhToan()">Tiếp Tục <i class="bi bi-arrow-right"></i></button>
             </div>
-            <div id="loaderSepay" class="text-center p-3" style="display:none;"><span class="spinner-border text-success"></span> Đang xử lý...</div>
+            <div id="loaderSepay" class="text-center p-3" style="display:none;">
+                <div class="spinner-border text-primary" role="status"></div>
+                <div class="mt-2 text-muted small">Đang khởi tạo giao dịch...</div>
+            </div>
         </div>
     </div>
 </div>
 
 <div class="modal fade" id="modalSepayQR" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title">Quét Mã QR Để Thanh Toán</h5>
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-scan me-2"></i>Quét mã QR để thanh toán</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="clearInterval(window.pollInterval); window.location.reload();"></button>
             </div>
-            <div class="modal-body text-center">
-                <div class="qr-box mx-auto mb-3"><img id="qr_image" src="" style="width:100%; max-width:250px;"></div>
-                <h4 class="text-danger fw-bold" id="qr_amount"></h4>
-                <p>Nội dung: <strong id="qr_ref_code" class="text-success"></strong></p>
-                <span id="qr_status" class="badge bg-warning text-dark">Đang chờ thanh toán...</span>
+            <div class="modal-body text-center p-4">
+                <div class="qr-box mx-auto mb-3 bg-white p-3 rounded-3 shadow-sm" style="max-width: 280px;">
+                    <img id="qr_image" src="" style="width:100%;">
+                </div>
+                <h3 class="text-danger fw-bold mb-1" id="qr_amount"></h3>
+                <p class="text-muted">Nội dung CK: <strong id="qr_ref_code" class="text-primary bg-light px-2 py-1 rounded"></strong></p>
+                
+                <div class="mt-4">
+                    <span id="qr_status" class="badge bg-warning text-dark px-3 py-2 rounded-pill">
+                        <span class="spinner-grow spinner-grow-sm me-1" role="status" aria-hidden="true"></span>
+                        Đang chờ thanh toán...
+                    </span>
+                    <p class="small text-muted mt-2 mb-0">Hệ thống sẽ tự động xác nhận khi tiền về.</p>
+                </div>
             </div>
         </div>
     </div>
@@ -212,7 +385,7 @@ $data['hoa_don_cho_xac_nhan'] = $data['hoa_don_cho_xac_nhan'] ?? [];
 
 <div class="modal fade" id="modalSuccess" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content text-center p-4">
+        <div class="modal-content border-0 shadow-lg rounded-4 text-center p-4">
             <div class="modal-body">
                 <div class="success-checkmark">
                     <div class="check-icon">
@@ -222,15 +395,15 @@ $data['hoa_don_cho_xac_nhan'] = $data['hoa_don_cho_xac_nhan'] ?? [];
                         <div class="icon-fix"></div>
                     </div>
                 </div>
-                <h3 class="fw-bold text-success mt-3">Thanh toán thành công!</h3>
-                <p class="text-muted">Giao dịch đã được ghi nhận vào hệ thống.</p>
+                <h3 class="fw-bold text-success mt-4">Thanh toán thành công!</h3>
+                <p class="text-muted mb-4">Giao dịch đã được ghi nhận vào hệ thống nhà trường.</p>
                 
-                <div class="d-grid gap-2 mt-4">
-                    <button class="btn btn-primary btn-lg" id="btnViewInvoice">
-                        <i class="bi bi-printer-fill me-2"></i> XEM & IN BIÊN LAI
+                <div class="d-grid gap-2 col-10 mx-auto">
+                    <button class="btn btn-primary btn-lg rounded-pill shadow" id="btnViewInvoice">
+                        <i class="bi bi-file-earmark-pdf me-2"></i> XEM BIÊN LAI
                     </button>
-                    <button class="btn btn-outline-secondary" onclick="window.location.reload()">
-                        Đóng và về danh sách
+                    <button class="btn btn-outline-secondary rounded-pill" onclick="window.location.reload()">
+                        Về danh sách
                     </button>
                 </div>
             </div>
@@ -240,6 +413,7 @@ $data['hoa_don_cho_xac_nhan'] = $data['hoa_don_cho_xac_nhan'] ?? [];
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
     const BASE_URL = "<?php echo BASE_URL; ?>";

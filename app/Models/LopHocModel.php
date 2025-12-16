@@ -460,6 +460,117 @@ class LopHocModel {
      * @param array $listPhanCong - Danh sách phân công mới
      * @return array ['success' => bool, 'message' => string]
      */
+    // public function updateLopFull($ma_lop, $dataLop, $listPhanCong) {
+    //     try {
+    //         $this->db->beginTransaction();
+
+    //         // A. Cập nhật thông tin lớp học
+    //         $sqlUpdate = "UPDATE lop_hoc SET 
+    //                         ten_lop = :ten,
+    //                         khoi = :khoi,
+    //                         ma_to_hop_mon = :tohop,
+    //                         ma_phong_hoc_chinh = :phong,
+    //                         ma_gvcn = :gvcn,
+    //                         trang_thai_lop = :trang_thai
+    //                     WHERE ma_lop = :ma_lop";
+            
+    //         $stmt = $this->db->prepare($sqlUpdate);
+    //         $stmt->execute([
+    //             ':ten' => $dataLop['ten_lop'],
+    //             ':khoi' => $dataLop['khoi'],
+    //             ':tohop' => $dataLop['ma_to_hop'],
+    //             ':phong' => $dataLop['ma_phong_hoc_chinh'],
+    //             ':gvcn' => $dataLop['ma_gvcn'],
+    //             ':trang_thai' => $dataLop['trang_thai_lop'] ?? 'HoatDong',
+    //             ':ma_lop' => $ma_lop
+    //         ]);
+            
+    //         error_log("✓ Updated lop_hoc ID: $ma_lop, Name: {$dataLop['ten_lop']}");
+
+    //         // B. Xóa toàn bộ phân công cũ
+    //         $sqlDeletePC = "DELETE FROM bang_phan_cong WHERE ma_lop = ?";
+    //         $stmtDelete = $this->db->prepare($sqlDeletePC);
+    //         $stmtDelete->execute([$ma_lop]);
+            
+    //         $deletedCount = $stmtDelete->rowCount();
+    //         error_log("✓ Deleted $deletedCount old bang_phan_cong records");
+
+    //         // C. Insert lại phân công mới
+    //         $sqlInsertPC = "INSERT INTO bang_phan_cong 
+    //                         (ten_bang_phan_cong, trang_thai, ma_mon_hoc, ma_giao_vien, ma_lop, so_tiet_tuan) 
+    //                         VALUES 
+    //                         (:ten_pc, 'HoatDong', :ma_mon, :ma_gv, :ma_lop, :so_tiet)";
+            
+    //         $stmtPC = $this->db->prepare($sqlInsertPC);
+    //         $insertedPC = 0;
+
+    //         foreach ($listPhanCong as $pc) {
+    //             if (!empty($pc['ma_gv']) && !empty($pc['ma_mon'])) {
+    //                 $tenPhanCong = "PC " . $pc['ten_mon'] . " - " . $dataLop['ten_lop'];
+
+    //                 $stmtPC->execute([
+    //                     ':ten_pc' => $tenPhanCong,
+    //                     ':ma_mon' => $pc['ma_mon'],
+    //                     ':ma_gv' => $pc['ma_gv'],
+    //                     ':ma_lop' => $ma_lop,
+    //                     ':so_tiet' => (int)($pc['so_tiet'] ?? 3)
+    //                 ]);
+    //                 $insertedPC++;
+    //             }
+    //         }
+            
+    //         error_log("✓ Created $insertedPC new bang_phan_cong records");
+
+    //         $this->db->commit();
+    //         return [
+    //             'success' => true,
+    //             'message' => "Cập nhật lớp {$dataLop['ten_lop']} thành công!"
+    //         ];
+            
+    //     } catch (Exception $e) {
+    //         $this->db->rollBack();
+    //         error_log("✗ Error updateLopFull: " . $e->getMessage());
+    //         return [
+    //             'success' => false,
+    //             'message' => 'Lỗi: ' . $e->getMessage()
+    //         ];
+    //     }
+    // }
+
+    /**
+     * [MỚI] Kiểm tra xem GV này đã chủ nhiệm lớp nào khác trong năm học này chưa
+     * @param int $ma_gv Mã giáo viên
+     * @param int $ma_nam_hoc Mã năm học
+     * @param int|null $ma_lop_tru_ra (Dùng khi sửa) Mã lớp hiện tại để trừ ra
+     * @return bool True nếu ĐÃ bận, False nếu chưa chủ nhiệm lớp nào
+     */
+    public function isGVCNDaCoLop($ma_gv, $ma_nam_hoc, $ma_lop_tru_ra = null) {
+        $sql = "SELECT COUNT(*) FROM lop_hoc 
+                WHERE ma_gvcn = :ma_gv 
+                AND ma_nam_hoc = :nam_hoc 
+                AND trang_thai_lop = 'HoatDong'"; // Chỉ tính lớp đang hoạt động
+        
+        $params = [':ma_gv' => $ma_gv, ':nam_hoc' => $ma_nam_hoc];
+
+        if ($ma_lop_tru_ra) {
+            $sql .= " AND ma_lop != :ma_lop"; // Trừ chính lớp đang sửa
+            $params[':ma_lop'] = $ma_lop_tru_ra;
+        }
+
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchColumn() > 0;
+        } catch (Exception $e) {
+            error_log("Error check GVCN: " . $e->getMessage());
+            return false; // Mặc định cho qua nếu lỗi DB (hoặc true tùy policy)
+        }
+    }
+
+    /**
+     * [ĐÃ SỬA] Cập nhật lớp học + Phân công (Logic thông minh: Diff thay vì Delete All)
+     * Giúp giữ lại ma_phan_cong cũ để không mất điểm số.
+     */
     public function updateLopFull($ma_lop, $dataLop, $listPhanCong) {
         try {
             $this->db->beginTransaction();
@@ -472,7 +583,7 @@ class LopHocModel {
                             ma_phong_hoc_chinh = :phong,
                             ma_gvcn = :gvcn,
                             trang_thai_lop = :trang_thai
-                        WHERE ma_lop = :ma_lop";
+                          WHERE ma_lop = :ma_lop";
             
             $stmt = $this->db->prepare($sqlUpdate);
             $stmt->execute([
@@ -484,42 +595,85 @@ class LopHocModel {
                 ':trang_thai' => $dataLop['trang_thai_lop'] ?? 'HoatDong',
                 ':ma_lop' => $ma_lop
             ]);
-            
-            error_log("✓ Updated lop_hoc ID: $ma_lop, Name: {$dataLop['ten_lop']}");
 
-            // B. Xóa toàn bộ phân công cũ
-            $sqlDeletePC = "DELETE FROM bang_phan_cong WHERE ma_lop = ?";
-            $stmtDelete = $this->db->prepare($sqlDeletePC);
-            $stmtDelete->execute([$ma_lop]);
+            // B. XỬ LÝ PHÂN CÔNG (Logic Diff)
             
-            $deletedCount = $stmtDelete->rowCount();
-            error_log("✓ Deleted $deletedCount old bang_phan_cong records");
+            // 1. Lấy danh sách phân công CŨ từ DB
+            $sqlGetOld = "SELECT ma_phan_cong, ma_mon_hoc FROM bang_phan_cong WHERE ma_lop = ?";
+            $stmtOld = $this->db->prepare($sqlGetOld);
+            $stmtOld->execute([$ma_lop]);
+            $oldAssignments = $stmtOld->fetchAll(PDO::FETCH_ASSOC);
 
-            // C. Insert lại phân công mới
-            $sqlInsertPC = "INSERT INTO bang_phan_cong 
-                            (ten_bang_phan_cong, trang_thai, ma_mon_hoc, ma_giao_vien, ma_lop, so_tiet_tuan) 
-                            VALUES 
-                            (:ten_pc, 'HoatDong', :ma_mon, :ma_gv, :ma_lop, :so_tiet)";
+            // Map lại mảng cũ: [ma_mon_hoc => ma_phan_cong] để dễ tìm kiếm
+            $mapOld = [];
+            foreach ($oldAssignments as $item) {
+                $mapOld[$item['ma_mon_hoc']] = $item['ma_phan_cong'];
+            }
+
+            // 2. Chuẩn bị câu lệnh SQL
+            $sqlInsert = "INSERT INTO bang_phan_cong 
+                          (ten_bang_phan_cong, trang_thai, ma_mon_hoc, ma_giao_vien, ma_lop, so_tiet_tuan) 
+                          VALUES (:ten, 'HoatDong', :mon, :gv, :lop, :tiet)";
             
-            $stmtPC = $this->db->prepare($sqlInsertPC);
-            $insertedPC = 0;
+            $sqlUpdatePC = "UPDATE bang_phan_cong SET 
+                            ma_giao_vien = :gv, 
+                            so_tiet_tuan = :tiet, 
+                            ten_bang_phan_cong = :ten 
+                            WHERE ma_phan_cong = :id";
+            
+            $stmtInsert = $this->db->prepare($sqlInsert);
+            $stmtUpdatePC = $this->db->prepare($sqlUpdatePC);
 
+            // Mảng lưu các môn ĐÃ XỬ LÝ trong danh sách mới
+            $processedMonIds = [];
+
+            // 3. Duyệt danh sách MỚI gửi lên
             foreach ($listPhanCong as $pc) {
-                if (!empty($pc['ma_gv']) && !empty($pc['ma_mon'])) {
-                    $tenPhanCong = "PC " . $pc['ten_mon'] . " - " . $dataLop['ten_lop'];
+                if (empty($pc['ma_gv']) || empty($pc['ma_mon'])) continue;
 
-                    $stmtPC->execute([
-                        ':ten_pc' => $tenPhanCong,
-                        ':ma_mon' => $pc['ma_mon'],
-                        ':ma_gv' => $pc['ma_gv'],
-                        ':ma_lop' => $ma_lop,
-                        ':so_tiet' => (int)($pc['so_tiet'] ?? 3)
+                $maMon = $pc['ma_mon'];
+                $tenPC = "PC " . $pc['ten_mon'] . " - " . $dataLop['ten_lop'];
+                $soTiet = (int)($pc['so_tiet'] ?? 3);
+                
+                $processedMonIds[] = $maMon; // Đánh dấu môn này vẫn còn
+
+                if (isset($mapOld[$maMon])) {
+                    // --- TRƯỜNG HỢP 1: Môn này ĐÃ CÓ -> UPDATE ---
+                    // Ta giữ nguyên ma_phan_cong cũ (là $mapOld[$maMon])
+                    $stmtUpdatePC->execute([
+                        ':gv' => $pc['ma_gv'],
+                        ':tiet' => $soTiet,
+                        ':ten' => $tenPC,
+                        ':id' => $mapOld[$maMon]
                     ]);
-                    $insertedPC++;
+                } else {
+                    // --- TRƯỜNG HỢP 2: Môn này MỚI THÊM -> INSERT ---
+                    $stmtInsert->execute([
+                        ':ten' => $tenPC,
+                        ':mon' => $maMon,
+                        ':gv' => $pc['ma_gv'],
+                        ':lop' => $ma_lop,
+                        ':tiet' => $soTiet
+                    ]);
                 }
             }
+
+            // 4. Xóa các môn KHÔNG CÒN trong danh sách mới (DELETE)
+            // Những môn có trong mapOld nhưng không nằm trong $processedMonIds nghĩa là user đã bỏ môn đó
+            $monCanXoa = array_diff(array_keys($mapOld), $processedMonIds);
             
-            error_log("✓ Created $insertedPC new bang_phan_cong records");
+            if (!empty($monCanXoa)) {
+                $idsToDelete = [];
+                foreach ($monCanXoa as $mId) {
+                    $idsToDelete[] = $mapOld[$mId];
+                }
+                
+                // Chuyển mảng ID thành chuỗi ?,?,?
+                $placeholders = implode(',', array_fill(0, count($idsToDelete), '?'));
+                $sqlDelete = "DELETE FROM bang_phan_cong WHERE ma_phan_cong IN ($placeholders)";
+                $stmtDelete = $this->db->prepare($sqlDelete);
+                $stmtDelete->execute($idsToDelete);
+            }
 
             $this->db->commit();
             return [
@@ -532,7 +686,7 @@ class LopHocModel {
             error_log("✗ Error updateLopFull: " . $e->getMessage());
             return [
                 'success' => false,
-                'message' => 'Lỗi: ' . $e->getMessage()
+                'message' => 'Lỗi cập nhật: ' . $e->getMessage()
             ];
         }
     }
@@ -573,6 +727,37 @@ class LopHocModel {
         } catch (PDOException $e) {
             error_log("Error getPhanCongByLop: " . $e->getMessage());
             return [];
+        }
+    }
+
+
+    /**
+     * [MỚI] Đếm số lượng học sinh đang học trong lớp
+     */
+    public function countHocSinhByLop($ma_lop) {
+        // Giả sử bảng học sinh tên là 'hoc_sinh' và có cột 'ma_lop'
+        // Thêm điều kiện trang_thai nếu cần (ví dụ chỉ đếm học sinh đang học)
+        $sql = "SELECT COUNT(*) FROM hoc_sinh WHERE ma_lop = :ma_lop"; 
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':ma_lop' => $ma_lop]);
+            return (int)$stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * [MỚI] Lấy thông tin sức chứa của phòng học
+     */
+    public function getSucChuaByPhong($ma_phong) {
+        $sql = "SELECT suc_chua FROM phong_hoc WHERE ma_phong = :ma_phong";
+        try {
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([':ma_phong' => $ma_phong]);
+            return (int)$stmt->fetchColumn();
+        } catch (Exception $e) {
+            return 999; // Nếu lỗi thì trả về số lớn để không chặn sai
         }
     }
 
