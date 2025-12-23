@@ -386,6 +386,8 @@ class TkbController extends Controller {
         header('Location: ' . BASE_URL . '/tkb/xeptkb'); exit;
     }
 
+    
+
 
     /**
      * API: /tkb/getDanhSachMonHocGV/{ma_lop}/{thu}/{tiet} (GET)

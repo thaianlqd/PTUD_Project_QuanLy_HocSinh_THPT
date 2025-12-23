@@ -253,73 +253,146 @@ class ThiSinhModel_NhapHoc {
     // ========================================================================
     // 1. LẤY DANH SÁCH TRƯỜNG (ĐẬU & TRƯỢT) + ĐIỂM CHUẨN (CHUẨN 100%)
     // ========================================================================
+    // public function getDanhSachTruongNhapHoc($ma_nguoi_dung) {
+    //     try {
+    //         // A. Lấy tất cả NV đã đăng ký của thí sinh
+    //         $sqlNV = "SELECT nv.ma_truong, tt.ten_truong, nv.thu_tu_nguyen_vong 
+    //                   FROM nguyen_vong nv
+    //                   JOIN truong_thpt tt ON nv.ma_truong = tt.ma_truong
+    //                   WHERE nv.ma_nguoi_dung = ? 
+    //                   ORDER BY nv.thu_tu_nguyen_vong ASC";
+            
+    //         $stmtNV = $this->db->prepare($sqlNV);
+    //         $stmtNV->execute([$ma_nguoi_dung]);
+    //         $danhSachNV = $stmtNV->fetchAll();
+            
+    //         // B. Lấy thông tin kết quả xét tuyển của thí sinh này
+    //         $sqlKQ = "SELECT 
+    //                     ts.trang_thai, 
+    //                     ts.trang_thai_xac_nhan, 
+    //                     ts.truong_trung_tuyen, -- Tên trường đậu (lưu dạng text)
+    //                     (dts.diem_toan * 2 + dts.diem_van * 2 + dts.diem_anh) as diem_cua_ban
+    //                 FROM thi_sinh ts
+    //                 JOIN diem_thi_tuyen_sinh dts ON ts.ma_nguoi_dung = dts.ma_nguoi_dung
+    //                 WHERE ts.ma_nguoi_dung = ?";
+            
+    //         $stmtKQ = $this->db->prepare($sqlKQ);
+    //         $stmtKQ->execute([$ma_nguoi_dung]);
+    //         $ketQuaCaNhan = $stmtKQ->fetch();
+            
+    //         $dau = [];
+    //         $truot = [];
+            
+    //         // Tên trường mà thí sinh đậu (nếu có)
+    //         $tenTruongDau = ($ketQuaCaNhan && $ketQuaCaNhan['trang_thai'] == 'Dau') 
+    //                         ? $ketQuaCaNhan['truong_trung_tuyen'] 
+    //                         : null;
+
+    //         // C. Duyệt qua từng nguyện vọng để phân loại Đậu/Trượt
+    //         foreach ($danhSachNV as $nv) {
+    //             // Tính điểm chuẩn của trường này (để hiển thị tham khảo)
+    //             $diemChuan = $this->layDiemChuanCuaTruong($nv['ten_truong']);
+
+    //             // Nếu tên trường trùng với trường đậu -> Đưa vào danh sách ĐẬU
+    //             if ($tenTruongDau && $nv['ten_truong'] == $tenTruongDau) {
+    //                 $dau[] = [
+    //                     'ma_truong' => $nv['ma_truong'],
+    //                     'ten_truong' => $nv['ten_truong'],
+    //                     'thu_tu' => $nv['thu_tu_nguyen_vong'],
+    //                     'diem_cua_ban' => $ketQuaCaNhan['diem_cua_ban'],
+    //                     'diem_chuan' => $diemChuan,
+    //                     'trang_thai_xac_nhan' => $ketQuaCaNhan['trang_thai_xac_nhan']
+    //                 ];
+    //             } 
+    //             // Ngược lại -> Đưa vào danh sách TRƯỢT
+    //             else {
+    //                 $truot[] = [
+    //                     'ma_truong' => $nv['ma_truong'],
+    //                     'ten_truong' => $nv['ten_truong'],
+    //                     'thu_tu' => $nv['thu_tu_nguyen_vong'],
+    //                     'diem_chuan' => $diemChuan,
+    //                     'trang_thai' => 'Truot'
+    //                 ];
+    //             }
+    //         }
+            
+    //         return ['dau' => $dau, 'truot' => $truot];
+
+    //     } catch (Exception $e) {
+    //         error_log("Error getDanhSachTruongNhapHoc: " . $e->getMessage());
+    //         return ['dau' => [], 'truot' => []];
+    //     }
+    // }
+    /**
+     * Lấy danh sách nguyện vọng và tự động phân loại Đậu/Trượt
+     * Dựa trên cột truong_trung_tuyen và nguyen_vong_trung_tuyen trong bảng thi_sinh
+     */
+    /**
+     * Lấy danh sách nguyện vọng và tự động phân loại Đậu/Trượt
+     * [ĐÃ FIX LỖI CÚ PHÁP ->]
+     */
+    /**
+     * Lấy danh sách trường (Đậu/Trượt) kèm theo Điểm của bạn và Điểm chuẩn của trường
+     * [BẢN FIX HIỂN THỊ ĐIỂM]
+     */
     public function getDanhSachTruongNhapHoc($ma_nguoi_dung) {
+        if ($this->db === null) return ['dau' => [], 'truot' => []];
+
         try {
-            // A. Lấy tất cả NV đã đăng ký của thí sinh
-            $sqlNV = "SELECT nv.ma_truong, tt.ten_truong, nv.thu_tu_nguyen_vong 
-                      FROM nguyen_vong nv
-                      JOIN truong_thpt tt ON nv.ma_truong = tt.ma_truong
-                      WHERE nv.ma_nguoi_dung = ? 
-                      ORDER BY nv.thu_tu_nguyen_vong ASC";
-            
-            $stmtNV = $this->db->prepare($sqlNV);
-            $stmtNV->execute([$ma_nguoi_dung]);
-            $danhSachNV = $stmtNV->fetchAll();
-            
-            // B. Lấy thông tin kết quả xét tuyển của thí sinh này
-            $sqlKQ = "SELECT 
-                        ts.trang_thai, 
-                        ts.trang_thai_xac_nhan, 
-                        ts.truong_trung_tuyen, -- Tên trường đậu (lưu dạng text)
-                        (dts.diem_toan * 2 + dts.diem_van * 2 + dts.diem_anh) as diem_cua_ban
-                    FROM thi_sinh ts
-                    JOIN diem_thi_tuyen_sinh dts ON ts.ma_nguoi_dung = dts.ma_nguoi_dung
-                    WHERE ts.ma_nguoi_dung = ?";
-            
-            $stmtKQ = $this->db->prepare($sqlKQ);
-            $stmtKQ->execute([$ma_nguoi_dung]);
-            $ketQuaCaNhan = $stmtKQ->fetch();
-            
-            $dau = [];
-            $truot = [];
-            
-            // Tên trường mà thí sinh đậu (nếu có)
-            $tenTruongDau = ($ketQuaCaNhan && $ketQuaCaNhan['trang_thai'] == 'Dau') 
-                            ? $ketQuaCaNhan['truong_trung_tuyen'] 
-                            : null;
+            // 1. Lấy thông tin cá nhân và Tổng điểm (Toán*2 + Văn*2 + Anh)
+            $sql_info = "SELECT 
+                            ts.trang_thai, 
+                            ts.nguyen_vong_trung_tuyen, 
+                            ts.truong_trung_tuyen,
+                            (dts.diem_toan * 2 + dts.diem_van * 2 + dts.diem_anh) as tong_diem_dat
+                         FROM thi_sinh ts
+                         JOIN diem_thi_tuyen_sinh dts ON ts.ma_nguoi_dung = dts.ma_nguoi_dung
+                         WHERE ts.ma_nguoi_dung = ?";
+            $stmt_info = $this->db->prepare($sql_info);
+            $stmt_info->execute([$ma_nguoi_dung]);
+            $user_stats = $stmt_info->fetch();
 
-            // C. Duyệt qua từng nguyện vọng để phân loại Đậu/Trượt
-            foreach ($danhSachNV as $nv) {
-                // Tính điểm chuẩn của trường này (để hiển thị tham khảo)
-                $diemChuan = $this->layDiemChuanCuaTruong($nv['ten_truong']);
+            if (!$user_stats) return ['dau' => [], 'truot' => []];
 
-                // Nếu tên trường trùng với trường đậu -> Đưa vào danh sách ĐẬU
-                if ($tenTruongDau && $nv['ten_truong'] == $tenTruongDau) {
-                    $dau[] = [
-                        'ma_truong' => $nv['ma_truong'],
-                        'ten_truong' => $nv['ten_truong'],
-                        'thu_tu' => $nv['thu_tu_nguyen_vong'],
-                        'diem_cua_ban' => $ketQuaCaNhan['diem_cua_ban'],
-                        'diem_chuan' => $diemChuan,
-                        'trang_thai_xac_nhan' => $ketQuaCaNhan['trang_thai_xac_nhan']
-                    ];
-                } 
-                // Ngược lại -> Đưa vào danh sách TRƯỢT
-                else {
-                    $truot[] = [
-                        'ma_truong' => $nv['ma_truong'],
-                        'ten_truong' => $nv['ten_truong'],
-                        'thu_tu' => $nv['thu_tu_nguyen_vong'],
-                        'diem_chuan' => $diemChuan,
-                        'trang_thai' => 'Truot'
-                    ];
+            $tong_diem_thi_sinh = $user_stats['tong_diem_dat'];
+            $nv_trung_tuyen = $user_stats['nguyen_vong_trung_tuyen'];
+
+            // 2. Lấy tất cả nguyện vọng đã đăng ký
+            $sql_nv = "SELECT nv.thu_tu_nguyen_vong as thu_tu, tr.ten_truong, nv.ma_truong
+                       FROM nguyen_vong nv
+                       JOIN truong_thpt tr ON nv.ma_truong = tr.ma_truong
+                       WHERE nv.ma_nguoi_dung = ?
+                       ORDER BY nv.thu_tu_nguyen_vong ASC";
+            $stmt_nv = $this->db->prepare($sql_nv);
+            $stmt_nv->execute([$ma_nguoi_dung]);
+            $all_nv = $stmt_nv->fetchAll();
+
+            $result = ['dau' => [], 'truot' => []];
+
+            foreach ($all_nv as $nv) {
+                // Lấy điểm chuẩn của trường này
+                $diem_chuan = $this->layDiemChuanCuaTruong($nv['ten_truong']);
+                
+                // Chuẩn bị dữ liệu cho từng trường
+                $item = [
+                    'ma_truong' => $nv['ma_truong'],
+                    'ten_truong' => $nv['ten_truong'],
+                    'thu_tu' => $nv['thu_tu'],
+                    'diem_cua_ban' => $tong_diem_thi_sinh,
+                    'diem_chuan' => $diem_chuan
+                ];
+
+                // Phân loại Đậu/Trượt dựa trên số thứ tự nguyện vọng trúng tuyển
+                if ($nv['thu_tu'] == $nv_trung_tuyen && $user_stats['trang_thai'] === 'Dau') {
+                    $result['dau'][] = $item;
+                } else {
+                    $result['truot'][] = $item;
                 }
             }
-            
-            return ['dau' => $dau, 'truot' => $truot];
 
-        } catch (Exception $e) {
-            error_log("Error getDanhSachTruongNhapHoc: " . $e->getMessage());
+            return $result;
+        } catch (PDOException $e) {
+            error_log("Lỗi getDanhSachTruongNhapHoc: " . $e->getMessage());
             return ['dau' => [], 'truot' => []];
         }
     }
@@ -826,6 +899,12 @@ class ThiSinhModel_NhapHoc {
             return null;
         }
     }
+
+
+    
+
+
+
 
 
   

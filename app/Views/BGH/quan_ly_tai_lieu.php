@@ -36,18 +36,7 @@
     <!-- MAIN CONTENT -->
     <div class="main-content">
         <!-- DEBUG: Kiểm tra dữ liệu từ Controller -->
-        <div class="alert alert-warning alert-dismissible fade show mb-3" role="alert">
-            <strong>🔍 DEBUG INFO:</strong>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            <pre style="margin: 10px 0 0 0; font-size: 0.85rem; background: #f5f5f5; padding: 10px; border-radius: 5px; max-height: 200px; overflow-y: auto;"><code><?php 
-                echo "SESSION user_id: " . ($_SESSION['user_id'] ?? 'KHÔNG CÓ') . "\n";
-                echo "SESSION user_role: " . ($_SESSION['user_role'] ?? 'KHÔNG CÓ') . "\n";
-                echo "SESSION user_name: " . ($_SESSION['user_name'] ?? 'KHÔNG CÓ') . "\n\n";
-                echo "mon_hoc_list count: " . count($data['mon_hoc_list'] ?? []) . "\n";
-                echo "mon_hoc_list data:\n";
-                var_dump($data['mon_hoc_list']);
-            ?></code></pre>
-        </div>
+       
 
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
@@ -246,49 +235,78 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // --- CÁC HÀM HỖ TRỢ ---
+        function validateFile(file) {
+            const maxSize = 50 * 1024 * 1024; // 50MB
+            const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'jpg', 'jpeg', 'png', 'gif', 'zip', 'rar'];
+            
+            if (!file) return "Vui lòng chọn file!";
+            
+            const extension = file.name.split('.').pop().toLowerCase();
+            if (!allowedExtensions.includes(extension)) {
+                return "Định dạng file không được phép!";
+            }
+            
+            if (file.size > maxSize) {
+                return "File quá lớn! Dung lượng tối đa là 50MB.";
+            }
+            
+            return null; // Hợp lệ
+        }
+
         // === UPLOAD TÀI LIỆU ===
         document.getElementById('btnSubmitUpload').addEventListener('click', function() {
-            const form = document.getElementById('formUploadTaiLieu');
-            if (!form.checkValidity()) {
-                alert('Vui lòng điền đầy đủ thông tin bắt buộc!');
+            const ten = document.getElementById('inp_ten_tai_lieu').value.trim();
+            const monHoc = document.getElementById('inp_ma_mon_hoc').value;
+            const loai = document.getElementById('inp_loai_tai_lieu').value;
+            const fileInput = document.getElementById('inp_file');
+            const file = fileInput.files[0];
+
+            // 1. Check trống và khoảng trắng
+            if (ten === "" || monHoc === "" || loai === "") {
+                alert('Vui lòng điền đầy đủ các trường bắt buộc (dấu *)!');
+                return;
+            }
+
+            // 2. Check File chuyên sâu
+            const fileError = validateFile(file);
+            if (fileError) {
+                alert(fileError);
                 return;
             }
 
             const formData = new FormData();
-            formData.append('ten_tai_lieu', document.getElementById('inp_ten_tai_lieu').value);
-            formData.append('mo_ta', document.getElementById('inp_mo_ta').value);
-            formData.append('loai_tai_lieu', document.getElementById('inp_loai_tai_lieu').value);
-            formData.append('ma_mon_hoc', document.getElementById('inp_ma_mon_hoc').value);
-            formData.append('ghi_chu', document.getElementById('inp_ghi_chu').value);
-            formData.append('file', document.getElementById('inp_file').files[0]);
+            formData.append('ten_tai_lieu', ten);
+            formData.append('mo_ta', document.getElementById('inp_mo_ta').value.trim());
+            formData.append('loai_tai_lieu', loai);
+            formData.append('ma_mon_hoc', monHoc);
+            formData.append('ghi_chu', document.getElementById('inp_ghi_chu').value.trim());
+            formData.append('file', file);
 
-            // Hiển thị progress
             document.getElementById('uploadProgress').style.display = 'block';
-
             const xhr = new XMLHttpRequest();
             
             xhr.upload.addEventListener('progress', function(e) {
                 if (e.lengthComputable) {
                     const percentComplete = (e.loaded / e.total) * 100;
                     document.getElementById('progressBar').style.width = percentComplete + '%';
-                    document.getElementById('uploadStatus').textContent = Math.round(percentComplete) + '% hoàn thành';
+                    document.getElementById('uploadStatus').textContent = `Đang gửi: ${Math.round(percentComplete)}%`;
                 }
             });
 
             xhr.addEventListener('load', function() {
-                const response = JSON.parse(xhr.responseText);
-                if (response.success) {
-                    alert(response.message);
-                    location.reload();
-                } else {
-                    alert('Lỗi: ' + response.message);
-                    document.getElementById('uploadProgress').style.display = 'none';
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    if (response.success) {
+                        alert(response.message);
+                        location.reload();
+                    } else {
+                        alert('Lỗi: ' + response.message);
+                        document.getElementById('uploadProgress').style.display = 'none';
+                    }
+                } catch (e) {
+                    alert('Lỗi xử lý phản hồi từ server');
                 }
-            });
-
-            xhr.addEventListener('error', function() {
-                alert('Lỗi kết nối khi upload');
-                document.getElementById('uploadProgress').style.display = 'none';
             });
 
             xhr.open('POST', '<?php echo BASE_URL; ?>/tailieu/upload');
@@ -297,19 +315,16 @@
 
         // === CHỈNH SỬA TÀI LIỆU ===
         function editTaiLieu(maTaiLieu) {
-            // Fetch dữ liệu từ server
             fetch('<?php echo BASE_URL; ?>/tailieu/getChiTiet/' + maTaiLieu)
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        // Fill modal
                         document.getElementById('edit_ma_tai_lieu').value = data.data.ma_tai_lieu;
                         document.getElementById('edit_ten_tai_lieu').value = data.data.ten_tai_lieu;
                         document.getElementById('edit_loai_tai_lieu').value = data.data.loai_tai_lieu;
                         document.getElementById('edit_mo_ta').value = data.data.mo_ta;
                         document.getElementById('edit_ghi_chu').value = data.data.ghi_chu;
                         
-                        // Mở modal
                         const modal = new bootstrap.Modal(document.getElementById('modalEditTaiLieu'));
                         modal.show();
                     } else {
@@ -319,12 +334,22 @@
         }
 
         function submitEditTaiLieu() {
+            const ma = document.getElementById('edit_ma_tai_lieu').value;
+            const ten = document.getElementById('edit_ten_tai_lieu').value.trim();
+            const loai = document.getElementById('edit_loai_tai_lieu').value;
+
+            // Bổ sung check cho Edit
+            if (ten === "" || loai === "") {
+                alert("Tên tài liệu và loại không được để trống!");
+                return;
+            }
+
             const formData = new FormData();
-            formData.append('ma_tai_lieu', document.getElementById('edit_ma_tai_lieu').value);
-            formData.append('ten_tai_lieu', document.getElementById('edit_ten_tai_lieu').value);
-            formData.append('loai_tai_lieu', document.getElementById('edit_loai_tai_lieu').value);
-            formData.append('mo_ta', document.getElementById('edit_mo_ta').value);
-            formData.append('ghi_chu', document.getElementById('edit_ghi_chu').value);
+            formData.append('ma_tai_lieu', ma);
+            formData.append('ten_tai_lieu', ten);
+            formData.append('loai_tai_lieu', loai);
+            formData.append('mo_ta', document.getElementById('edit_mo_ta').value.trim());
+            formData.append('ghi_chu', document.getElementById('edit_ghi_chu').value.trim());
 
             fetch('<?php echo BASE_URL; ?>/tailieu/update', {
                 method: 'POST',
@@ -338,12 +363,13 @@
                 } else {
                     alert('Lỗi: ' + data.message);
                 }
-            });
+            })
+            .catch(err => alert("Lỗi kết nối server"));
         }
 
         // === XÓA TÀI LIỆU ===
         function deleteTaiLieu(maTaiLieu) {
-            if (confirm('Bạn chắc chắn muốn xóa tài liệu này?')) {
+            if (confirm('Bạn có chắc chắn muốn xóa vĩnh viễn tài liệu này? Thao tác này không thể hoàn tác.')) {
                 const formData = new FormData();
                 formData.append('ma_tai_lieu', maTaiLieu);
 
@@ -354,7 +380,6 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        alert(data.message);
                         location.reload();
                     } else {
                         alert('Lỗi: ' + data.message);

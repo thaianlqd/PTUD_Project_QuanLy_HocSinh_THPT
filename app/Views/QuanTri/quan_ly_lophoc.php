@@ -26,7 +26,6 @@
 </head>
 <body>
     <div class="container-fluid p-4">
-        <!-- Header -->
         <header class="mb-4 p-4 bg-white rounded-3 shadow-sm d-flex justify-content-between align-items-center">
             <div>
                 <h2 class="m-0">
@@ -42,21 +41,18 @@
             </a>
         </header>
 
-        <!-- Main Form Card -->
-            <div class="card card-custom">
-                <div class="card-header-custom">
-                    <i class="bi bi-<?php echo (isset($data['mode']) && $data['mode'] === 'edit') ? 'pencil-square' : 'plus-circle'; ?>"></i> 
-                    <?php echo (isset($data['mode']) && $data['mode'] === 'edit') ? 'Sửa Lớp Học' : 'Thêm Lớp Học Mới'; ?>
-                </div>
+        <div class="card card-custom">
+            <div class="card-header-custom">
+                <i class="bi bi-<?php echo (isset($data['mode']) && $data['mode'] === 'edit') ? 'pencil-square' : 'plus-circle'; ?>"></i> 
+                <?php echo (isset($data['mode']) && $data['mode'] === 'edit') ? 'Sửa Lớp Học' : 'Thêm Lớp Học Mới'; ?>
+            </div>
             <div class="card-body p-4">
                 <form id="formTaoLop" method="POST" action="<?php echo (isset($data['mode']) && $data['mode'] === 'edit') ? BASE_URL . '/LopHoc/update' : BASE_URL . '/LopHoc/store'; ?>">
                     
-                    <!-- Hidden field: Mã lớp (khi sửa) -->
                     <?php if (isset($data['mode']) && $data['mode'] === 'edit'): ?>
                         <input type="hidden" name="ma_lop" value="<?php echo $data['lop']['ma_lop']; ?>">
                     <?php endif; ?>
                     
-                    <!-- 1. CẤU HÌNH CHUNG -->
                     <h5 class="mb-3 text-primary"><i class="bi bi-gear"></i> Cấu Hình Chung</h5>
                     
                     <input type="hidden" id="ma_nam_hoc" value="<?php echo $data['ma_nam_hoc']; ?>">
@@ -121,7 +117,6 @@
                         </div>
                     </div>
 
-                    <!-- 2. DANH SÁCH MÔN HỌC & PHÂN CÔNG -->
                     <h5 class="mb-3 text-primary"><i class="bi bi-book"></i> Danh Sách Môn Học & Phân Công</h5>
                     
                     <div class="table-responsive">
@@ -137,7 +132,6 @@
                             <tbody id="bodyPhanCong">
                                 <?php if (isset($data['mode']) && $data['mode'] === 'edit' && !empty($data['phan_cong'])): ?>
                                     <?php 
-                                    // --- LOGIC HIỂN THỊ KHI SỬA (Server-side Rendering) ---
                                     foreach ($data['phan_cong'] as $idx => $pc): 
                                         $ma_mon = $pc['ma_mon_hoc'];
                                         $ten_mon = $pc['ten_mon_hoc'];
@@ -145,52 +139,46 @@
                                         $so_tiet = $pc['so_tiet_tuan'];
                                         $ma_gv_hien_tai = $pc['ma_giao_vien'];
 
-                                        // Badge hiển thị loại môn
                                         $badge = ($loai_mon === 'Bắt buộc') 
                                             ? '<span class="badge bg-success ms-2">Bắt buộc</span>' 
                                             : '<span class="badge bg-info ms-2">Tự chọn</span>';
                                     ?>
-                                        <tr>
-                                            <td class="text-center fw-bold text-secondary"><?php echo $idx + 1; ?></td>
-                                            <td>
-                                                <span class="fw-bold text-primary"><?php echo htmlspecialchars($ten_mon); ?></span>
-                                                <?php echo $badge; ?>
-                                                <input type="hidden" name="mon_id[<?php echo $idx; ?>]" value="<?php echo $ma_mon; ?>">
-                                                <input type="hidden" name="mon_ten[<?php echo $idx; ?>]" value="<?php echo htmlspecialchars($ten_mon); ?>">
-                                                <input type="hidden" name="mon_loai[<?php echo $idx; ?>]" value="<?php echo htmlspecialchars($loai_mon); ?>">
-                                            </td>
-                                            <td>
-                                                <input type="number" class="form-control form-control-sm text-center" style="max-width: 80px;" 
-                                                    name="mon_so_tiet[<?php echo $idx; ?>]" value="<?php echo $so_tiet; ?>" min="1">
-                                            </td>
-                                            <td>
-                                                <select class="form-select form-select-sm select-gv" name="giao_vien_id[<?php echo $idx; ?>]" required>
-                                                    <option value="">-- Chọn GV --</option>
-                                                    <?php 
-                                                    // Lọc và hiển thị danh sách GV phù hợp với môn này
-                                                    // (Hoặc hiển thị tất cả GV nếu muốn đơn giản)
-                                                    if (!empty($data['giao_vien'])) {
-                                                        // Mảng tạm để tránh duplicate GV trong dropdown
-                                                        $printed_gv = []; 
-                                                        foreach ($data['giao_vien'] as $gv) {
-                                                            // Kiểm tra xem GV này có dạy môn này không (So sánh tên môn gần đúng)
-                                                            // Lưu ý: Logic này tương đối, tốt nhất là check theo ma_mon_hoc nếu data gv có
-                                                            $is_teach = (stripos($gv['ten_mon_hoc'] ?? '', $ten_mon) !== false);
-                                                            
-                                                            // Nếu đúng chuyên môn HOẶC là người đang được phân công (để không bị mất option)
-                                                            if ($is_teach || $gv['ma_giao_vien'] == $ma_gv_hien_tai) {
-                                                                if (!in_array($gv['ma_giao_vien'], $printed_gv)) {
-                                                                    $selected = ($gv['ma_giao_vien'] == $ma_gv_hien_tai) ? 'selected' : '';
-                                                                    echo "<option value='{$gv['ma_giao_vien']}' data-name='{$gv['ho_ten']}' $selected>{$gv['ho_ten']}</option>";
-                                                                    $printed_gv[] = $gv['ma_giao_vien'];
-                                                                }
+                                    <tr>
+                                        <td class="text-center fw-bold text-secondary"><?php echo $idx + 1; ?></td>
+                                        <td>
+                                            <span class="fw-bold text-primary"><?php echo htmlspecialchars($ten_mon); ?></span>
+                                            <?php echo $badge; ?>
+                                            <input type="hidden" name="mon_id[<?php echo $idx; ?>]" value="<?php echo $ma_mon; ?>">
+                                            <input type="hidden" name="mon_ten[<?php echo $idx; ?>]" value="<?php echo htmlspecialchars($ten_mon); ?>">
+                                            <input type="hidden" name="mon_loai[<?php echo $idx; ?>]" value="<?php echo htmlspecialchars($loai_mon); ?>">
+                                        </td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm text-center" style="max-width: 80px;" 
+                                                   name="mon_so_tiet[<?php echo $idx; ?>]" value="<?php echo $so_tiet; ?>" min="1">
+                                        </td>
+                                        <td>
+                                            <select class="form-select form-select-sm select-gv" name="giao_vien_id[<?php echo $idx; ?>]" required>
+                                                <option value="">-- Chọn GV --</option>
+                                                <?php 
+                                                if (!empty($data['giao_vien'])) {
+                                                    $printed_gv = []; 
+                                                    foreach ($data['giao_vien'] as $gv) {
+                                                        // Logic gợi ý GV: Tên môn trong DB GV phải chứa tên môn đang xét (hoặc là người đang được chọn)
+                                                        $is_teach = (stripos($gv['ten_mon_hoc'] ?? '', $ten_mon) !== false);
+                                                        
+                                                        if ($is_teach || $gv['ma_giao_vien'] == $ma_gv_hien_tai) {
+                                                            if (!in_array($gv['ma_giao_vien'], $printed_gv)) {
+                                                                $selected = ($gv['ma_giao_vien'] == $ma_gv_hien_tai) ? 'selected' : '';
+                                                                echo "<option value='{$gv['ma_giao_vien']}' data-name='{$gv['ho_ten']}' $selected>{$gv['ho_ten']}</option>";
+                                                                $printed_gv[] = $gv['ma_giao_vien'];
                                                             }
                                                         }
                                                     }
-                                                    ?>
-                                                </select>
-                                            </td>
-                                        </tr>
+                                                }
+                                                ?>
+                                            </select>
+                                        </td>
+                                    </tr>
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <tr>
@@ -205,8 +193,7 @@
                         </table>
                     </div>
 
-                    <!-- 3. GIÁO VIÊN CHỦ NHIỆM -->
-                    <h5 class="mb-3 text-primary"><i class="bi bi-person-badge"></i> Chọn Giáo Viên Chủ NhiỆm (GVCN)</h5>
+                    <h5 class="mb-3 text-primary"><i class="bi bi-person-badge"></i> Chọn Giáo Viên Chủ Nhiệm (GVCN)</h5>
                     
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle"></i> Chỉ có thể chọn GVCN từ danh sách các giáo viên bộ môn đã phân công ở trên.
@@ -214,18 +201,10 @@
 
                     <div class="row mb-4">
                         <div class="col-md-6">
-                            <label class="form-label">Giáo Viên Chủ NhiỆm <span class="text-danger">*</span></label>
+                            <label class="form-label">Giáo Viên Chủ Nhiệm <span class="text-danger">*</span></label>
+                            
                             <select id="selectGVCN" name="ma_gvcn" class="form-select" required>
-                                <option value="">-- Chọn GVCN --</option>
-                                <?php if (isset($data['mode']) && $data['mode'] === 'edit' && isset($data['giao_vien'])): ?>
-                                    <?php foreach ($data['giao_vien'] as $gv): ?>
-                                        <option value="<?php echo $gv['ma_giao_vien']; ?>" 
-                                                <?php echo ($gv['ma_giao_vien'] == ($data['lop']['ma_gvcn'] ?? '')) ? 'selected' : ''; ?>
-                                                data-name="<?php echo htmlspecialchars($gv['ho_ten']); ?>">
-                                            <?php echo htmlspecialchars($gv['ho_ten']); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
+                                <option value="">-- Vui lòng chọn phân công môn học trước --</option>
                             </select>
                         </div>
                         <?php if (isset($data['mode']) && $data['mode'] === 'edit'): ?>
@@ -239,7 +218,6 @@
                         <?php endif; ?>
                     </div>
 
-                    <!-- Buttons -->
                     <div class="d-flex gap-3 justify-content-center mt-5">
                         <button type="submit" class="btn btn-primary-custom btn-lg px-5">
                             <i class="bi bi-<?php echo (isset($data['mode']) && $data['mode'] === 'edit') ? 'check-circle' : 'check-circle'; ?>"></i> 
@@ -254,7 +232,6 @@
         </div>
     </div>
 
-    <!-- Loading Overlay -->
     <div class="loading-overlay" id="mainLoading">
         <div class="spinner-border" role="status">
             <span class="visually-hidden">Loading...</span>
@@ -266,7 +243,6 @@
 
     <script>
     $(document).ready(function() {
-        // Lấy URL gốc
         const BASE_URL = "<?php echo BASE_URL ?? '/PTUD_Project_QLHS_THPT/PTUD_Project_QuanLy_HocSinh_THPT/public'; ?>";
         const namHoc = $("#ma_nam_hoc").val();
 
@@ -275,29 +251,77 @@
             else $("#mainLoading").hide();
         }
 
-        // ===== 1. XỬ LÝ CHỌN KHỐI (Sinh tên lớp + Lấy phòng) =====
+        // =========================================================================
+        // [QUAN TRỌNG] HÀM CẬP NHẬT LIST GVCN TỪ BẢNG PHÂN CÔNG
+        // =========================================================================
+        function updateGVCNList() {
+            const gvcnSelect = $('#selectGVCN');
+            // Lấy giá trị GVCN hiện tại (đang được chọn hoặc từ DB khi sửa)
+            // Nếu PHP có đổ dữ liệu sẵn (khi edit), ta lấy từ biến PHP
+            const currentGVCNFromPHP = "<?php echo $data['lop']['ma_gvcn'] ?? ''; ?>";
+            const currentSelected = gvcnSelect.val();
+            
+            // Ưu tiên: Giá trị người dùng đang chọn -> Giá trị từ DB -> Rỗng
+            const targetValue = currentSelected || currentGVCNFromPHP;
+
+            const uniqueTeachers = new Map();
+
+            // Quét tất cả select GV bộ môn
+            $('select[name^="giao_vien_id"]').each(function() {
+                const teacherId = $(this).val();
+                const teacherName = $(this).find('option:selected').text();
+
+                if (teacherId && teacherId !== "") {
+                    // Chỉ thêm nếu có tên (tránh option --Chọn--)
+                    if (!uniqueTeachers.has(teacherId) && !teacherName.includes('--')) {
+                        uniqueTeachers.set(teacherId, teacherName);
+                    }
+                }
+            });
+
+            // Xóa cũ & Thêm option mới
+            gvcnSelect.empty();
+            
+            if (uniqueTeachers.size === 0) {
+                gvcnSelect.append('<option value="">-- Vui lòng chọn phân công môn học trước --</option>');
+            } else {
+                gvcnSelect.append('<option value="">-- Chọn GVCN --</option>');
+                
+                uniqueTeachers.forEach((name, id) => {
+                    const isSelected = (String(id) === String(targetValue)) ? 'selected' : '';
+                    gvcnSelect.append(`<option value="${id}" ${isSelected}>${name}</option>`);
+                });
+            }
+        }
+
+        // Kích hoạt khi thay đổi bất kỳ GV bộ môn nào
+        $(document).on('change', 'select[name^="giao_vien_id"]', function() {
+            updateGVCNList();
+        });
+
+        // Nếu đang ở trang Sửa, chạy 1 lần lúc load trang để fill list GVCN
+        if ($('input[name="ma_lop"]').length > 0) {
+            updateGVCNList();
+        }
+
+        // =========================================================================
+        // CÁC LOGIC KHÁC (GIỮ NGUYÊN)
+        // =========================================================================
+
+        // 1. Chọn Khối -> Sinh tên lớp + Lấy phòng
         $("#selectKhoi").change(function() {
             const khoi = $(this).val();
-            
             if (!khoi) {
                 $("#inputTenLop").val("").attr('placeholder', 'Vui lòng chọn khối');
                 $("#selectPhong").html('<option value="">-- Chọn khối trước --</option>');
                 return;
             }
-
             toggleLoading(true);
-
-            // 1a. Sinh tên lớp
             $.post(BASE_URL + '/LopHoc/ajaxGenerateTenLop', {khoi: khoi, nam_hoc: namHoc}, function(res) {
-                if (res.success) {
-                    $("#inputTenLop").val(res.ten_lop);
-                }
+                if (res.success) $("#inputTenLop").val(res.ten_lop);
             });
-
-            // 1b. Lấy danh sách phòng trống
             $.post(BASE_URL + '/LopHoc/ajaxGetPhongTrong', {nam_hoc: namHoc}, function(res) {
                 toggleLoading(false);
-                
                 if (res.success) {
                     let html = '<option value="">-- Chọn phòng học --</option>';
                     if (res.phong_trong && res.phong_trong.length > 0) {
@@ -314,45 +338,34 @@
             }).fail(function() { toggleLoading(false); });
         });
 
-        // ===== 2. XỬ LÝ CHỌN TỔ HỢP MÔN (Load Môn + Load Full GVCN) =====
+        // 2. Chọn Tổ Hợp -> Load Môn & GV
         $("#selectToHop").change(function() {
             const toHop = $(this).val();
-            
             if (!toHop) {
                 $("#bodyPhanCong").html(`<tr><td colspan="4" class="text-center text-muted py-4">Vui lòng chọn Tổ hợp môn.</td></tr>`);
                 return;
             }
-
             toggleLoading(true);
-
             $.post(BASE_URL + '/LopHoc/ajaxGetMonVaGiaoVien', {ma_to_hop: toHop}, function(res) {
                 toggleLoading(false);
-                
                 if (!res.success) {
                     alert("Lỗi: " + (res.error || "Không thể tải dữ liệu"));
                     return;
                 }
-
-                const gvList = res.giao_vien || []; // Danh sách toàn bộ GV lấy từ API
+                const gvList = res.giao_vien || [];
                 const monList = res.mon_hoc || [];
-
-                // --- A. Render bảng Phân công môn học ---
                 let htmlMon = '';
+
                 if (monList.length === 0) {
                     htmlMon = `<tr><td colspan="4" class="text-center text-warning">Tổ hợp này không có môn học!</td></tr>`;
                 } else {
                     monList.forEach((mon, idx) => {
-                        // Tạo dropdown GV cho từng môn (vẫn giữ logic lọc GV theo chuyên môn nếu muốn)
-                        // Tuy nhiên để đơn giản và linh hoạt, ta cứ đổ full list GV vào, 
-                        // hoặc lọc nhẹ theo tên môn nếu dữ liệu API có hỗ trợ.
-                        
                         let optGV = '<option value="">-- Chọn GV --</option>';
-                        
-                        // [Logic cũ] Lọc GV theo môn:
+                        // Lọc GV theo môn (tương đối)
                         const gvTheoMon = gvList.filter(gv => 
                              gv.ten_mon_hoc && gv.ten_mon_hoc.toLowerCase().includes(mon.ten_mon_hoc.toLowerCase())
                         );
-                        // Lọc trùng
+                        // Unique
                         const uniqueGV = [...new Map(gvTheoMon.map(gv => [gv.ma_giao_vien, gv])).values()];
 
                         if (uniqueGV.length > 0) {
@@ -360,7 +373,6 @@
                                 optGV += `<option value="${gv.ma_giao_vien}">${gv.ho_ten}</option>`;
                             });
                         } else {
-                            // Nếu không tìm thấy GV chuyên môn, hiển thị fallback hoặc để trống
                             optGV += '<option disabled>Chưa có GV bộ môn này</option>';
                         }
 
@@ -384,7 +396,7 @@
                                            name="mon_so_tiet[${idx}]" value="${soTiet}" min="1">
                                 </td>
                                 <td>
-                                    <select class="form-select form-select-sm" name="giao_vien_id[${idx}]" required>
+                                    <select class="form-select form-select-sm select-gv" name="giao_vien_id[${idx}]" required>
                                         ${optGV}
                                     </select>
                                 </td>
@@ -393,20 +405,9 @@
                     });
                 }
                 $("#bodyPhanCong").html(htmlMon);
-
-                // --- B. [QUAN TRỌNG] Đổ danh sách GVCN (Cho phép chọn TẤT CẢ) ---
-                // Không dùng updateGVCNList() cũ nữa vì nó sẽ xóa mất các GV không dạy bộ môn
                 
-                let htmlGVCN = '<option value="">-- Chọn GVCN --</option>';
-                
-                // Lấy danh sách duy nhất (vì gvList từ API có thể lặp lại do 1 GV dạy nhiều môn)
-                const uniqueAllGV = [...new Map(gvList.map(gv => [gv.ma_giao_vien, gv])).values()];
-                
-                uniqueAllGV.forEach(gv => {
-                    htmlGVCN += `<option value="${gv.ma_giao_vien}">${gv.ho_ten}</option>`;
-                });
-                
-                $("#selectGVCN").html(htmlGVCN);
+                // Sau khi render xong bảng môn học, cập nhật list GVCN
+                updateGVCNList();
 
             }).fail(function() {
                 toggleLoading(false);
@@ -414,11 +415,9 @@
             });
         });
 
-        // ===== 3. SUBMIT FORM (Sửa để bắt thông báo lỗi đúng) =====
+        // 3. Submit Form
         $("#formTaoLop").submit(function(e) {
             e.preventDefault();
-            
-            // Validation cơ bản phía client
             const khoi = $("#selectKhoi").val();
             const toHop = $("#selectToHop").val();
             const phong = $("#selectPhong").val();
@@ -428,13 +427,10 @@
                 alert("Vui lòng điền đầy đủ thông tin (Khối, Tổ hợp, Phòng, GVCN)!");
                 return;
             }
-
             toggleLoading(true);
-
             const formData = new FormData(this);
             formData.append('ma_nam_hoc', namHoc);
             
-            // Check xem đang là mode Sửa hay Thêm
             const isEdit = $("input[name='ma_lop']").length > 0;
             const submitUrl = isEdit ? (BASE_URL + '/LopHoc/update') : (BASE_URL + '/LopHoc/store');
 
@@ -447,12 +443,10 @@
                 dataType: 'json',
                 success: function(res) {
                     toggleLoading(false);
-                    
                     if (res.success) {
                         alert(res.message || (isEdit ? "Cập nhật thành công!" : "Tạo lớp thành công!"));
                         window.location.href = BASE_URL + '/LopHoc';
                     } else {
-                        // [QUAN TRỌNG] Hiển thị cả res.error hoặc res.message
                         alert("Lỗi: " + (res.error || res.message || "Không thể xử lý yêu cầu"));
                     }
                 },

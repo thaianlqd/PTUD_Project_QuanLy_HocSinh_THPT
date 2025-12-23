@@ -137,21 +137,40 @@ class GiaoVienChuNhiemController {
         }
     }
 
+    // public function capnhatvang() {
+    //     header('Content-Type: application/json');
+    //     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    //         $ma_hoc_sinh = $_POST['ma_hs'];
+    //         $so_buoi_vang = intval($_POST['so_buoi_vang']);
+    //         $ma_hoc_ky = $_POST['hoc_ky'] ?? 'HK1';
+
+    //         $result = $this->gvcnModel->capNhatSoBuoiVang($ma_hoc_sinh, $ma_hoc_ky, $so_buoi_vang);
+
+    //         if ($result) {
+    //             echo json_encode(['success' => true, 'message' => 'Đã cập nhật số buổi vắng thành công!']);
+    //         } else {
+    //             echo json_encode(['success' => false, 'message' => 'Cập nhật thất bại!']);
+    //         }
+    //     }
+    // }
     public function capnhatvang() {
         header('Content-Type: application/json');
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $ma_hoc_sinh = $_POST['ma_hs'];
-            $so_buoi_vang = intval($_POST['so_buoi_vang']);
-            $ma_hoc_ky = $_POST['hoc_ky'] ?? 'HK1';
+            $ma_hs = $_POST['ma_hs'] ?? null;
+            $so_vang = $_POST['so_buoi_vang'] ?? 0;
+            $hoc_ky = $_POST['hoc_ky'] ?? 'HK1';
 
-            $result = $this->gvcnModel->capNhatSoBuoiVang($ma_hoc_sinh, $ma_hoc_ky, $so_buoi_vang);
+            // ĐÃ FIX: Gọi đúng $this->gvcnModel và đúng tên hàm capNhatSoBuoiVang
+            $result = $this->gvcnModel->capNhatSoBuoiVang($ma_hs, $hoc_ky, $so_vang);
 
             if ($result) {
-                echo json_encode(['success' => true, 'message' => 'Đã cập nhật số buổi vắng thành công!']);
+                echo json_encode(['success' => true, 'message' => 'Cập nhật thành công!']);
             } else {
-                echo json_encode(['success' => false, 'message' => 'Cập nhật thất bại!']);
+                echo json_encode(['success' => false, 'message' => 'Lỗi truy vấn CSDL!']);
             }
         }
+        exit;
     }
+    
 }
 ?>

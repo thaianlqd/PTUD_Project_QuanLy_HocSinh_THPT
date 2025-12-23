@@ -463,25 +463,80 @@ class GiaoVienBaiTapModel {
     /**
      * Sửa bài tập (chỉ cho GV tạo)
      */
+    // public function suaBaiTap($ma_bai_tap, $ma_giao_vien, $data) {
+    //     if ($this->db === null) return ['success' => false, 'message' => 'Lỗi kết nối CSDL.'];
+
+    //     try {
+    //         // 1. Kiểm tra quyền sở hữu
+    //         $stmt = $this->db->prepare("SELECT ma_bai_tap FROM bai_tap WHERE ma_bai_tap = ? AND ma_giao_vien = ?");
+    //         $stmt->execute([$ma_bai_tap, $ma_giao_vien]);
+    //         if (!$stmt->fetch()) {
+    //             return ['success' => false, 'message' => 'Không tìm thấy bài tập hoặc bạn không có quyền sửa.'];
+    //         }
+
+    //         // 2. Xây dựng câu SQL Update động
+    //         // Luôn update các trường cơ bản
+    //         $sql = "UPDATE bai_tap SET 
+    //                     ten_bai_tap = :ten,
+    //                     mo_ta = :mo_ta,
+    //                     han_nop = :han_nop";
+            
+    //         // Chỉ update file nếu có file mới
+    //         if (!empty($data['file_dinh_kem'])) {
+    //             $sql .= ", file_dinh_kem = :file";
+    //         }
+
+    //         $sql .= " WHERE ma_bai_tap = :id";
+            
+    //         $stmt = $this->db->prepare($sql);
+            
+    //         // Bind tham số
+    //         $stmt->bindValue(':ten', $data['ten_bai_tap']);
+    //         $stmt->bindValue(':mo_ta', $data['mo_ta']);
+    //         $stmt->bindValue(':han_nop', $data['han_nop']);
+    //         $stmt->bindValue(':id', $ma_bai_tap);
+
+    //         if (!empty($data['file_dinh_kem'])) {
+    //             $stmt->bindValue(':file', $data['file_dinh_kem']);
+    //         }
+
+    //         $stmt->execute();
+
+    //         return ['success' => true, 'message' => 'Cập nhật thành công!'];
+
+    //     } catch (PDOException $e) {
+    //         // Ghi log lỗi để debug
+    //         error_log("Lỗi suaBaiTap: " . $e->getMessage());
+    //         return ['success' => false, 'message' => 'Lỗi CSDL: ' . $e->getMessage()];
+    //     }
+    // }
+    /**
+     * Sửa bài tập (Full: Cập nhật cả bảng cha và bảng con)
+     */
+    /**
+     * Sửa bài tập (Full: Cập nhật cả bảng cha và bảng con)
+     */
     public function suaBaiTap($ma_bai_tap, $ma_giao_vien, $data) {
         if ($this->db === null) return ['success' => false, 'message' => 'Lỗi kết nối CSDL.'];
 
         try {
-            // 1. Kiểm tra quyền sở hữu
-            $stmt = $this->db->prepare("SELECT ma_bai_tap FROM bai_tap WHERE ma_bai_tap = ? AND ma_giao_vien = ?");
+            // 1. Kiểm tra quyền sở hữu & Lấy loại bài tập
+            $stmt = $this->db->prepare("SELECT ma_bai_tap, loai_bai_tap FROM bai_tap WHERE ma_bai_tap = ? AND ma_giao_vien = ?");
             $stmt->execute([$ma_bai_tap, $ma_giao_vien]);
-            if (!$stmt->fetch()) {
+            $baiTap = $stmt->fetch();
+
+            if (!$baiTap) {
                 return ['success' => false, 'message' => 'Không tìm thấy bài tập hoặc bạn không có quyền sửa.'];
             }
 
-            // 2. Xây dựng câu SQL Update động
-            // Luôn update các trường cơ bản
+            $loai_bai_tap = $baiTap['loai_bai_tap'];
+
+            // 2. Update bảng CHA (bai_tap) - Giữ nguyên như cũ
             $sql = "UPDATE bai_tap SET 
                         ten_bai_tap = :ten,
                         mo_ta = :mo_ta,
                         han_nop = :han_nop";
             
-            // Chỉ update file nếu có file mới
             if (!empty($data['file_dinh_kem'])) {
                 $sql .= ", file_dinh_kem = :file";
             }
@@ -489,8 +544,6 @@ class GiaoVienBaiTapModel {
             $sql .= " WHERE ma_bai_tap = :id";
             
             $stmt = $this->db->prepare($sql);
-            
-            // Bind tham số
             $stmt->bindValue(':ten', $data['ten_bai_tap']);
             $stmt->bindValue(':mo_ta', $data['mo_ta']);
             $stmt->bindValue(':han_nop', $data['han_nop']);
@@ -499,16 +552,77 @@ class GiaoVienBaiTapModel {
             if (!empty($data['file_dinh_kem'])) {
                 $stmt->bindValue(':file', $data['file_dinh_kem']);
             }
-
             $stmt->execute();
 
-            return ['success' => true, 'message' => 'Cập nhật thành công!'];
+            // 3. Update bảng CON (QUAN TRỌNG: Đây là phần mới thêm)
+            if ($loai_bai_tap == 'TuLuan' && isset($data['noi_dung_tu_luan'])) {
+                $this->db->prepare("UPDATE bai_tap_tu_luan SET de_bai_chi_tiet = ? WHERE ma_bai_tap = ?")
+                         ->execute([$data['noi_dung_tu_luan'], $ma_bai_tap]);
+            } 
+            elseif ($loai_bai_tap == 'TracNghiem' && isset($data['json_trac_nghiem'])) {
+                // Chỉ update nếu có dữ liệu gửi lên
+                $sqlTN = "UPDATE bai_tap_trac_nghiem SET danh_sach_cau_hoi = ?";
+                $params = [$data['json_trac_nghiem']];
+                
+                if (!empty($data['thoi_gian_lam_bai'])) {
+                    $sqlTN .= ", thoi_gian_lam_bai = ?";
+                    $params[] = $data['thoi_gian_lam_bai'];
+                }
+                $sqlTN .= " WHERE ma_bai_tap = ?";
+                $params[] = $ma_bai_tap;
+
+                $this->db->prepare($sqlTN)->execute($params);
+            }
+            elseif ($loai_bai_tap == 'UploadFile') {
+                 if (!empty($data['loai_file_cho_phep'])) {
+                    $this->db->prepare("UPDATE bai_tap_upload_file SET loai_file_cho_phep = ?, dung_luong_toi_da = ? WHERE ma_bai_tap = ?")
+                             ->execute([$data['loai_file_cho_phep'], $data['dung_luong_toi_da'], $ma_bai_tap]);
+                 }
+            }
+
+            return ['success' => true, 'message' => 'Cập nhật bài tập thành công!'];
 
         } catch (PDOException $e) {
-            // Ghi log lỗi để debug
             error_log("Lỗi suaBaiTap: " . $e->getMessage());
             return ['success' => false, 'message' => 'Lỗi CSDL: ' . $e->getMessage()];
         }
+    }
+
+    /**
+     * Lấy chi tiết đầy đủ của bài tập (bao gồm cả bảng con) để sửa
+     */
+    public function getChiTietBaiTapDayDu($ma_bai_tap) {
+        // 1. Lấy thông tin cơ bản
+        $sql = "SELECT * FROM bai_tap WHERE ma_bai_tap = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$ma_bai_tap]);
+        $baiTap = $stmt->fetch();
+
+        if (!$baiTap) return null;
+
+        // 2. Lấy thông tin chi tiết tùy loại
+        if ($baiTap['loai_bai_tap'] == 'TuLuan') {
+            $stmt = $this->db->prepare("SELECT de_bai_chi_tiet FROM bai_tap_tu_luan WHERE ma_bai_tap = ?");
+            $stmt->execute([$ma_bai_tap]);
+            $child = $stmt->fetch();
+            $baiTap['noi_dung_tu_luan'] = $child['de_bai_chi_tiet'] ?? '';
+        } 
+        elseif ($baiTap['loai_bai_tap'] == 'TracNghiem') {
+            $stmt = $this->db->prepare("SELECT danh_sach_cau_hoi, thoi_gian_lam_bai FROM bai_tap_trac_nghiem WHERE ma_bai_tap = ?");
+            $stmt->execute([$ma_bai_tap]);
+            $child = $stmt->fetch();
+            $baiTap['json_trac_nghiem'] = $child['danh_sach_cau_hoi'] ?? '[]';
+            $baiTap['thoi_gian_lam_bai'] = $child['thoi_gian_lam_bai'] ?? 45;
+        }
+        elseif ($baiTap['loai_bai_tap'] == 'UploadFile') {
+            $stmt = $this->db->prepare("SELECT loai_file_cho_phep, dung_luong_toi_da FROM bai_tap_upload_file WHERE ma_bai_tap = ?");
+            $stmt->execute([$ma_bai_tap]);
+            $child = $stmt->fetch();
+            $baiTap['loai_file_cho_phep'] = $child['loai_file_cho_phep'] ?? '';
+            $baiTap['dung_luong_toi_da'] = $child['dung_luong_toi_da'] ?? 5;
+        }
+
+        return $baiTap;
     }
 
     /**
@@ -685,7 +799,12 @@ class GiaoVienBaiTapModel {
         }
     }
 
-    
+    public function demSoLuongNopBai($ma_bai_tap) {
+        $sql = "SELECT COUNT(*) FROM bai_nop WHERE ma_bai_tap = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$ma_bai_tap]);
+        return (int)$stmt->fetchColumn();
+    }
 
 }
 ?>

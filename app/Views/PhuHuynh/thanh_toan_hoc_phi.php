@@ -318,7 +318,7 @@ $data['hoa_don_cho_xac_nhan'] = $data['hoa_don_cho_xac_nhan'] ?? [];
                     <div class="d-grid gap-3">
                         <label class="btn btn-outline-light text-start p-3 border rounded-3 d-flex align-items-center shadow-sm position-relative">
                             <input class="form-check-input position-absolute top-50 end-0 me-3 translate-middle-y" type="radio" name="phuong_thuc" value="VNPAY" checked>
-                            <div class="bg-white p-2 rounded shadow-sm me-3"><img src="https://vinadesign.vn/uploads/images/2023/05/vnpay-logo-vinadesign-25-12-57-55.png" height="30" alt="VNPAY"></div>
+                            <div class="bg-white p-2 rounded shadow-sm me-3"><img src="https://cdn.haitrieu.com/wp-content/uploads/2022/10/Logo-VNPAY-QR-1.png" height="30" style="object-fit: contain;" alt="VNPAY"></div>
                             <div>
                                 <div class="fw-bold text-dark">Ví VNPAY / Ngân hàng</div>
                                 <div class="small text-muted">Thẻ ATM, Visa, Mobile Banking</div>
