@@ -182,12 +182,80 @@ class GiaoVienController extends Controller {
     /**
      * API: Lưu bài tập (Dùng cho Modal)
      */
+    // public function luuBaiTapApi() {
+    //     header('Content-Type: application/json');
+    //     if ($_SERVER['REQUEST_METHOD'] != 'POST') {
+    //          http_response_code(405);
+    //          echo json_encode(['success' => false, 'message' => 'Phương thức không hợp lệ.']);
+    //          return;
+    //     }
+
+    //     $data = [
+    //         'ten_bai_tap' => trim($_POST['ten_bai_tap'] ?? ''),
+    //         'mo_ta_chung' => trim($_POST['mo_ta_chung'] ?? ''),
+    //         'han_nop' => $_POST['han_nop'] ?? null,
+    //         'loai_bai_tap' => $_POST['loai_bai_tap'] ?? '',
+    //         'ma_lop' => filter_var($_POST['ma_lop'], FILTER_VALIDATE_INT),
+    //         'ma_mon_hoc' => filter_var($_POST['ma_mon_hoc'], FILTER_VALIDATE_INT),
+    //         'ma_giao_vien' => $this->ma_giao_vien,
+    //         'noi_dung_tu_luan' => trim($_POST['noi_dung_tu_luan'] ?? ''),
+    //         'json_trac_nghiem' => $_POST['json_trac_nghiem'] ?? null, 
+    //         'thoi_gian_lam_bai' => filter_var($_POST['thoi_gian_lam_bai'] ?? 45, FILTER_VALIDATE_INT),
+    //         'loai_file_cho_phep' => $_POST['loai_file_cho_phep'] ?? '.pdf,.docx',
+    //         'dung_luong_toi_da' => filter_var($_POST['dung_luong_toi_da'] ?? 5, FILTER_VALIDATE_INT),
+    //         'file_dinh_kem' => null
+    //     ];
+        
+    //     // Xử lý upload file đính kèm (đề bài)
+    //     if (isset($_FILES['file_dinh_kem']) && $_FILES['file_dinh_kem']['error'] == UPLOAD_ERR_OK) {
+    //         $file = $_FILES['file_dinh_kem'];
+    //         $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    //         $allowedExtensions = ['pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg', 'zip', 'rar']; 
+
+    //         if (!in_array($fileExtension, $allowedExtensions)) {
+    //             http_response_code(400);
+    //             echo json_encode(['success' => false, 'message' => 'Lỗi: File đính kèm (đề bài) có định dạng không hợp lệ.']);
+    //             return;
+    //         }
+            
+    //         $uploadDir = '../public/uploads/debai/';
+    //         if (!is_dir($uploadDir)) { mkdir($uploadDir, 0777, true); }
+    //         // $safeFileName = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
+    //         // $newFileName = 'debai_' . $data['ma_lop'] . '_' . time() . '_' . $safeFileName . '.' . $fileExtension;
+    //         $safeFileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', basename($file['name']));
+    //         $newFileName = $safeFileName; // Giữ nguyên tên file gốc (hoặc thêm tiền tố nếu muốn tránh trùng)
+            
+    //         if (move_uploaded_file($file['tmp_name'], $uploadDir . $newFileName)) {
+    //             $data['file_dinh_kem'] = 'uploads/debai/' . $newFileName;
+    //         } else {
+    //              http_response_code(500);
+    //              echo json_encode(['success' => false, 'message' => 'Lỗi khi tải file đính kèm (server error).']);
+    //              return;
+    //         }
+    //     }
+        
+    //     if (empty($data['ten_bai_tap']) || empty($data['han_nop']) || empty($data['loai_bai_tap'])) {
+    //         http_response_code(400);
+    //         echo json_encode(['success' => false, 'message' => 'Vui lòng nhập Tên, Hạn nộp và Loại bài tập.']);
+    //         return;
+    //     }
+    //     if ($data['loai_bai_tap'] == 'TracNghiem' && empty($data['json_trac_nghiem'])) {
+    //          http_response_code(400);
+    //          echo json_encode(['success' => false, 'message' => 'Lỗi: Nội dung trắc nghiệm rỗng.']);
+    //          return;
+    //     }
+        
+    //     $result = $this->giaoVienBaiTapModel->giaoBaiTap($data);
+    //     if ($result['success']) { echo json_encode($result); } 
+    //     else { http_response_code(500); echo json_encode($result); }
+    // }
+
     public function luuBaiTapApi() {
         header('Content-Type: application/json');
         if ($_SERVER['REQUEST_METHOD'] != 'POST') {
-             http_response_code(405);
-             echo json_encode(['success' => false, 'message' => 'Phương thức không hợp lệ.']);
-             return;
+            http_response_code(405);
+            echo json_encode(['success' => false, 'message' => 'Phương thức không hợp lệ.']);
+            return;
         }
 
         $data = [
@@ -206,6 +274,18 @@ class GiaoVienController extends Controller {
             'file_dinh_kem' => null
         ];
         
+        // --- KIỂM TRA HẠN NỘP PHẢI SAU HIỆN TẠI ---
+        if (!empty($data['han_nop'])) {
+            $han_nop = str_replace('T', ' ', $data['han_nop']);
+            $now = date('Y-m-d H:i:s');
+            if ($han_nop <= $now) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Hạn nộp phải sau thời điểm hiện tại!']);
+                return;
+            }
+            $data['han_nop'] = $han_nop;
+        }
+
         // Xử lý upload file đính kèm (đề bài)
         if (isset($_FILES['file_dinh_kem']) && $_FILES['file_dinh_kem']['error'] == UPLOAD_ERR_OK) {
             $file = $_FILES['file_dinh_kem'];
@@ -220,17 +300,15 @@ class GiaoVienController extends Controller {
             
             $uploadDir = '../public/uploads/debai/';
             if (!is_dir($uploadDir)) { mkdir($uploadDir, 0777, true); }
-            // $safeFileName = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
-            // $newFileName = 'debai_' . $data['ma_lop'] . '_' . time() . '_' . $safeFileName . '.' . $fileExtension;
             $safeFileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', basename($file['name']));
-            $newFileName = $safeFileName; // Giữ nguyên tên file gốc (hoặc thêm tiền tố nếu muốn tránh trùng)
+            $newFileName = $safeFileName;
             
             if (move_uploaded_file($file['tmp_name'], $uploadDir . $newFileName)) {
                 $data['file_dinh_kem'] = 'uploads/debai/' . $newFileName;
             } else {
-                 http_response_code(500);
-                 echo json_encode(['success' => false, 'message' => 'Lỗi khi tải file đính kèm (server error).']);
-                 return;
+                http_response_code(500);
+                echo json_encode(['success' => false, 'message' => 'Lỗi khi tải file đính kèm (server error).']);
+                return;
             }
         }
         
@@ -240,9 +318,9 @@ class GiaoVienController extends Controller {
             return;
         }
         if ($data['loai_bai_tap'] == 'TracNghiem' && empty($data['json_trac_nghiem'])) {
-             http_response_code(400);
-             echo json_encode(['success' => false, 'message' => 'Lỗi: Nội dung trắc nghiệm rỗng.']);
-             return;
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Lỗi: Nội dung trắc nghiệm rỗng.']);
+            return;
         }
         
         $result = $this->giaoVienBaiTapModel->giaoBaiTap($data);
@@ -250,70 +328,284 @@ class GiaoVienController extends Controller {
         else { http_response_code(500); echo json_encode($result); }
     }
 
+
+
     /**
      * API MỚI: Sửa bài tập
      */
-    public function suaBaiTapApi() {
-        // Bắt đầu bộ đệm để chặn các Warning rác in ra màn hình
-        ob_start(); 
+    // public function suaBaiTapApi() {
+    //     // Bắt đầu bộ đệm để chặn các Warning rác in ra màn hình
+    //     ob_start(); 
         
+    //     try {
+    //         $ma_bai_tap = filter_input(INPUT_POST, 'ma_bai_tap', FILTER_VALIDATE_INT);
+            
+    //         if (!$ma_bai_tap) {
+    //             throw new Exception('Thiếu mã bài tập');
+    //         }
+
+    //         // 1. Xử lý ngày giờ (Xóa chữ T)
+    //         $han_nop = $_POST['han_nop'] ?? null;
+    //         if ($han_nop) {
+    //             $han_nop = str_replace('T', ' ', $han_nop); 
+    //         }
+
+    //         // 2. Chuẩn bị dữ liệu
+    //         $data = [
+    //             'ten_bai_tap' => trim($_POST['ten_bai_tap'] ?? ''),
+    //             'mo_ta'       => trim($_POST['mo_ta'] ?? ''),
+    //             'han_nop'     => $han_nop, 
+    //             'file_dinh_kem' => null
+    //             // Các field con (TuLuan/TracNghiem) nếu Modal chưa có thì cứ để null, Model sẽ bỏ qua
+    //         ];
+
+    //         // 3. Xử lý Upload File (Chỉ khi có file mới)
+    //         if (isset($_FILES['file_dinh_kem_new']) && $_FILES['file_dinh_kem_new']['error'] == UPLOAD_ERR_OK) {
+    //             $file = $_FILES['file_dinh_kem_new'];
+    //             $uploadDir = __DIR__ . '/../../public/uploads/debai/';
+                
+    //             if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+
+    //             // $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    //             // $fileName = 'update_' . time() . '_' . rand(100,999) . '.' . $fileExt;
+    //             $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    //             $safeFileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', basename($file['name']));
+    //             $fileName = $safeFileName; // Giữ nguyên tên file gốc
+                
+    //             if (move_uploaded_file($file['tmp_name'], $uploadDir . $fileName)) {
+    //                 $data['file_dinh_kem'] = 'uploads/debai/' . $fileName;
+    //             }
+    //         }
+
+    //         // 4. Gọi Model
+    //         $result = $this->giaoVienBaiTapModel->suaBaiTap($ma_bai_tap, $this->ma_giao_vien, $data);
+            
+    //         // Xóa sạch bộ đệm trước khi in JSON (Fix lỗi "Not JSON")
+    //         ob_clean(); 
+            
+    //         header('Content-Type: application/json; charset=utf-8');
+    //         echo json_encode($result);
+
+    //     } catch (Exception $e) {
+    //         ob_clean(); // Xóa lỗi rác nếu có
+    //         header('Content-Type: application/json; charset=utf-8');
+    //         http_response_code(400);
+    //         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    //     }
+    //     exit;
+    // }
+
+
+    /**
+     * API MỚI: Sửa bài tập (Đã thêm Validate chặt chẽ)
+     */
+    // public function suaBaiTapApi() {
+    //     ob_start();
+    //     try {
+    //         $ma_bai_tap = filter_input(INPUT_POST, 'ma_bai_tap', FILTER_VALIDATE_INT);
+    //         if (!$ma_bai_tap) throw new Exception('Thiếu mã bài tập');
+
+    //         // 1. Lấy thông tin bài tập hiện tại để biết nó thuộc loại nào
+    //         $baiTapCu = $this->giaoVienBaiTapModel->getThongTinCoBanBaiTap($ma_bai_tap);
+    //         if (!$baiTapCu) throw new Exception('Bài tập không tồn tại.');
+            
+    //         $loai_bai_tap = $baiTapCu['loai_bai_tap'];
+
+    //         // 2. Validate dữ liệu chung
+    //         $ten_bai_tap = trim($_POST['ten_bai_tap'] ?? '');
+    //         $han_nop = $_POST['han_nop'] ?? null;
+    //         if (empty($ten_bai_tap) || empty($han_nop)) {
+    //             throw new Exception('Tên bài tập và Hạn nộp không được để trống.');
+    //         }
+    //         if ($han_nop) $han_nop = str_replace('T', ' ', $han_nop); 
+
+    //         // 3. VALIDATE RIÊNG TỪNG LOẠI (Chặn rỗng)
+    //         $noi_dung_tu_luan = trim($_POST['noi_dung_tu_luan'] ?? '');
+    //         $json_trac_nghiem = $_POST['json_trac_nghiem'] ?? null;
+
+    //         if ($loai_bai_tap == 'TuLuan') {
+    //             if (empty($noi_dung_tu_luan)) {
+    //                 throw new Exception('Nội dung đề bài tự luận không được để trống.');
+    //             }
+    //         } 
+    //         elseif ($loai_bai_tap == 'TracNghiem') {
+    //             // Nếu người dùng có ý định sửa nội dung (gửi lên json mới)
+    //             // Thì json đó không được rỗng
+    //             if (isset($_POST['json_trac_nghiem'])) {
+    //                  // Nếu chuỗi JSON rỗng hoặc là mảng rỗng '[]'
+    //                 if (empty($json_trac_nghiem) || $json_trac_nghiem == '[]') {
+    //                     throw new Exception('Nội dung trắc nghiệm không hợp lệ (Trống hoặc sai cú pháp).');
+    //                 }
+    //             }
+    //         }
+
+    //         // 4. Chuẩn bị data
+    //         $data = [
+    //             'ten_bai_tap' => $ten_bai_tap,
+    //             'mo_ta'       => trim($_POST['mo_ta'] ?? ''),
+    //             'han_nop'     => $han_nop, 
+    //             'file_dinh_kem' => null,
+    //             'noi_dung_tu_luan'   => $noi_dung_tu_luan,
+    //             'json_trac_nghiem'   => $json_trac_nghiem,
+    //             'thoi_gian_lam_bai'  => $_POST['thoi_gian_lam_bai'] ?? null,
+    //             'loai_file_cho_phep' => $_POST['loai_file_cho_phep'] ?? null,
+    //             'dung_luong_toi_da'  => $_POST['dung_luong_toi_da'] ?? null
+    //         ];
+
+    //         // 5. Upload file (Giữ nguyên)
+    //         if (isset($_FILES['file_dinh_kem_new']) && $_FILES['file_dinh_kem_new']['error'] == UPLOAD_ERR_OK) {
+    //             $file = $_FILES['file_dinh_kem_new'];
+    //             $uploadDir = __DIR__ . '/../../public/uploads/debai/';
+    //             if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+    //             $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    //             $safeFileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', basename($file['name']));
+    //             $fileName = $safeFileName; 
+    //             if (move_uploaded_file($file['tmp_name'], $uploadDir . $fileName)) {
+    //                 $data['file_dinh_kem'] = 'uploads/debai/' . $fileName;
+    //             }
+    //         }
+
+    //         // 6. Gọi Model
+    //         $result = $this->giaoVienBaiTapModel->suaBaiTap($ma_bai_tap, $this->ma_giao_vien, $data);
+            
+    //         ob_clean(); 
+    //         header('Content-Type: application/json; charset=utf-8');
+    //         echo json_encode($result);
+
+    //     } catch (Exception $e) {
+    //         ob_clean();
+    //         header('Content-Type: application/json; charset=utf-8');
+    //         http_response_code(400);
+    //         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    //     }
+    //     exit;
+    // }
+
+    public function suaBaiTapApi() {
+        ob_start();
         try {
             $ma_bai_tap = filter_input(INPUT_POST, 'ma_bai_tap', FILTER_VALIDATE_INT);
+            if (!$ma_bai_tap) throw new Exception('Thiếu mã bài tập');
+
+            // 1. Lấy thông tin bài tập hiện tại để biết nó thuộc loại nào
+            $baiTapCu = $this->giaoVienBaiTapModel->getThongTinCoBanBaiTap($ma_bai_tap);
+            if (!$baiTapCu) throw new Exception('Bài tập không tồn tại.');
             
-            if (!$ma_bai_tap) {
-                throw new Exception('Thiếu mã bài tập');
-            }
+            $loai_bai_tap = $baiTapCu['loai_bai_tap'];
 
-            // 1. Xử lý ngày giờ (Xóa chữ T)
+            // 2. Validate dữ liệu chung
+            $ten_bai_tap = trim($_POST['ten_bai_tap'] ?? '');
             $han_nop = $_POST['han_nop'] ?? null;
-            if ($han_nop) {
-                $han_nop = str_replace('T', ' ', $han_nop); 
+            if (empty($ten_bai_tap) || empty($han_nop)) {
+                throw new Exception('Tên bài tập và Hạn nộp không được để trống.');
+            }
+            if ($han_nop) $han_nop = str_replace('T', ' ', $han_nop); 
+
+            // --- RÀNG BUỘC: Hạn nộp phải sau thời điểm hiện tại ---
+            $now = date('Y-m-d H:i:s');
+            if ($han_nop <= $now) {
+                throw new Exception('Hạn nộp phải sau thời điểm hiện tại!');
             }
 
-            // 2. Chuẩn bị dữ liệu
+            // 3. VALIDATE RIÊNG TỪNG LOẠI (Chặn rỗng)
+            $noi_dung_tu_luan = trim($_POST['noi_dung_tu_luan'] ?? '');
+            $json_trac_nghiem = $_POST['json_trac_nghiem'] ?? null;
+
+            // --- RÀNG BUỘC: Nếu đã có học sinh nộp bài thì không cho sửa nội dung ---
+            $soLuongNop = $this->giaoVienBaiTapModel->demSoLuongNopBai($ma_bai_tap);
+            if ($soLuongNop > 0) {
+                // Nếu có học sinh nộp, chỉ cho sửa tên, mô tả, hạn nộp, file đính kèm
+                if (
+                    ($loai_bai_tap == 'TracNghiem' && isset($_POST['json_trac_nghiem']) && $_POST['json_trac_nghiem'] !== $baiTapCu['json_trac_nghiem']) ||
+                    ($loai_bai_tap == 'TuLuan' && isset($_POST['noi_dung_tu_luan']) && $_POST['noi_dung_tu_luan'] !== $baiTapCu['noi_dung_tu_luan']) ||
+                    ($loai_bai_tap == 'UploadFile' && isset($_POST['loai_file_cho_phep']) && $_POST['loai_file_cho_phep'] !== ($baiTapCu['loai_file_cho_phep'] ?? ''))
+                ) {
+                    throw new Exception('Đã có học sinh nộp bài, không thể sửa nội dung đề!');
+                }
+            }
+
+            if ($loai_bai_tap == 'TuLuan') {
+                if (empty($noi_dung_tu_luan)) {
+                    throw new Exception('Nội dung đề bài tự luận không được để trống.');
+                }
+            } 
+            elseif ($loai_bai_tap == 'TracNghiem') {
+                if (isset($_POST['json_trac_nghiem'])) {
+                    if (empty($json_trac_nghiem) || $json_trac_nghiem == '[]') {
+                        throw new Exception('Nội dung trắc nghiệm không hợp lệ (Trống hoặc sai cú pháp).');
+                    }
+                }
+            }
+            elseif ($loai_bai_tap == 'UploadFile') {
+                // Có thể kiểm tra thêm nếu muốn
+            }
+
+            // 4. Chuẩn bị data
             $data = [
-                'ten_bai_tap' => trim($_POST['ten_bai_tap'] ?? ''),
+                'ten_bai_tap' => $ten_bai_tap,
                 'mo_ta'       => trim($_POST['mo_ta'] ?? ''),
                 'han_nop'     => $han_nop, 
-                'file_dinh_kem' => null
-                // Các field con (TuLuan/TracNghiem) nếu Modal chưa có thì cứ để null, Model sẽ bỏ qua
+                'file_dinh_kem' => null,
+                'noi_dung_tu_luan'   => $noi_dung_tu_luan,
+                'json_trac_nghiem'   => $json_trac_nghiem,
+                'thoi_gian_lam_bai'  => $_POST['thoi_gian_lam_bai'] ?? null,
+                'loai_file_cho_phep' => $_POST['loai_file_cho_phep'] ?? null,
+                'dung_luong_toi_da'  => $_POST['dung_luong_toi_da'] ?? null
             ];
 
-            // 3. Xử lý Upload File (Chỉ khi có file mới)
+            // 5. Upload file (Giữ nguyên)
             if (isset($_FILES['file_dinh_kem_new']) && $_FILES['file_dinh_kem_new']['error'] == UPLOAD_ERR_OK) {
                 $file = $_FILES['file_dinh_kem_new'];
                 $uploadDir = __DIR__ . '/../../public/uploads/debai/';
-                
                 if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
-
-                // $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-                // $fileName = 'update_' . time() . '_' . rand(100,999) . '.' . $fileExt;
                 $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
                 $safeFileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', basename($file['name']));
-                $fileName = $safeFileName; // Giữ nguyên tên file gốc
-                
+                $fileName = $safeFileName; 
                 if (move_uploaded_file($file['tmp_name'], $uploadDir . $fileName)) {
                     $data['file_dinh_kem'] = 'uploads/debai/' . $fileName;
                 }
             }
 
-            // 4. Gọi Model
+            // 6. Gọi Model
             $result = $this->giaoVienBaiTapModel->suaBaiTap($ma_bai_tap, $this->ma_giao_vien, $data);
             
-            // Xóa sạch bộ đệm trước khi in JSON (Fix lỗi "Not JSON")
             ob_clean(); 
-            
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode($result);
 
         } catch (Exception $e) {
-            ob_clean(); // Xóa lỗi rác nếu có
+            ob_clean();
             header('Content-Type: application/json; charset=utf-8');
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
         exit;
     }
+
+
+
+    /**
+     * API: Lấy chi tiết bài tập để sửa (Load vào Modal)
+     */
+    public function layChiTietBaiTapDeSuaApi() {
+        header('Content-Type: application/json');
+        $ma_bai_tap = filter_input(INPUT_POST, 'ma_bai_tap', FILTER_VALIDATE_INT);
+        
+        if (!$ma_bai_tap) {
+            echo json_encode(['success' => false, 'message' => 'Thiếu ID']);
+            return;
+        }
+
+        $data = $this->giaoVienBaiTapModel->getChiTietBaiTapDayDu($ma_bai_tap);
+        
+        if ($data) {
+            echo json_encode(['success' => true, 'data' => $data]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy dữ liệu']);
+        }
+    }
+
+
 
     /**
      * API MỚI: Xóa bài tập
@@ -551,14 +843,73 @@ class GiaoVienController extends Controller {
     /**
      * API: Tạo phiên điểm danh (2 loại + hỗ trợ mật khẩu)
      */
+    // public function taoPhienApi() {
+    //     header('Content-Type: application/json');
+    //     $ma_lop = filter_input(INPUT_POST, 'ma_lop', FILTER_VALIDATE_INT);
+    //     $tieu_de = trim($_POST['tieu_de'] ?? '');
+    //     $ghi_chu = trim($_POST['ghi_chu'] ?? '');
+    //     $loai_phien = $_POST['loai_phien'] ?? 'GiaoVien'; 
+        
+    //     // Validate thời gian an toàn - chỉ gán nếu không rỗng
+    //     $thoi_gian_mo = !empty($_POST['thoi_gian_mo']) ? $_POST['thoi_gian_mo'] : null;
+    //     $thoi_gian_dong = !empty($_POST['thoi_gian_dong']) ? $_POST['thoi_gian_dong'] : null;
+        
+    //     // Mật khẩu (CHỈ dùng cho chế độ HocSinh)
+    //     $yeu_cau_mat_khau = isset($_POST['yeu_cau_mat_khau']) && $_POST['yeu_cau_mat_khau'] === 'true';
+    //     $mat_khau = trim($_POST['mat_khau'] ?? '');
+
+    //     if (!$ma_lop || empty($tieu_de)) {
+    //          http_response_code(400);
+    //          echo json_encode(['success' => false, 'message' => 'Thiếu mã lớp hoặc tiêu đề.']);
+    //          return;
+    //     }
+        
+    //     // Kiểm tra mật khẩu nếu yêu cầu (chỉ ở chế độ HocSinh)
+    //     if ($loai_phien == 'HocSinh' && $yeu_cau_mat_khau && empty($mat_khau)) {
+    //         http_response_code(400);
+    //         echo json_encode(['success' => false, 'message' => 'Vui lòng nhập mật khẩu khi bật yêu cầu mật khẩu.']);
+    //         return;
+    //     }
+
+    //     $ma_phien = $this->diemDanhModel->taoPhienDiemDanhMoi(
+    //         $ma_lop, 
+    //         $this->ma_giao_vien, 
+    //         $tieu_de, 
+    //         $ghi_chu, 
+    //         $loai_phien, 
+    //         $thoi_gian_mo, 
+    //         $thoi_gian_dong,
+    //         $yeu_cau_mat_khau,
+    //         $mat_khau
+    //     );
+        
+    //     if ($ma_phien) {
+    //         if ($loai_phien == 'GiaoVien') {
+    //             echo json_encode(['success'=>true, 'message'=>'Đã tạo phiên thủ công.', 'ma_phien_moi' => $ma_phien]);
+    //         } else {
+    //             $msg = 'Đã tạo phiên tự động cho HS';
+    //             if ($yeu_cau_mat_khau) {
+    //                 $msg .= ' (Có mật khẩu)';
+    //             }
+    //             echo json_encode(['success'=>true, 'message'=> $msg]);
+    //         }
+    //     } else {
+    //         http_response_code(500);
+    //         echo json_encode(['success'=>false, 'message'=>'Lỗi tạo phiên trong CSDL']);
+    //     }
+    // }
+    /**
+     * API: Tạo phiên điểm danh (2 loại + hỗ trợ mật khẩu + CHECK TRÙNG)
+     */
     public function taoPhienApi() {
         header('Content-Type: application/json');
+        
         $ma_lop = filter_input(INPUT_POST, 'ma_lop', FILTER_VALIDATE_INT);
         $tieu_de = trim($_POST['tieu_de'] ?? '');
         $ghi_chu = trim($_POST['ghi_chu'] ?? '');
         $loai_phien = $_POST['loai_phien'] ?? 'GiaoVien'; 
         
-        // Validate thời gian an toàn - chỉ gán nếu không rỗng
+        // Validate thời gian an toàn
         $thoi_gian_mo = !empty($_POST['thoi_gian_mo']) ? $_POST['thoi_gian_mo'] : null;
         $thoi_gian_dong = !empty($_POST['thoi_gian_dong']) ? $_POST['thoi_gian_dong'] : null;
         
@@ -590,6 +941,17 @@ class GiaoVienController extends Controller {
             $yeu_cau_mat_khau,
             $mat_khau
         );
+        
+        // --- XỬ LÝ KẾT QUẢ TỪ MODEL ---
+        if ($ma_phien === -1) {
+            // Lỗi trùng phiên
+            http_response_code(400);
+            echo json_encode([
+                'success' => false, 
+                'message' => 'ĐANG CÓ PHIÊN ĐIỂM DANH CHƯA KẾT THÚC!\nVui lòng kết thúc phiên cũ trước khi tạo phiên mới.'
+            ]);
+            return;
+        }
         
         if ($ma_phien) {
             if ($loai_phien == 'GiaoVien') {

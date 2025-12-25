@@ -52,7 +52,8 @@ class ThanhToanModel {
                 FROM hoa_don hd
                 WHERE hd.ma_nguoi_dung = ? 
                 AND hd.trang_thai_hoa_don = 'ChuaThanhToan'
-                AND (hd.trang_thai_tam IS NULL OR hd.trang_thai_tam = 'ChuaThanhToan')  -- Lọc chỉ hóa đơn chưa xử lý tạm
+                -- AND (hd.trang_thai_tam IS NULL OR hd.trang_thai_tam = 'ChuaThanhToan')  -- Lọc chỉ hóa đơn chưa xử lý tạm
+                AND (hd.trang_thai_tam IS NULL OR hd.trang_thai_tam = 'ChuaThanhToan' OR hd.trang_thai_tam = 'LoiSaiTien')
                 ORDER BY hd.ngay_lap_hoa_don DESC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$ma_phu_huynh]);
@@ -227,11 +228,32 @@ class ThanhToanModel {
                 return ['success' => false, 'message' => 'Hóa đơn này đã được thanh toán trước đó.'];
             }
             // So sánh số tiền (Sepay gửi VNĐ, hóa đơn cũng là VNĐ)
-            if (abs((float)$hoa_don['thanh_tien'] - (float)$so_tien) > 0.01) {
-                $this->db->rollBack();
-                return ['success' => false, 'message' => "Số tiền không khớp (Yêu cầu: {$hoa_don['thanh_tien']} | Nhận: {$so_tien})"];
-            }
+            // if (abs((float)$hoa_don['thanh_tien'] - (float)$so_tien) > 0.01) {
+            //     $this->db->rollBack();
+            //     return ['success' => false, 'message' => "Số tiền không khớp (Yêu cầu: {$hoa_don['thanh_tien']} | Nhận: {$so_tien})"];
+            // }
+           if (abs((float)$hoa_don['thanh_tien'] - (float)$so_tien) > 0.01) {
+                // 1. Hủy bỏ mọi giao dịch đang dở dang
+                if ($this->db->inTransaction()) {
+                    $this->db->rollBack(); 
+                }
+                
+                // 2. Mở một transaction RIÊNG BIỆT chỉ để ghi lỗi
+                try {
+                    $this->db->beginTransaction();
+                    $sql_error = "UPDATE hoa_don SET trang_thai_tam = 'LoiSaiTien' WHERE ma_hoa_don = :id";
+                    $stmt = $this->db->prepare($sql_error);
+                    $stmt->execute([':id' => (int)$ma_hoa_don]);
+                    $this->db->commit(); // ÉP BUỘC COMMIT TẠI ĐÂY
+                    
+                    error_log("[SEPAY MODEL] THÀNH CÔNG: Đã ép Database lưu LoiSaiTien cho HĐ: " . $ma_hoa_don);
+                } catch (Exception $e_inner) {
+                    if ($this->db->inTransaction()) $this->db->rollBack();
+                    error_log("[SEPAY MODEL] THẤT BẠI khi ép ghi lỗi: " . $e_inner->getMessage());
+                }
 
+                return ['success' => false, 'message' => "Số tiền không khớp"];
+            }
             // 2. Cập nhật Hóa đơn (Phương thức là 'SepayQR')
             $sql_update_hd = "UPDATE hoa_don 
                             SET trang_thai_hoa_don = 'DaThanhToan',
@@ -263,11 +285,25 @@ class ThanhToanModel {
     /**
      * Lấy trạng thái hóa đơn chỉ bằng ID (Dùng cho Polling)
      */
+    // public function getTrangThaiHoaDon($ma_hoa_don) {
+    //     $sql = "SELECT trang_thai_hoa_don FROM hoa_don WHERE ma_hoa_don = ?";
+    //     $stmt = $this->db->prepare($sql);
+    //     $stmt->execute([$ma_hoa_don]);
+    //     $row = $stmt->fetch();
+    //     return $row ? $row['trang_thai_hoa_don'] : null;
+    // }
     public function getTrangThaiHoaDon($ma_hoa_don) {
-        $sql = "SELECT trang_thai_hoa_don FROM hoa_don WHERE ma_hoa_don = ?";
+        // Lấy cả 2 cột để kiểm tra
+        $sql = "SELECT trang_thai_hoa_don, trang_thai_tam FROM hoa_don WHERE ma_hoa_don = ?";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$ma_hoa_don]);
         $row = $stmt->fetch();
+        
+        // Nếu phát hiện có lỗi sai tiền ở cột tạm, trả về mã lỗi luôn
+        if ($row && $row['trang_thai_tam'] === 'LoiSaiTien') {
+            return 'LoiSaiTien';
+        }
+        
         return $row ? $row['trang_thai_hoa_don'] : null;
     }
 

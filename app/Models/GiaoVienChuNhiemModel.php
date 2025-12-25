@@ -131,42 +131,88 @@ class GiaoVienChuNhiemModel {
         }
     }
 
-    public function capNhatSoBuoiVang($ma_hoc_sinh, $ma_hoc_ky, $so_buoi_vang) {
-        if ($this->db === null) return false;
+    // public function capNhatSoBuoiVang($ma_hoc_sinh, $ma_hoc_ky, $so_buoi_vang) {
+    //     if ($this->db === null) return false;
+    //     try {
+    //         $sql = "UPDATE ket_qua_hoc_tap 
+    //                 SET so_buoi_vang = ?
+    //                 WHERE ma_hoc_sinh = ? AND ma_hoc_ky = ?";
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([$so_buoi_vang, $ma_hoc_sinh, $ma_hoc_ky]);
+    //         // Nếu chưa có dòng, thêm mới:
+    //         if ($stmt->rowCount() === 0) {
+    //             $sql2 = "INSERT INTO ket_qua_hoc_tap (ma_hoc_sinh, ma_hoc_ky, so_buoi_vang) VALUES (?, ?, ?)";
+    //             $stmt2 = $this->db->prepare($sql2);
+    //             $stmt2->execute([$ma_hoc_sinh, $ma_hoc_ky, $so_buoi_vang]);
+    //         }
+    //         return true;
+    //     } catch (PDOException $e) {
+    //         return false;
+    //     }
+    // }
+    public function capNhatSoBuoiVang($ma_hs, $ma_hk, $so_vang) {
         try {
-            $sql = "UPDATE ket_qua_hoc_tap 
-                    SET so_buoi_vang = ?
-                    WHERE ma_hoc_sinh = ? AND ma_hoc_ky = ?";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([$so_buoi_vang, $ma_hoc_sinh, $ma_hoc_ky]);
-            // Nếu chưa có dòng, thêm mới:
-            if ($stmt->rowCount() === 0) {
-                $sql2 = "INSERT INTO ket_qua_hoc_tap (ma_hoc_sinh, ma_hoc_ky, so_buoi_vang) VALUES (?, ?, ?)";
-                $stmt2 = $this->db->prepare($sql2);
-                $stmt2->execute([$ma_hoc_sinh, $ma_hoc_ky, $so_buoi_vang]);
+            // 1. Kiểm tra xem học sinh này ở học kỳ này đã có dòng trong bảng chưa
+            $checkSql = "SELECT COUNT(*) FROM ket_qua_hoc_tap WHERE ma_hoc_sinh = ? AND ma_hoc_ky = ?";
+            $stmtCheck = $this->db->prepare($checkSql);
+            $stmtCheck->execute([$ma_hs, $ma_hk]);
+            $exists = $stmtCheck->fetchColumn() > 0;
+
+            if ($exists) {
+                // 2. Nếu ĐÃ CÓ: Chạy lệnh UPDATE
+                $sql = "UPDATE ket_qua_hoc_tap SET so_buoi_vang = ? WHERE ma_hoc_sinh = ? AND ma_hoc_ky = ?";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute([$so_vang, $ma_hs, $ma_hk]);
+            } else {
+                // 3. Nếu CHƯA CÓ: Chạy lệnh INSERT
+                $sql = "INSERT INTO ket_qua_hoc_tap (ma_hoc_sinh, ma_hoc_ky, so_buoi_vang) VALUES (?, ?, ?)";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute([$ma_hs, $ma_hk, $so_vang]);
             }
-            return true;
-        } catch (PDOException $e) {
+        } catch (Exception $e) {
             return false;
         }
     }
 
-    public function capNhatHanhKiem($ma_hoc_sinh, $ma_hoc_ky, $hanh_kiem, $nhan_xet_gvcn = null) {
-        if ($this->db === null) return false;
+    // public function capNhatHanhKiem($ma_hoc_sinh, $ma_hoc_ky, $hanh_kiem, $nhan_xet_gvcn = null) {
+    //     if ($this->db === null) return false;
+    //     try {
+    //         $sql = "UPDATE ket_qua_hoc_tap 
+    //                 SET hanh_kiem = ?, nhan_xet_gvcn = ?
+    //                 WHERE ma_hoc_sinh = ? AND ma_hoc_ky = ?";
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([$hanh_kiem, $nhan_xet_gvcn, $ma_hoc_sinh, $ma_hoc_ky]);
+    //         // Nếu chưa có dòng, thêm mới:
+    //         if ($stmt->rowCount() === 0) {
+    //             $sql2 = "INSERT INTO ket_qua_hoc_tap (ma_hoc_sinh, ma_hoc_ky, hanh_kiem, nhan_xet_gvcn) VALUES (?, ?, ?, ?)";
+    //             $stmt2 = $this->db->prepare($sql2);
+    //             $stmt2->execute([$ma_hoc_sinh, $ma_hoc_ky, $hanh_kiem, $nhan_xet_gvcn]);
+    //         }
+    //         return true;
+    //     } catch (PDOException $e) {
+    //         return false;
+    //     }
+    // }
+    public function capNhatHanhKiem($ma_hs, $ma_hk, $hk, $nx) {
         try {
-            $sql = "UPDATE ket_qua_hoc_tap 
-                    SET hanh_kiem = ?, nhan_xet_gvcn = ?
-                    WHERE ma_hoc_sinh = ? AND ma_hoc_ky = ?";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([$hanh_kiem, $nhan_xet_gvcn, $ma_hoc_sinh, $ma_hoc_ky]);
-            // Nếu chưa có dòng, thêm mới:
-            if ($stmt->rowCount() === 0) {
-                $sql2 = "INSERT INTO ket_qua_hoc_tap (ma_hoc_sinh, ma_hoc_ky, hanh_kiem, nhan_xet_gvcn) VALUES (?, ?, ?, ?)";
-                $stmt2 = $this->db->prepare($sql2);
-                $stmt2->execute([$ma_hoc_sinh, $ma_hoc_ky, $hanh_kiem, $nhan_xet_gvcn]);
+            // 1. Kiểm tra tồn tại
+            $checkSql = "SELECT COUNT(*) FROM ket_qua_hoc_tap WHERE ma_hoc_sinh = ? AND ma_hoc_ky = ?";
+            $stmtCheck = $this->db->prepare($checkSql);
+            $stmtCheck->execute([$ma_hs, $ma_hk]);
+            $exists = $stmtCheck->fetchColumn() > 0;
+
+            if ($exists) {
+                // 2. Nếu có rồi thì UPDATE
+                $sql = "UPDATE ket_qua_hoc_tap SET hanh_kiem = ?, nhan_xet_gvcn = ? WHERE ma_hoc_sinh = ? AND ma_hoc_ky = ?";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute([$hk, $nx, $ma_hs, $ma_hk]);
+            } else {
+                // 3. Nếu chưa có thì INSERT
+                $sql = "INSERT INTO ket_qua_hoc_tap (ma_hoc_sinh, ma_hoc_ky, hanh_kiem, nhan_xet_gvcn) VALUES (?, ?, ?, ?)";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute([$ma_hs, $ma_hk, $hk, $nx]);
             }
-            return true;
-        } catch (PDOException $e) {
+        } catch (Exception $e) {
             return false;
         }
     }

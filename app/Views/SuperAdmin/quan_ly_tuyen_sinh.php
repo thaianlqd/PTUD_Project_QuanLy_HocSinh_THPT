@@ -385,17 +385,69 @@
         }
 
         // --- Logic Chỉ Tiêu & Điểm ---
+        // async function saveChiTieu() {
+        //     const rows = document.querySelectorAll('#chiTieuTableBody tr');
+        //     let payload = {}; let valid = true;
+        //     rows.forEach(row => {
+        //         const ma_truong = row.dataset.maTruong; const input = row.querySelector('input[type="number"]'); const value = parseInt(input.value);
+        //         if (isNaN(value) || value < 0) { valid = false; input.classList.add('is-invalid'); }
+        //         else { input.classList.remove('is-invalid'); payload[ma_truong] = value; }
+        //     });
+        //     if (!valid) { showNotification('Chỉ tiêu không hợp lệ!', 'danger'); return; }
+        //     try {
+        //         const result = await apiCall(`${API_URL}/updateChiTieuApi`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        //         showNotification(result.message, 'success');
+        //     } catch (e) {}
+        // }
         async function saveChiTieu() {
             const rows = document.querySelectorAll('#chiTieuTableBody tr');
-            let payload = {}; let valid = true;
+            let payload = {}; 
+            let valid = true;
+            let errorMessage = "";
+
             rows.forEach(row => {
-                const ma_truong = row.dataset.maTruong; const input = row.querySelector('input[type="number"]'); const value = parseInt(input.value);
-                if (isNaN(value) || value < 0) { valid = false; input.classList.add('is-invalid'); }
-                else { input.classList.remove('is-invalid'); payload[ma_truong] = value; }
+                const ma_truong = row.dataset.maTruong; 
+                const input = row.querySelector('input[type="number"]'); 
+                const value = input.value; // Lấy string để check trống
+                const intValue = parseInt(value);
+
+                // Check 1: Không được để trống
+                if (value === "") {
+                    valid = false;
+                    errorMessage = "Không được để trống chỉ tiêu các trường";
+                    input.classList.add('is-invalid');
+                } 
+                // Check 2: Phải là số nguyên (không nhập 50.5)
+                else if (!Number.isInteger(Number(value))) {
+                    valid = false;
+                    errorMessage = "Chỉ tiêu phải là số nguyên dương";
+                    input.classList.add('is-invalid');
+                }
+                // Check 3: Không âm và không quá lớn (ví dụ max 2000)
+                else if (intValue < 0 || intValue > 2000) {
+                    valid = false;
+                    errorMessage = "Chỉ tiêu phải từ 0 đến 2000";
+                    input.classList.add('is-invalid');
+                }
+                else {
+                    input.classList.remove('is-invalid'); 
+                    payload[ma_truong] = intValue; 
+                }
             });
-            if (!valid) { showNotification('Chỉ tiêu không hợp lệ!', 'danger'); return; }
+
+            if (!valid) { 
+                alert(errorMessage); 
+                return; 
+            }
+
+            if (!confirm("Xác nhận lưu thay đổi chỉ tiêu cho tất cả các trường?")) return;
+
             try {
-                const result = await apiCall(`${API_URL}/updateChiTieuApi`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const result = await apiCall(`${API_URL}/updateChiTieuApi`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(payload) 
+                });
                 showNotification(result.message, 'success');
             } catch (e) {}
         }
@@ -442,22 +494,86 @@
             } catch (e) {}
         }
 
+        // async function saveDiem() {
+        //     const rows = document.querySelectorAll('#diemTableBody tr[data-ma-nguoi-dung]');
+        //     let payload = []; let valid = true;
+        //     rows.forEach(row => {
+        //         const ma_nguoi_dung = parseInt(row.dataset.maNguoiDung); const inputs = row.querySelectorAll('input.diem-input');
+        //         const diem_toan = inputs[0].value === '' ? null : parseFloat(inputs[0].value); const diem_van = inputs[1].value === '' ? null : parseFloat(inputs[1].value); const diem_anh = inputs[2].value === '' ? null : parseFloat(inputs[2].value);
+        //         if (diem_toan !== null || diem_van !== null || diem_anh !== null) {
+        //             if ((diem_toan !== null && (diem_toan < 0 || diem_toan > 10)) || (diem_van !== null && (diem_van < 0 || diem_van > 10)) || (diem_anh !== null && (diem_anh < 0 || diem_anh > 10))) { valid = false; inputs.forEach(inp => inp.classList.add('is-invalid')); }
+        //             else { inputs.forEach(inp => inp.classList.remove('is-invalid')); payload.push({ ma_nguoi_dung, diem_toan, diem_van, diem_anh }); }
+        //         }
+        //     });
+        //     if (!valid) { showNotification('Điểm nhập không hợp lệ!', 'danger'); return; }
+        //     if (payload.length === 0) { showNotification('Không có điểm mới.', 'warning'); return; }
+        //     try {
+        //         const result = await apiCall(`${API_URL}/updateDiemApi`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        //         showNotification(result.message, 'success'); loadThiSinh();
+        //     } catch (e) {}
+        // }
         async function saveDiem() {
             const rows = document.querySelectorAll('#diemTableBody tr[data-ma-nguoi-dung]');
-            let payload = []; let valid = true;
+            let payload = []; 
+            let valid = true;
+            let count = 0;
+
             rows.forEach(row => {
-                const ma_nguoi_dung = parseInt(row.dataset.maNguoiDung); const inputs = row.querySelectorAll('input.diem-input');
-                const diem_toan = inputs[0].value === '' ? null : parseFloat(inputs[0].value); const diem_van = inputs[1].value === '' ? null : parseFloat(inputs[1].value); const diem_anh = inputs[2].value === '' ? null : parseFloat(inputs[2].value);
-                if (diem_toan !== null || diem_van !== null || diem_anh !== null) {
-                    if ((diem_toan !== null && (diem_toan < 0 || diem_toan > 10)) || (diem_van !== null && (diem_van < 0 || diem_van > 10)) || (diem_anh !== null && (diem_anh < 0 || diem_anh > 10))) { valid = false; inputs.forEach(inp => inp.classList.add('is-invalid')); }
-                    else { inputs.forEach(inp => inp.classList.remove('is-invalid')); payload.push({ ma_nguoi_dung, diem_toan, diem_van, diem_anh }); }
+                const ma_nguoi_dung = parseInt(row.dataset.maNguoiDung); 
+                const inputs = row.querySelectorAll('input.diem-input');
+                
+                // Helper để check từng ô điểm
+                const checkDiem = (val) => {
+                    if (val === '') return null;
+                    const d = parseFloat(val);
+                    // Check điểm từ 0-10 và phải là bội số của 0.05 hoặc 0.25 (tùy bác)
+                    if (isNaN(d) || d < 0 || d > 10) return false;
+                    return d;
+                };
+
+                const dToan = checkDiem(inputs[0].value);
+                const dVan = checkDiem(inputs[1].value);
+                const dAnh = checkDiem(inputs[2].value);
+
+                // Nếu bất kỳ ô nào nhập sai định dạng (false)
+                if (dToan === false || dVan === false || dAnh === false) {
+                    valid = false;
+                    inputs.forEach(inp => inp.classList.add('is-invalid'));
+                } else {
+                    inputs.forEach(inp => inp.classList.remove('is-invalid'));
+                    // Chỉ thêm vào payload nếu có ít nhất 1 ô được nhập điểm
+                    if (dToan !== null || dVan !== null || dAnh !== null) {
+                        payload.push({ 
+                            ma_nguoi_dung, 
+                            diem_toan: dToan, 
+                            diem_van: dVan, 
+                            diem_anh: dAnh 
+                        });
+                        count++;
+                    }
                 }
             });
-            if (!valid) { showNotification('Điểm nhập không hợp lệ!', 'danger'); return; }
-            if (payload.length === 0) { showNotification('Không có điểm mới.', 'warning'); return; }
+
+            if (!valid) { 
+                alert('Điểm phải nằm trong khoảng từ 0 đến 10!'); 
+                return; 
+            }
+            
+            if (count === 0) { 
+                alert('Chưa nhập điểm mới cho thí sinh nào cả.'); 
+                return; 
+            }
+
+            if (!confirm(`Bạn sắp lưu điểm cho ${count} thí sinh. Tiếp tục?`)) return;
+
             try {
-                const result = await apiCall(`${API_URL}/updateDiemApi`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                showNotification(result.message, 'success'); loadThiSinh();
+                const result = await apiCall(`${API_URL}/updateDiemApi`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(payload) 
+                });
+                showNotification(result.message, 'success'); 
+                loadThiSinh(); // Load lại để cập nhật giao diện
             } catch (e) {}
         }
 

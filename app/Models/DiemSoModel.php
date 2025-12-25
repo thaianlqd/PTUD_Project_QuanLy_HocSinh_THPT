@@ -84,75 +84,156 @@ class DiemSoModel {
         
         $this->db->beginTransaction();
         try {
-            // Lấy thông tin phiếu
+            // 1. Lấy thông tin phiếu đang chờ duyệt
             $stmt_phieu = $this->db->prepare("SELECT * FROM phieu_yeu_cau_chinh_sua_diem WHERE ma_phieu = ? AND trang_thai_phieu = 'ChoDuyet'");
             $stmt_phieu->execute([$ma_phieu]);
             $phieu = $stmt_phieu->fetch(PDO::FETCH_ASSOC);
             
             if (!$phieu) {
                 $this->db->rollBack();
-                return ['success' => false, 'message' => 'Không tìm thấy phiếu hoặc đã được xử lý.'];
+                return ['success' => false, 'message' => 'Không tìm thấy phiếu hoặc đã được xử lý trước đó.'];
             }
+
+            // 2. LOGIC QUAN TRỌNG: Xác định bộ điểm cuối cùng để tính toán
+            // Nếu GV gửi điểm mới (khác null) thì lấy điểm mới, không thì giữ điểm cũ
+            $m  = ($phieu['diem_mieng_moi']   !== null) ? $phieu['diem_mieng_moi']   : $phieu['diem_mieng_cu'];
+            $p  = ($phieu['diem_15phut_moi']  !== null) ? $phieu['diem_15phut_moi']  : $phieu['diem_15phut_cu'];
+            $t  = ($phieu['diem_1tiet_moi']   !== null) ? $phieu['diem_1tiet_moi']   : $phieu['diem_1tiet_cu'];
+            $gk = ($phieu['diem_gua_ky_moi']  !== null) ? $phieu['diem_gua_ky_moi']  : $phieu['diem_gua_ky_cu'];
+            $ck = ($phieu['diem_cuoi_ky_moi'] !== null) ? $phieu['diem_cuoi_ky_moi'] : $phieu['diem_cuoi_ky_cu'];
+
+            // 3. Tính toán lại các cột trung bình theo công thức
+            $diem_tx_moi = round(($m + $p + $t) / 3, 2);
+            $diem_tb_mon_moi = round(($diem_tx_moi + $gk * 2 + $ck * 3) / 6, 2);
             
-            // Tính điểm TX mới - KỂM TRA NULL
-            $diem_tx_moi = null;
-            if ($phieu['diem_mieng_moi'] !== null && $phieu['diem_15phut_moi'] !== null && $phieu['diem_1tiet_moi'] !== null) {
-                $diem_tx_moi = round(($phieu['diem_mieng_moi'] + $phieu['diem_15phut_moi'] + $phieu['diem_1tiet_moi']) / 3, 2);
-            }
-            
-            // Tính ĐTB Môn mới - KIỂM TRA NULL
-            $diem_tb_mon_moi = null;
-            if ($diem_tx_moi !== null && $phieu['diem_gua_ky_moi'] !== null && $phieu['diem_cuoi_ky_moi'] !== null) {
-                $diem_tb_mon_moi = round(($diem_tx_moi + $phieu['diem_gua_ky_moi']*2 + $phieu['diem_cuoi_ky_moi']*3) / 6, 2);
-            }
-            
-            // Xếp loại mới
-            $xep_loai_moi = 'ChuaDat';
-            if ($diem_tb_mon_moi !== null) {
-                if ($diem_tb_mon_moi >= 8.0) $xep_loai_moi = 'Gioi';
-                elseif ($diem_tb_mon_moi >= 6.5) $xep_loai_moi = 'Kha';
-                elseif ($diem_tb_mon_moi >= 5.0) $xep_loai_moi = 'Dat';
-            }
-            
-            // Cập nhật điểm
+            // 4. Xếp loại môn học
+            $xep_loai_moi = ($diem_tb_mon_moi >= 8.0) ? 'Gioi' : (($diem_tb_mon_moi >= 6.5) ? 'Kha' : (($diem_tb_mon_moi >= 5.0) ? 'Dat' : 'ChuaDat'));
+
+            // 5. Cập nhật vào bảng điểm gốc (diem_mon_hoc_hoc_ky)
             $sql_update = "UPDATE diem_mon_hoc_hoc_ky SET
                             diem_mieng = ?, diem_15phut = ?, diem_1tiet = ?,
                             diem_tx = ?, diem_gua_ky = ?, diem_cuoi_ky = ?,
                             diem_tb_mon_hk = ?, xep_loai_mon = ?, ngay_cap_nhat = NOW()
                           WHERE ma_hoc_sinh = ? AND ma_mon_hoc = ? AND ma_hoc_ky = ?";
+            
             $stmt_update = $this->db->prepare($sql_update);
             $stmt_update->execute([
-                $phieu['diem_mieng_moi'], $phieu['diem_15phut_moi'], $phieu['diem_1tiet_moi'],
-                $diem_tx_moi, $phieu['diem_gua_ky_moi'], $phieu['diem_cuoi_ky_moi'],
+                $m, $p, $t, $diem_tx_moi, $gk, $ck, 
                 $diem_tb_mon_moi, $xep_loai_moi,
                 $phieu['ma_hoc_sinh'], $phieu['ma_mon_hoc'], $phieu['ma_hoc_ky']
             ]);
             
-            // Cập nhật trạng thái phiếu
+            // 6. Cập nhật trạng thái phiếu thành 'DaDuyet'
             $sql_phieu = "UPDATE phieu_yeu_cau_chinh_sua_diem SET 
                           trang_thai_phieu = 'DaDuyet', 
                           ma_nguoi_duyet = ?, 
                           ngay_duyet = NOW() 
                           WHERE ma_phieu = ?";
-            $stmt_phieu = $this->db->prepare($sql_phieu);
-            $stmt_phieu->execute([$ma_nguoi_duyet, $ma_phieu]);
+            $this->db->prepare($sql_phieu)->execute([$ma_nguoi_duyet, $ma_phieu]);
             
             $this->db->commit();
-            return ['success' => true, 'message' => 'Duyệt phiếu và cập nhật điểm thành công!'];
+            return ['success' => true, 'message' => 'Đã duyệt! Điểm số của học sinh đã được cập nhật chính xác.'];
             
-        } catch (PDOException $e) {
+        } catch (Exception $e) {
             $this->db->rollBack();
-            error_log("Lỗi duyetPhieuChinhSuaMoi: " . $e->getMessage());
             return ['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()];
         }
     }
+    /**
+     * Duyệt phiếu chỉnh sửa điểm (Ban Giám Hiệu)
+     * ĐÃ FIX: Tự động lấy điểm cũ nếu điểm mới bị NULL để tính toán chính xác
+     */
+    // public function duyetPhieuChinhSuaMoi($ma_phieu, $ma_nguoi_duyet) {
+    //     if ($this->db === null) return ['success' => false, 'message' => 'Lỗi kết nối CSDL.'];
+        
+    //     $this->db->beginTransaction();
+    //     try {
+    //         // 1. Lấy thông tin phiếu
+    //         $stmt_phieu = $this->db->prepare("SELECT * FROM phieu_yeu_cau_chinh_sua_diem WHERE ma_phieu = ? AND trang_thai_phieu = 'ChoDuyet'");
+    //         $stmt_phieu->execute([$ma_phieu]);
+    //         $phieu = $stmt_phieu->fetch(PDO::FETCH_ASSOC);
+            
+    //         if (!$phieu) {
+    //             $this->db->rollBack();
+    //             return ['success' => false, 'message' => 'Không tìm thấy phiếu hoặc phiếu đã xử lý rồi.'];
+    //         }
+
+    //         // 2. LOGIC QUAN TRỌNG: Xác định điểm cuối cùng (Lấy MỚI nếu có, không thì giữ CŨ)
+    //         $m = ($phieu['diem_mieng_moi']   !== null) ? $phieu['diem_mieng_moi']   : $phieu['diem_mieng_cu'];
+    //         $p = ($phieu['diem_15phut_moi']  !== null) ? $phieu['diem_15phut_moi']  : $phieu['diem_15phut_cu'];
+    //         $t = ($phieu['diem_1tiet_moi']   !== null) ? $phieu['diem_1tiet_moi']   : $phieu['diem_1tiet_cu'];
+    //         $gk = ($phieu['diem_gua_ky_moi'] !== null) ? $phieu['diem_gua_ky_moi']  : $phieu['diem_gua_ky_cu'];
+    //         $ck = ($phieu['diem_cuoi_ky_moi'] !== null) ? $phieu['diem_cuoi_ky_moi'] : $phieu['diem_cuoi_ky_cu'];
+
+    //         // 3. Tính toán lại các đầu điểm trung bình
+    //         $diem_tx_moi = round(($m + $p + $t) / 3, 2);
+    //         $diem_tb_mon_moi = round(($diem_tx_moi + $gk * 2 + $ck * 3) / 6, 2);
+
+    //         // 4. Xác định xếp loại môn
+    //         $xep_loai_moi = 'ChuaDat';
+    //         if ($diem_tb_mon_moi >= 8.0) $xep_loai_moi = 'Gioi';
+    //         elseif ($diem_tb_mon_moi >= 6.5) $xep_loai_moi = 'Kha';
+    //         elseif ($diem_tb_mon_moi >= 5.0) $xep_loai_moi = 'Dat';
+
+    //         // 5. Cập nhật vào bảng điểm gốc (diem_mon_hoc_hoc_ky)
+    //         $sql_update = "UPDATE diem_mon_hoc_hoc_ky SET
+    //                         diem_mieng = ?, diem_15phut = ?, diem_1tiet = ?,
+    //                         diem_tx = ?, diem_gua_ky = ?, diem_cuoi_ky = ?,
+    //                         diem_tb_mon_hk = ?, xep_loai_mon = ?, ngay_cap_nhat = NOW()
+    //                     WHERE ma_hoc_sinh = ? AND ma_mon_hoc = ? AND ma_hoc_ky = ?";
+            
+    //         $stmt_update = $this->db->prepare($sql_update);
+    //         $stmt_update->execute([
+    //             $m, $p, $t, $diem_tx_moi, $gk, $ck, 
+    //             $diem_tb_mon_moi, $xep_loai_moi,
+    //             $phieu['ma_hoc_sinh'], $phieu['ma_mon_hoc'], $phieu['ma_hoc_ky']
+    //         ]);
+            
+    //         // 6. Cập nhật trạng thái phiếu yêu cầu sang 'DaDuyet'
+    //         $sql_phieu = "UPDATE phieu_yeu_cau_chinh_sua_diem SET 
+    //                     trang_thai_phieu = 'DaDuyet', 
+    //                     ma_nguoi_duyet = ?, 
+    //                     ngay_duyet = NOW() 
+    //                     WHERE ma_phieu = ?";
+    //         $this->db->prepare($sql_phieu)->execute([$ma_nguoi_duyet, $ma_phieu]);
+            
+    //         $this->db->commit();
+    //         return ['success' => true, 'message' => 'Duyệt thành công! Điểm số đã được cập nhật.'];
+            
+    //     } catch (Exception $e) {
+    //         $this->db->rollBack();
+    //         return ['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()];
+    //     }
+    // }
     
     /**
      * Từ chối phiếu chỉnh sửa điểm
      */
-    public function tuChoiPhieuChinhSuaMoi($ma_phieu, $ma_nguoi_duyet, $ly_do) {
-        if ($this->db === null) return ['success' => false, 'message' => 'Lỗi kết nối CSDL.'];
+    // public function tuChoiPhieuChinhSuaMoi($ma_phieu, $ma_nguoi_duyet, $ly_do) {
+    //     if ($this->db === null) return ['success' => false, 'message' => 'Lỗi kết nối CSDL.'];
         
+    //     try {
+    //         $sql = "UPDATE phieu_yeu_cau_chinh_sua_diem SET 
+    //                 trang_thai_phieu = 'TuChoi', 
+    //                 ma_nguoi_duyet = ?, 
+    //                 ly_do_tu_choi = ?, 
+    //                 ngay_duyet = NOW()
+    //                 WHERE ma_phieu = ? AND trang_thai_phieu = 'ChoDuyet'";
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([$ma_nguoi_duyet, $ly_do, $ma_phieu]);
+            
+    //         if ($stmt->rowCount() > 0) {
+    //             return ['success' => true, 'message' => 'Từ chối phiếu thành công!'];
+    //         } else {
+    //             return ['success' => false, 'message' => 'Phiếu không tồn tại hoặc đã được xử lý.'];
+    //         }
+
+    //     } catch (PDOException $e) {
+    //         error_log("Lỗi tuChoiPhieuChinhSuaMoi: " . $e->getMessage());
+    //         return ['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()];
+    //     }
+    // }
+    public function tuChoiPhieuChinhSuaMoi($ma_phieu, $ma_nguoi_duyet, $ly_do) {
         try {
             $sql = "UPDATE phieu_yeu_cau_chinh_sua_diem SET 
                     trang_thai_phieu = 'TuChoi', 
@@ -162,16 +243,11 @@ class DiemSoModel {
                     WHERE ma_phieu = ? AND trang_thai_phieu = 'ChoDuyet'";
             $stmt = $this->db->prepare($sql);
             $stmt->execute([$ma_nguoi_duyet, $ly_do, $ma_phieu]);
-            
-            if ($stmt->rowCount() > 0) {
-                return ['success' => true, 'message' => 'Từ chối phiếu thành công!'];
-            } else {
-                return ['success' => false, 'message' => 'Phiếu không tồn tại hoặc đã được xử lý.'];
-            }
-
+            return ($stmt->rowCount() > 0) 
+                ? ['success' => true, 'message' => 'Đã từ chối phiếu yêu cầu này.']
+                : ['success' => false, 'message' => 'Phiếu không tồn tại hoặc đã xử lý.'];
         } catch (PDOException $e) {
-            error_log("Lỗi tuChoiPhieuChinhSuaMoi: " . $e->getMessage());
-            return ['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()];
+            return ['success' => false, 'message' => $e->getMessage()];
         }
     }
 
@@ -424,29 +500,55 @@ class DiemSoModel {
     /**
      * Danh sách HS và điểm môn do giáo viên này dạy (theo học kỳ)
      */
+    // public function getDanhSachDiemMonByGV($ma_gv, $ma_hoc_ky = 'HK1') {
+    //     if ($this->db === null) return [];
+    //     $sql = "SELECT 
+    //                 l.ma_lop, l.ten_lop,
+    //                 mh.ma_mon_hoc, mh.ten_mon_hoc,
+    //                 hs.ma_hoc_sinh, nd.ho_ten,
+    //                 dmhk.diem_mieng,
+    //                 dmhk.diem_15phut,
+    //                 dmhk.diem_1tiet,
+    //                 dmhk.diem_tx,
+    //                 dmhk.diem_gua_ky, 
+    //                 dmhk.diem_cuoi_ky,
+    //                 dmhk.diem_tb_mon_hk, 
+    //                 dmhk.xep_loai_mon
+    //             FROM bang_phan_cong bpc
+    //             JOIN lop_hoc l      ON bpc.ma_lop = l.ma_lop
+    //             JOIN mon_hoc mh     ON bpc.ma_mon_hoc = mh.ma_mon_hoc
+    //             JOIN hoc_sinh hs    ON hs.ma_lop = l.ma_lop
+    //             JOIN nguoi_dung nd  ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
+    //             LEFT JOIN diem_mon_hoc_hoc_ky dmhk 
+    //                 ON dmhk.ma_hoc_sinh = hs.ma_hoc_sinh
+    //                AND dmhk.ma_mon_hoc  = bpc.ma_mon_hoc
+    //                AND dmhk.ma_hoc_ky   = ?
+    //             WHERE bpc.ma_giao_vien = ?
+    //             ORDER BY l.ten_lop, mh.ten_mon_hoc, nd.ho_ten";
+    //     $stmt = $this->db->prepare($sql);
+    //     $stmt->execute([$ma_hoc_ky, $ma_gv]);
+    //     return $stmt->fetchAll();
+    // }
+    // Trong DiemSoModel.php bác sửa lại câu SQL này:
     public function getDanhSachDiemMonByGV($ma_gv, $ma_hoc_ky = 'HK1') {
         if ($this->db === null) return [];
         $sql = "SELECT 
+                    dmhk.ma_diem_mon_hk, -- THÊM CỘT NÀY VÀO ĐỂ CHECK TỒN TẠI
                     l.ma_lop, l.ten_lop,
                     mh.ma_mon_hoc, mh.ten_mon_hoc,
                     hs.ma_hoc_sinh, nd.ho_ten,
-                    dmhk.diem_mieng,
-                    dmhk.diem_15phut,
-                    dmhk.diem_1tiet,
-                    dmhk.diem_tx,
-                    dmhk.diem_gua_ky, 
-                    dmhk.diem_cuoi_ky,
-                    dmhk.diem_tb_mon_hk, 
-                    dmhk.xep_loai_mon
+                    dmhk.diem_mieng, dmhk.diem_15phut, dmhk.diem_1tiet,
+                    dmhk.diem_tx, dmhk.diem_gua_ky, dmhk.diem_cuoi_ky,
+                    dmhk.diem_tb_mon_hk, dmhk.xep_loai_mon
                 FROM bang_phan_cong bpc
-                JOIN lop_hoc l      ON bpc.ma_lop = l.ma_lop
-                JOIN mon_hoc mh     ON bpc.ma_mon_hoc = mh.ma_mon_hoc
-                JOIN hoc_sinh hs    ON hs.ma_lop = l.ma_lop
-                JOIN nguoi_dung nd  ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
+                JOIN lop_hoc l       ON bpc.ma_lop = l.ma_lop
+                JOIN mon_hoc mh      ON bpc.ma_mon_hoc = mh.ma_mon_hoc
+                JOIN hoc_sinh hs     ON hs.ma_lop = l.ma_lop
+                JOIN nguoi_dung nd   ON hs.ma_hoc_sinh = nd.ma_nguoi_dung
                 LEFT JOIN diem_mon_hoc_hoc_ky dmhk 
                     ON dmhk.ma_hoc_sinh = hs.ma_hoc_sinh
-                   AND dmhk.ma_mon_hoc  = bpc.ma_mon_hoc
-                   AND dmhk.ma_hoc_ky   = ?
+                AND dmhk.ma_mon_hoc  = bpc.ma_mon_hoc
+                AND dmhk.ma_hoc_ky   = ?
                 WHERE bpc.ma_giao_vien = ?
                 ORDER BY l.ten_lop, mh.ten_mon_hoc, nd.ho_ten";
         $stmt = $this->db->prepare($sql);
@@ -457,65 +559,107 @@ class DiemSoModel {
     /**
      * Nhập điểm lần đầu (chỉ INSERT nếu chưa có)
      */
+    // public function nhapDiemMon($ma_hoc_sinh, $ma_mon_hoc, $ma_hoc_ky, $data) {
+    //     if ($this->db === null) return ['success' => false, 'message' => 'Lỗi kết nối CSDL.'];
+        
+    //     try {
+    //         // Kiểm tra đã có điểm chưa
+    //         $check = $this->db->prepare("SELECT ma_diem_mon_hk FROM diem_mon_hoc_hoc_ky 
+    //                                      WHERE ma_hoc_sinh = ? AND ma_mon_hoc = ? AND ma_hoc_ky = ?");
+    //         $check->execute([$ma_hoc_sinh, $ma_mon_hoc, $ma_hoc_ky]);
+    //         $exists = $check->fetch();
+            
+    //         if ($exists) {
+    //             return ['success' => false, 'message' => 'Điểm đã tồn tại! Nếu muốn sửa, vui lòng gửi phiếu yêu cầu.'];
+    //         }
+            
+    //         // Tính điểm TX từ 3 cột
+    //         $diem_mieng = $data['diem_mieng'] ?? null;
+    //         $diem_15phut = $data['diem_15phut'] ?? null;
+    //         $diem_1tiet = $data['diem_1tiet'] ?? null;
+            
+    //         $diem_tx = null;
+    //         if ($diem_mieng !== null && $diem_15phut !== null && $diem_1tiet !== null) {
+    //             $diem_tx = round(($diem_mieng + $diem_15phut + $diem_1tiet) / 3, 2);
+    //         }
+            
+    //         $diem_gk = $data['diem_gua_ky'] ?? null;
+    //         $diem_ck = $data['diem_cuoi_ky'] ?? null;
+            
+    //         // Tính ĐTB Môn HK: TX*1 + GK*2 + CK*3 / 6
+    //         $diem_tb_mon_hk = null;
+    //         if ($diem_tx !== null && $diem_gk !== null && $diem_ck !== null) {
+    //             $diem_tb_mon_hk = round(($diem_tx + $diem_gk*2 + $diem_ck*3) / 6, 2);
+    //         }
+            
+    //         // Xếp loại môn
+    //         $xep_loai_mon = 'ChuaDat';
+    //         if ($diem_tb_mon_hk !== null) {
+    //             if ($diem_tb_mon_hk >= 8.0) $xep_loai_mon = 'Gioi';
+    //             elseif ($diem_tb_mon_hk >= 6.5) $xep_loai_mon = 'Kha';
+    //             elseif ($diem_tb_mon_hk >= 5.0) $xep_loai_mon = 'Dat';
+    //         }
+            
+    //         // INSERT điểm mới
+    //         $sql = "INSERT INTO diem_mon_hoc_hoc_ky 
+    //                 (ma_hoc_sinh, ma_mon_hoc, ma_hoc_ky, diem_mieng, diem_15phut, diem_1tiet,
+    //                  diem_tx, diem_gua_ky, diem_cuoi_ky, diem_tb_mon_hk, xep_loai_mon, ngay_cap_nhat)
+    //                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([
+    //             $ma_hoc_sinh, $ma_mon_hoc, $ma_hoc_ky,
+    //             $diem_mieng, $diem_15phut, $diem_1tiet,
+    //             $diem_tx, $diem_gk, $diem_ck,
+    //             $diem_tb_mon_hk, $xep_loai_mon
+    //         ]);
+            
+    //         return ['success' => true, 'message' => 'Nhập điểm thành công!'];
+            
+    //     } catch (PDOException $e) {
+    //         error_log("Lỗi nhapDiemMon: " . $e->getMessage());
+    //         return ['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()];
+    //     }
+    // }
     public function nhapDiemMon($ma_hoc_sinh, $ma_mon_hoc, $ma_hoc_ky, $data) {
         if ($this->db === null) return ['success' => false, 'message' => 'Lỗi kết nối CSDL.'];
         
         try {
-            // Kiểm tra đã có điểm chưa
-            $check = $this->db->prepare("SELECT ma_diem_mon_hk FROM diem_mon_hoc_hoc_ky 
-                                         WHERE ma_hoc_sinh = ? AND ma_mon_hoc = ? AND ma_hoc_ky = ?");
+            // 1. Kiểm tra bản ghi đã tồn tại chưa
+            $check = $this->db->prepare("SELECT ma_diem_mon_hk, diem_tb_mon_hk FROM diem_mon_hoc_hoc_ky 
+                                        WHERE ma_hoc_sinh = ? AND ma_mon_hoc = ? AND ma_hoc_ky = ?");
             $check->execute([$ma_hoc_sinh, $ma_mon_hoc, $ma_hoc_ky]);
-            $exists = $check->fetch();
+            $record = $check->fetch();
+
+            // 2. Tính toán điểm trung bình chuyên môn
+            $m = $data['diem_mieng']; $p = $data['diem_15phut']; $t = $data['diem_1tiet'];
+            $gk = $data['diem_gua_ky']; $ck = $data['diem_cuoi_ky'];
             
-            if ($exists) {
-                return ['success' => false, 'message' => 'Điểm đã tồn tại! Nếu muốn sửa, vui lòng gửi phiếu yêu cầu.'];
+            // Tính điểm Thường xuyên (TX)
+            $diem_tx = round(($m + $p + $t) / 3, 2);
+            // Tính điểm Trung bình môn học kỳ
+            $diem_tb = round(($diem_tx + $gk * 2 + $ck * 3) / 6, 2);
+            
+            // Xác định Xếp loại
+            $xep_loai = ($diem_tb >= 8.0) ? 'Gioi' : (($diem_tb >= 6.5) ? 'Kha' : (($diem_tb >= 5.0) ? 'Dat' : 'ChuaDat'));
+
+            // 3. Thực hiện Lưu
+            if ($record) {
+                // Nếu đã có dòng (nhưng điểm đang trống/null) -> UPDATE
+                $sql = "UPDATE diem_mon_hoc_hoc_ky SET 
+                            diem_mieng=?, diem_15phut=?, diem_1tiet=?, diem_tx=?, 
+                            diem_gua_ky=?, diem_cuoi_ky=?, diem_tb_mon_hk=?, xep_loai_mon=?, ngay_cap_nhat=NOW() 
+                        WHERE ma_diem_mon_hk = ?";
+                $this->db->prepare($sql)->execute([$m, $p, $t, $diem_tx, $gk, $ck, $diem_tb, $xep_loai, $record['ma_diem_mon_hk']]);
+                return ['success' => true, 'message' => 'Cập nhật điểm thành công!'];
+            } else {
+                // Chưa có dòng nào -> INSERT mới
+                $sql = "INSERT INTO diem_mon_hoc_hoc_ky (ma_hoc_sinh, ma_mon_hoc, ma_hoc_ky, diem_mieng, diem_15phut, diem_1tiet, diem_tx, diem_gua_ky, diem_cuoi_ky, diem_tb_mon_hk, xep_loai_mon, ngay_cap_nhat) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
+                $this->db->prepare($sql)->execute([$ma_hoc_sinh, $ma_mon_hoc, $ma_hoc_ky, $m, $p, $t, $diem_tx, $gk, $ck, $diem_tb, $xep_loai]);
+                return ['success' => true, 'message' => 'Nhập điểm mới thành công!'];
             }
-            
-            // Tính điểm TX từ 3 cột
-            $diem_mieng = $data['diem_mieng'] ?? null;
-            $diem_15phut = $data['diem_15phut'] ?? null;
-            $diem_1tiet = $data['diem_1tiet'] ?? null;
-            
-            $diem_tx = null;
-            if ($diem_mieng !== null && $diem_15phut !== null && $diem_1tiet !== null) {
-                $diem_tx = round(($diem_mieng + $diem_15phut + $diem_1tiet) / 3, 2);
-            }
-            
-            $diem_gk = $data['diem_gua_ky'] ?? null;
-            $diem_ck = $data['diem_cuoi_ky'] ?? null;
-            
-            // Tính ĐTB Môn HK: TX*1 + GK*2 + CK*3 / 6
-            $diem_tb_mon_hk = null;
-            if ($diem_tx !== null && $diem_gk !== null && $diem_ck !== null) {
-                $diem_tb_mon_hk = round(($diem_tx + $diem_gk*2 + $diem_ck*3) / 6, 2);
-            }
-            
-            // Xếp loại môn
-            $xep_loai_mon = 'ChuaDat';
-            if ($diem_tb_mon_hk !== null) {
-                if ($diem_tb_mon_hk >= 8.0) $xep_loai_mon = 'Gioi';
-                elseif ($diem_tb_mon_hk >= 6.5) $xep_loai_mon = 'Kha';
-                elseif ($diem_tb_mon_hk >= 5.0) $xep_loai_mon = 'Dat';
-            }
-            
-            // INSERT điểm mới
-            $sql = "INSERT INTO diem_mon_hoc_hoc_ky 
-                    (ma_hoc_sinh, ma_mon_hoc, ma_hoc_ky, diem_mieng, diem_15phut, diem_1tiet,
-                     diem_tx, diem_gua_ky, diem_cuoi_ky, diem_tb_mon_hk, xep_loai_mon, ngay_cap_nhat)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-            $stmt = $this->db->prepare($sql);
-            $stmt->execute([
-                $ma_hoc_sinh, $ma_mon_hoc, $ma_hoc_ky,
-                $diem_mieng, $diem_15phut, $diem_1tiet,
-                $diem_tx, $diem_gk, $diem_ck,
-                $diem_tb_mon_hk, $xep_loai_mon
-            ]);
-            
-            return ['success' => true, 'message' => 'Nhập điểm thành công!'];
-            
         } catch (PDOException $e) {
-            error_log("Lỗi nhapDiemMon: " . $e->getMessage());
-            return ['success' => false, 'message' => 'Lỗi hệ thống: ' . $e->getMessage()];
+            return ['success' => false, 'message' => 'Lỗi DB: ' . $e->getMessage()];
         }
     }
     

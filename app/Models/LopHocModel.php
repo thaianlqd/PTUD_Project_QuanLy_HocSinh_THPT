@@ -33,47 +33,119 @@ class LopHocModel {
     /**
      * 1. Tự động sinh tên lớp tăng dần theo khối (VD: 10A1, 10A2, ...)
      */
+    // public function generateTenLop($khoi, $ma_nam_hoc) {
+    //     try {
+    //         $sql = "SELECT ten_lop FROM lop_hoc 
+    //                 WHERE khoi = :khoi AND ma_nam_hoc = :nam_hoc 
+    //                 ORDER BY ten_lop DESC LIMIT 1";
+    //         $stmt = $this->db->prepare($sql);
+    //         $stmt->execute([':khoi' => $khoi, ':nam_hoc' => $ma_nam_hoc]);
+    //         $lastLop = $stmt->fetch();
+
+    //         if ($lastLop) {
+    //             preg_match('/(\d+)$/', $lastLop['ten_lop'], $matches);
+    //             $nextNumber = isset($matches[1]) ? (int)$matches[1] + 1 : 1;
+    //         } else {
+    //             $nextNumber = 1;
+    //         }
+            
+    //         return $khoi . "A" . $nextNumber;
+    //     } catch (Exception $e) {
+    //         error_log("Error generateTenLop: " . $e->getMessage());
+    //         return $khoi . "A1";
+    //     }
+    // }
+    /**
+     * 1. Tự động sinh tên lớp: 10A..., 11B..., 12C...
+     */
     public function generateTenLop($khoi, $ma_nam_hoc) {
         try {
+            // 1. Xác định chữ cái dựa trên Khối
+            $letter = 'A'; // Mặc định
+            if ($khoi == 11) $letter = 'B';
+            if ($khoi == 12) $letter = 'C';
+
+            $prefix = $khoi . $letter; // VD: 10A, 11B, 12C
+
+            // 2. Tìm lớp có số thứ tự lớn nhất hiện tại (VD: tìm 11B5 để sinh ra 11B6)
+            // ORDER BY LENGTH(ten_lop) DESC để xử lý trường hợp số 10 lớn hơn số 9 (VD: 11B10 > 11B9)
             $sql = "SELECT ten_lop FROM lop_hoc 
-                    WHERE khoi = :khoi AND ma_nam_hoc = :nam_hoc 
-                    ORDER BY ten_lop DESC LIMIT 1";
+                    WHERE khoi = :khoi 
+                    AND ma_nam_hoc = :nam_hoc 
+                    AND ten_lop LIKE CONCAT(:prefix, '%')
+                    ORDER BY LENGTH(ten_lop) DESC, ten_lop DESC 
+                    LIMIT 1";
+            
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([':khoi' => $khoi, ':nam_hoc' => $ma_nam_hoc]);
+            $stmt->execute([
+                ':khoi' => $khoi, 
+                ':nam_hoc' => $ma_nam_hoc,
+                ':prefix' => $prefix
+            ]);
             $lastLop = $stmt->fetch();
 
             if ($lastLop) {
-                preg_match('/(\d+)$/', $lastLop['ten_lop'], $matches);
-                $nextNumber = isset($matches[1]) ? (int)$matches[1] + 1 : 1;
+                // Lấy phần số bằng cách xóa phần Prefix (VD: "11B12" xóa "11B" còn "12")
+                // Dùng str_ireplace để không phân biệt hoa thường cho chắc
+                $lastNumber = (int)str_ireplace($prefix, '', $lastLop['ten_lop']);
+                $nextNumber = $lastNumber + 1;
             } else {
                 $nextNumber = 1;
             }
             
-            return $khoi . "A" . $nextNumber;
+            return $prefix . $nextNumber;
+
         } catch (Exception $e) {
             error_log("Error generateTenLop: " . $e->getMessage());
-            return $khoi . "A1";
+            // Fallback nếu lỗi
+            $letter = ($khoi == 11) ? 'B' : (($khoi == 12) ? 'C' : 'A');
+            return $khoi . $letter . "1";
         }
     }
 
     /**
      * 2. Lấy danh sách phòng học trống (phòng chưa có lớp hoặc lớp đã bị xóa)
      */
-    public function getPhongHocTrong($ma_nam_hoc) {
+
+    /**
+     * 2. Lấy danh sách phòng học trống (Của trường hiện tại)
+     * [ĐÃ SỬA] Thêm điều kiện lọc theo ma_truong
+     */
+    public function getPhongHocTrong($ma_nam_hoc, $ma_lop_tru_ra = null) {
+        // Lấy ID trường từ Session
+        $ma_truong = $_SESSION['admin_school_id'] ?? 1;
+
         try {
             $sql = "SELECT ph.ma_phong, ph.ten_phong, ph.suc_chua
                     FROM phong_hoc ph
                     WHERE ph.trang_thai_phong = 'HoatDong'
+                    AND ph.ma_truong = :ma_truong  -- [QUAN TRỌNG] Chỉ lấy phòng của trường đang đăng nhập
                     AND ph.ma_phong NOT IN (
                         SELECT DISTINCT ma_phong_hoc_chinh FROM lop_hoc 
                         WHERE ma_nam_hoc = :nam_hoc 
                         AND ma_phong_hoc_chinh IS NOT NULL 
-                        AND trang_thai_lop = 'HoatDong'
-                    )
-                    ORDER BY ph.ten_phong ASC";
+                        AND trang_thai_lop = 'HoatDong'";
+            
+            // Nếu đang sửa, trừ lớp hiện tại ra (để hiện lại phòng cũ của lớp đó)
+            if ($ma_lop_tru_ra) {
+                $sql .= " AND ma_lop != :ma_lop_tru_ra";
+            }
+
+            $sql .= ")"; // Đóng ngoặc NOT IN
+            $sql .= " ORDER BY ph.ten_phong ASC";
             
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([':nam_hoc' => $ma_nam_hoc]);
+            
+            $params = [
+                ':nam_hoc' => $ma_nam_hoc,
+                ':ma_truong' => $ma_truong // Bind tham số trường vào
+            ];
+            
+            if ($ma_lop_tru_ra) {
+                $params[':ma_lop_tru_ra'] = $ma_lop_tru_ra;
+            }
+
+            $stmt->execute($params);
             return $stmt->fetchAll();
         } catch (Exception $e) {
             error_log("Error getPhongHocTrong: " . $e->getMessage());

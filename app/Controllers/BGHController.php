@@ -116,50 +116,78 @@ class BGHController extends Controller { // <-- Tên class là BGHController
      * URL: /bgh/xuLyPhieuDiem (POST)
      * ✅ SỬA: Đọc JSON từ request body thay vì $_POST
      */
+    // public function xuLyPhieuDiem() {
+    //     header('Content-Type: application/json');
+        
+    //     // ✅ SỬA: Đọc JSON từ php://input
+    //     $data = json_decode(file_get_contents('php://input'), true);
+        
+    //     $ma_phieu = filter_var($data['ma_phieu'] ?? null, FILTER_VALIDATE_INT);
+    //     $action = $data['action'] ?? ''; // 'duyet' hoặc 'tuchoi'
+
+    //     if (!$ma_phieu || !$action) {
+    //         http_response_code(400);
+    //         echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ.']);
+    //         return;
+    //     }
+
+    //     $result = [];
+        
+    //     if ($action == 'duyet') {
+    //         // Thực hiện duyệt - Gọi đúng tên method trong Model
+    //         $result = $this->diemSoModel->duyetPhieuChinhSuaMoi($ma_phieu, $this->ma_nguoi_dung_bgh);
+        
+    //     } elseif ($action == 'tuchoi') {
+    //         // Thực hiện từ chối
+    //         $ly_do = $data['ly_do'] ?? '';
+    //         if (empty(trim($ly_do))) {
+    //              http_response_code(400);
+    //              echo json_encode(['success' => false, 'message' => 'Vui lòng nhập lý do từ chối.']);
+    //              return;
+    //         }
+    //         $result = $this->diemSoModel->tuChoiPhieuChinhSuaMoi($ma_phieu, $this->ma_nguoi_dung_bgh, $ly_do);
+        
+    //     } else {
+    //         http_response_code(400);
+    //         echo json_encode(['success' => false, 'message' => 'Hành động không xác định.']);
+    //         return;
+    //     }
+
+    //     // Trả kết quả về cho client
+    //     if ($result['success']) {
+    //         echo json_encode($result);
+    //     } else {
+    //         http_response_code(500);
+    //         echo json_encode($result);
+    //     }
+    // }
     public function xuLyPhieuDiem() {
         header('Content-Type: application/json');
         
-        // ✅ SỬA: Đọc JSON từ php://input
-        $data = json_decode(file_get_contents('php://input'), true);
+        // Đọc dữ liệu JSON từ body request
+        $rawInput = file_get_contents('php://input');
+        $data = json_decode($rawInput, true);
         
-        $ma_phieu = filter_var($data['ma_phieu'] ?? null, FILTER_VALIDATE_INT);
+        $ma_phieu = isset($data['ma_phieu']) ? intval($data['ma_phieu']) : 0;
         $action = $data['action'] ?? ''; // 'duyet' hoặc 'tuchoi'
 
-        if (!$ma_phieu || !$action) {
-            http_response_code(400);
+        if ($ma_phieu <= 0 || empty($action)) {
             echo json_encode(['success' => false, 'message' => 'Dữ liệu không hợp lệ.']);
             return;
         }
 
-        $result = [];
-        
+        // Gọi model xử lý (ma_nguoi_dung_bgh lấy từ session trong __construct)
         if ($action == 'duyet') {
-            // Thực hiện duyệt - Gọi đúng tên method trong Model
             $result = $this->diemSoModel->duyetPhieuChinhSuaMoi($ma_phieu, $this->ma_nguoi_dung_bgh);
-        
         } elseif ($action == 'tuchoi') {
-            // Thực hiện từ chối
-            $ly_do = $data['ly_do'] ?? '';
-            if (empty(trim($ly_do))) {
-                 http_response_code(400);
-                 echo json_encode(['success' => false, 'message' => 'Vui lòng nhập lý do từ chối.']);
-                 return;
-            }
+            $ly_do = $data['ly_do'] ?? 'Không có lý do cụ thể';
             $result = $this->diemSoModel->tuChoiPhieuChinhSuaMoi($ma_phieu, $this->ma_nguoi_dung_bgh, $ly_do);
-        
         } else {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Hành động không xác định.']);
-            return;
+            $result = ['success' => false, 'message' => 'Hành động không hợp lệ.'];
         }
 
-        // Trả kết quả về cho client
-        if ($result['success']) {
-            echo json_encode($result);
-        } else {
-            http_response_code(500);
-            echo json_encode($result);
-        }
+        echo json_encode($result);
+        exit;
     }
     
     // ... (Thêm các hàm khác của BGHController nếu có) ...

@@ -2,8 +2,8 @@
 session_start();
 
 // DEBUG: Log session để kiểm tra (XÓA SAU KHI DEBUG XONG)
-error_log("INDEX.PHP - Session ID: " . session_id());
-error_log("INDEX.PHP - Session data: " . print_r($_SESSION, true));
+// error_log("INDEX.PHP - Session ID: " . session_id());
+// error_log("INDEX.PHP - Session data: " . print_r($_SESSION, true));
 
 // SET TIMEZONE CHO TOÀN BỘ PROJECT
 date_default_timezone_set('Asia/Ho_Chi_Minh');

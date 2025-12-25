@@ -9,70 +9,270 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
     <style>
-        :root { --primary: #0d6efd; --bg: #f8f9fa; --sidebar-width: 280px; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: var(--bg); }
+        :root { 
+            --primary: #0d6efd; 
+            --primary-dark: #0b5ed7; 
+            --bg: #f5f7fb; 
+            --sidebar-width: 280px; 
+            --shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+            background-color: var(--bg); 
+            color: #212529;
+        }
         
-        /* Sidebar Styles */
-        .sidebar { width: var(--sidebar-width); position: fixed; height: 100vh; background: #fff; box-shadow: 2px 0 10px rgba(0,0,0,0.05); z-index: 1000; transition: 0.3s; display: flex; flex-direction: column; }
-        .nav-link { color: #555; padding: 12px 20px; font-weight: 500; margin: 4px 10px; border-radius: 8px; transition: 0.2s; }
-        .nav-link:hover, .nav-link.active { background-color: #e3f2fd; color: var(--primary); }
-        .main-content { margin-left: var(--sidebar-width); padding: 25px; transition: 0.3s; }
-        @media (max-width: 992px) { .sidebar { transform: translateX(-100%); } .main-content { margin-left: 0; } .sidebar.show { transform: translateX(0); } }
+        /* Sidebar Styles - Đậm và hiện đại hơn */
+        .sidebar { 
+            width: var(--sidebar-width); 
+            position: fixed; 
+            height: 100vh; 
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%); 
+            box-shadow: var(--shadow); 
+            z-index: 1000; 
+            transition: 0.3s; 
+            display: flex; 
+            flex-direction: column; 
+            border-right: 1px solid #e9ecef;
+        }
+        .nav-link { 
+            color: #495057; 
+            padding: 14px 20px; 
+            font-weight: 600; 
+            margin: 6px 12px; 
+            border-radius: 10px; 
+            transition: all 0.3s; 
+            font-size: 0.95rem;
+        }
+        .nav-link:hover, .nav-link.active { 
+            background-color: #e0ecff; 
+            color: var(--primary-dark); 
+            transform: translateX(6px);
+        }
+        .nav-link.active { 
+            background-color: #cfe2ff; 
+            box-shadow: 0 2px 8px rgba(13,110,253,0.15);
+        }
+        .main-content { 
+            margin-left: var(--sidebar-width); 
+            padding: 30px; 
+            transition: 0.3s; 
+            min-height: 100vh;
+        }
+        @media (max-width: 992px) { 
+            .sidebar { transform: translateX(-100%); } 
+            .main-content { margin-left: 0; } 
+            .sidebar.show { transform: translateX(0); } 
+        }
 
-        /* TKB Custom Styles */
-        .tkb-grid { display: grid; grid-template-columns: 50px repeat(7, 1fr); gap: 1px; background-color: #dee2e6; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; }
-        .tkb-cell { background-color: white; padding: 5px; min-height: 90px; display: flex; flex-direction: column; justify-content: center; font-size: 0.9rem; border-bottom: 1px solid #dee2e6; }
-        .tkb-header { background-color: #e3f2fd; font-weight: bold; text-align: center; padding: 10px; color: #0d6efd; border-bottom: 1px solid #dee2e6; }
-        .tkb-tiet-col { background-color: #f8f9fa; font-weight: bold; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #6c757d; border-bottom: 1px solid #dee2e6; }
-        .session-sep { grid-column: 1 / -1; background-color: #fff3cd; color: #856404; font-weight: bold; text-align: center; padding: 5px; font-size: 0.85rem; letter-spacing: 1px; text-transform: uppercase; }
-        
-        /* Card Môn Học */
-        .mon-card { border-left: 4px solid var(--primary); padding-left: 10px; height: 100%; display: flex; flex-direction: column; justify-content: center; background: #eef2ff; transition: all 0.2s; }
-        .mon-card.fixed-session { border-left-color: #b91c1c; background: #fee2e2; }
-        .mon-card.hoc { border-left-color: #15803d; background: #c5f0d6; }
-        .mon-card.thi { border-left-color: #c2410c; background: #ffe0b3; }
-        .mon-card.day_bu { border-left-color: #0d6efd; background: #cfe2ff; }
-        .mon-card.tam_nghi { border-left-color: #b91c1c; background: #ffc6c6; }
-        
-        .mon-card .ten-mon { font-weight: 700; color: #1f2937; font-size: 0.92rem; margin-bottom: 2px; }
-        .mon-card.fixed-session .ten-mon { color: #b91c1c; }
-        .mon-card.tam_nghi .ten-mon { color: #b91c1c; }
-        .mon-card.thi .ten-mon { color: #b45309; }
-        .mon-card.hoc .ten-mon { color: #166534; }
-        
-        .mon-card .info { font-size: 0.75rem; color: #6c757d; display: block; line-height: 1.3; }
-        .mon-card .note { font-size: 0.75rem; color: #6c757d; margin-top: 2px; font-style: italic; }
-        
-        /* Style cho tiết thay đổi */
-        .mon-card.changed { border: 2px dashed #f59e0b !important; position: relative; }
-        .icon-warn { color: #f59e0b; margin-left: 4px; font-size: 0.9rem; }
+        /* TKB Grid - Nâng cấp giao diện */
+        .tkb-grid { 
+            display: grid; 
+            grid-template-columns: 60px repeat(7, 1fr); 
+            gap: 2px; 
+            background-color: #ced4da; 
+            border-radius: 12px; 
+            overflow: hidden; 
+            box-shadow: var(--shadow); 
+        }
+        .tkb-cell { 
+            background-color: white; 
+            padding: 10px; 
+            min-height: 110px; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            font-size: 0.95rem; 
+            transition: all 0.2s;
+        }
+        .tkb-cell:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+            z-index: 2; 
+            position: relative;
+        }
+        .tkb-header { 
+            background: linear-gradient(135deg, #0d6efd, #0b5ed7); 
+            font-weight: 700; 
+            text-align: center; 
+            padding: 14px; 
+            color: white; 
+            font-size: 1rem;
+        }
+        .tkb-header small { 
+            font-weight: 400; 
+            opacity: 0.9; 
+            font-size: 0.85rem; 
+        }
+        .tkb-tiet-col { 
+            background-color: #e9ecef; 
+            font-weight: 700; 
+            text-align: center; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            color: #495057; 
+        }
+        .tkb-tiet-col span.fs-6 { 
+            font-size: 1.1rem; 
+            color: var(--primary-dark); 
+        }
+        .session-sep { 
+            grid-column: 1 / -1; 
+            background: linear-gradient(90deg, #fff3cd, #ffeaa7); 
+            color: #856404; 
+            font-weight: 700; 
+            text-align: center; 
+            padding: 10px; 
+            font-size: 0.95rem; 
+            letter-spacing: 1.5px; 
+            text-transform: uppercase; 
+            box-shadow: inset 0 -2px 6px rgba(0,0,0,0.05);
+        }
+        .session-sep.bg-info { 
+            background: linear-gradient(90deg, #cfe2ff, #a5d8ff); 
+            color: var(--primary-dark); 
+        }
 
-        /* Mobile List View */
+        /* Card Môn Học - Màu đậm hơn, nổi bật hơn */
+        .mon-card { 
+            border-left: 6px solid var(--primary-dark); 
+            padding: 12px 14px; 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            background: #e6f0ff; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06); 
+            transition: all 0.3s; 
+        }
+        .mon-card:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 6px 16px rgba(13,110,253,0.2); 
+        }
+        .mon-card.fixed-session { 
+            border-left-color: #dc3545; 
+            background: #fce8e8; 
+        }
+        .mon-card.hoc { 
+            border-left-color: #198754; 
+            background: #d1f0e0; 
+        }
+        .mon-card.thi { 
+            border-left-color: #fd7e14; 
+            background: #ffedd5; 
+        }
+        .mon-card.day_bu { 
+            border-left-color: #0dcaf0; 
+            background: #d0f2ff; 
+        }
+        .mon-card.tam_nghi { 
+            border-left-color: #e74c3c; 
+            background: #ffd6d6; 
+        }
+
+        .mon-card .ten-mon { 
+            font-weight: 800; 
+            color: #1e293b; 
+            font-size: 1rem; 
+            margin-bottom: 6px; 
+            letter-spacing: 0.3px;
+        }
+        .mon-card.fixed-session .ten-mon, 
+        .mon-card.tam_nghi .ten-mon { 
+            color: #dc3545; 
+        }
+        .mon-card.thi .ten-mon { 
+            color: #c2410c; 
+        }
+        .mon-card.hoc .ten-mon { 
+            color: #166534; 
+        }
+
+        .mon-card .info { 
+            font-size: 0.82rem; 
+            color: #495057; 
+            line-height: 1.4; 
+            font-weight: 500;
+        }
+        .mon-card .note { 
+            font-size: 0.8rem; 
+            color: #6c757d; 
+            margin-top: 6px; 
+            font-style: italic; 
+            opacity: 0.9;
+        }
+
+        /* Tiết thay đổi - Nổi bật hơn */
+        .mon-card.changed { 
+            border: 3px dashed #f59e0b !important; 
+            animation: pulse 2s infinite; 
+        }
+        @keyframes pulse { 
+            0% { box-shadow: 0 0 0 0 rgba(245,158,11,0.4); } 
+            70% { box-shadow: 0 0 0 10px rgba(245,158,11,0); } 
+            100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); } 
+        }
+        .icon-warn { 
+            color: #f59e0b; 
+            margin-left: 6px; 
+            font-size: 1rem; 
+        }
+
+        /* Mobile View - Cũng nâng cấp */
         @media (max-width: 768px) {
             .tkb-grid { display: none; } 
             .tkb-mobile-list { display: block; }
-            .mobile-day-card { border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 15px; overflow: hidden; background: white; }
-            .mobile-day-header { background: #0d6efd; color: white; padding: 10px 15px; font-weight: bold; display: flex; justify-content: space-between; }
-            .mobile-slot { padding: 10px 15px; border-bottom: 1px solid #f1f1f1; display: flex; align-items: flex-start; }
-            .mobile-slot:last-child { border-bottom: none; }
-            .slot-time { width: 70px; font-weight: bold; color: #888; font-size: 0.9rem; margin-right: 10px; text-align: center; }
+            .mobile-day-card { 
+                border: none; 
+                border-radius: 14px; 
+                margin-bottom: 20px; 
+                overflow: hidden; 
+                background: white; 
+                box-shadow: var(--shadow); 
+            }
+            .mobile-day-header { 
+                background: linear-gradient(135deg, #0d6efd, #0b5ed7); 
+                color: white; 
+                padding: 14px 18px; 
+                font-weight: 700; 
+                font-size: 1.1rem;
+            }
+            .mobile-slot { 
+                padding: 14px 18px; 
+                border-bottom: 1px solid #eef2f6; 
+            }
+            .slot-time { 
+                width: 80px; 
+                font-weight: 700; 
+                color: #495057; 
+                font-size: 1rem; 
+            }
         }
         @media (min-width: 769px) { .tkb-mobile-list { display: none; } }
+
+        /* Card header lớp học */
+        .card.border-0 { 
+            border-radius: 16px !important; 
+            box-shadow: var(--shadow); 
+        }
     </style>
 </head>
 <body>
 
 <div class="sidebar" id="sidebar">
-    <div class="p-4 text-center border-bottom bg-light">
-        <h5 class="fw-bold text-primary mb-0">HỌC SINH</h5>
-        <small class="text-muted">Cổng thông tin</small>
+    <div class="p-4 text-center border-bottom bg-white">
+        <h5 class="fw-bold text-primary mb-1">HỌC SINH</h5>
+        <small class="text-muted fw-medium">Cổng thông tin học tập</small>
     </div>
-    <ul class="nav flex-column mt-3">
-        <li class="nav-item"><a class="nav-link" href="<?= BASE_URL ?>/dashboard"><i class="bi bi-grid-fill me-2"></i> Tổng Quan</a></li>
-        <li class="nav-item"><a class="nav-link" href="<?= BASE_URL ?>/baitap/index"><i class="bi bi-journal-text me-2"></i> Bài Tập</a></li>
-        <li class="nav-item"><a class="nav-link active" href="#"><i class="bi bi-calendar-week me-2"></i> Thời Khóa Biểu</a></li>
-        <li class="nav-item mt-auto p-3">
-            <a class="nav-link text-danger bg-danger bg-opacity-10 rounded-3" href="<?= BASE_URL ?>/auth/logout"><i class="bi bi-box-arrow-right me-2"></i> Đăng Xuất</a>
+    <ul class="nav flex-column mt-4">
+        <li class="nav-item"><a class="nav-link" href="<?= BASE_URL ?>/dashboard"><i class="bi bi-grid-fill me-3"></i> Tổng Quan</a></li>
+        <li class="nav-item"><a class="nav-link" href="<?= BASE_URL ?>/baitap/index"><i class="bi bi-journal-text me-3"></i> Bài Tập</a></li>
+        <li class="nav-item"><a class="nav-link active" href="#"><i class="bi bi-calendar-week me-3"></i> Thời Khóa Biểu</a></li>
+        <li class="nav-item mt-auto p-4">
+            <a class="nav-link text-danger bg-danger bg-opacity-10 rounded-3 fw-medium" href="<?= BASE_URL ?>/auth/logout"><i class="bi bi-box-arrow-right me-3"></i> Đăng Xuất</a>
         </li>
     </ul>
 </div>
@@ -80,12 +280,13 @@
 <div class="main-content">
     
     <div class="d-lg-none d-flex justify-content-between align-items-center mb-4 bg-white p-3 rounded-3 shadow-sm">
-        <button class="btn btn-light" id="toggleSidebar"><i class="bi bi-list fs-4"></i></button>
-        <span class="fw-bold">Thời Khóa Biểu</span>
+        <button class="btn btn-light border" id="toggleSidebar"><i class="bi bi-list fs-3"></i></button>
+        <span class="fw-bold fs-5">Thời Khóa Biểu</span>
+        <div style="width:40px;"></div>
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-4 p-4">
             <div>
                 <h4 class="fw-bold mb-1 text-primary">
                     Lớp: <?= htmlspecialchars($ten_lop ?? 'N/A') ?>
@@ -96,18 +297,18 @@
                 <div class="d-sm-none text-muted small mb-1">
                     <i class="bi bi-person-badge me-1"></i>GVCN: <?= htmlspecialchars($ten_gvcn ?? '---') ?>
                 </div>
-                <p class="text-muted mb-0 small">
+                <p class="text-muted mb-0">
                     <i class="bi bi-clock-history me-1"></i> <?= htmlspecialchars($ten_hoc_ky ?? '') ?>
                 </p>
             </div>
 
-            <div class="d-flex align-items-center gap-2 bg-light p-1 rounded-3">
-                <a href="<?= $prev_link ?? '#' ?>" class="btn btn-white shadow-sm border-0 btn-sm"><i class="bi bi-chevron-left"></i></a>
+            <div class="d-flex align-items-center gap-2 bg-light p-2 rounded-pill shadow-sm">
+                <a href="<?= $prev_link ?? '#' ?>" class="btn btn-white rounded-circle shadow-sm" style="width:40px;height:40px;"><i class="bi bi-chevron-left"></i></a>
                 <input type="date" class="form-control border-0 bg-transparent fw-bold text-center" 
-                       style="width: 130px; font-size: 0.9rem;" 
+                       style="width: 140px;" 
                        value="<?= $selected_date ?? '' ?>" 
                        onchange="window.location.href='<?= BASE_URL ?>/hocsinhTkb/index?date='+this.value">
-                <a href="<?= $next_link ?? '#' ?>" class="btn btn-white shadow-sm border-0 btn-sm"><i class="bi bi-chevron-right"></i></a>
+                <a href="<?= $next_link ?? '#' ?>" class="btn btn-white rounded-circle shadow-sm" style="width:40px;height:40px;"><i class="bi bi-chevron-right"></i></a>
             </div>
         </div>
     </div>
@@ -120,23 +321,21 @@
         </div>
     <?php else: ?>
 
-        <div class="tkb-grid shadow-sm">
-            <div class="tkb-header bg-light text-muted">Tiết</div>
+        <div class="tkb-grid">
+            <div class="tkb-header bg-light text-muted fw-bold">Tiết</div>
             <?php foreach ($week_dates as $index => $date): ?>
                 <div class="tkb-header">
                     Thứ <?= $index + 2 ?><br>
-                    <small class="fw-normal text-secondary" style="font-size: 0.8rem"><?= $date ?></small>
+                    <small><?= $date ?></small>
                 </div>
             <?php endforeach; ?>
 
             <div class="session-sep">Buổi Sáng</div>
             
             <?php 
-            // Hàm render ô (dùng chung cho sáng/chiều để code gọn)
             function renderSlot($tkb_data, $thu, $tiet) {
                 $s = isset($tkb_data[$thu][$tiet]) ? $tkb_data[$thu][$tiet] : null;
                 
-                // Logic Chào cờ & Sinh hoạt cứng
                 $is_fixed_sys = false;
                 if ($thu == 2 && $tiet == 1) {
                     $s = ['mon' => 'Chào cờ', 'gv' => 'Toàn trường', 'phong' => 'Sân trường', 'loai_tiet' => 'hoc'];
@@ -149,14 +348,10 @@
                 if ($s) {
                     $loai = $s['loai_tiet'] ?? 'hoc';
                     $cls_sys = $is_fixed_sys ? 'fixed-session' : $loai;
-                    
-                    // Thêm class 'changed' nếu là lịch thay đổi
                     $changed_class = (!empty($s['is_changed'])) ? 'changed' : '';
                     
                     echo "<div class='mon-card {$cls_sys} {$changed_class}'>";
                     echo "<div class='ten-mon'>" . htmlspecialchars($s['mon']);
-                    
-                    // Icon cảnh báo
                     if (!empty($s['is_changed'])) {
                         echo "<i class='bi bi-exclamation-circle-fill icon-warn' title='Lịch thay đổi'></i>";
                     }
@@ -181,7 +376,7 @@
             <?php for ($tiet = 1; $tiet <= 4; $tiet++): ?>
                 <div class="tkb-tiet-col">
                     <span class="fs-6"><?= $tiet ?></span>
-                    <small class="text-muted fw-normal" style="font-size: 0.7rem;">
+                    <small class="text-muted fw-normal">
                         <?= $gio_hoc[$tiet] ?? '' ?>
                     </small>
                 </div>
@@ -197,7 +392,7 @@
             <?php for ($tiet = 5; $tiet <= 7; $tiet++): ?>
                 <div class="tkb-tiet-col">
                     <span class="fs-6"><?= $tiet ?></span>
-                    <small class="text-muted fw-normal" style="font-size: 0.7rem;">
+                    <small class="text-muted fw-normal">
                         <?= $gio_hoc[$tiet] ?? '' ?>
                     </small>
                 </div>
@@ -217,7 +412,7 @@
                 }
                 if (!$has_mon) continue;
             ?>
-                <div class="mobile-day-card shadow-sm">
+                <div class="mobile-day-card">
                     <div class="mobile-day-header">
                         <span>Thứ <?= $thu ?></span>
                         <span class="opacity-75 fw-normal small"><?= $week_dates[$thu-2] ?></span>
@@ -236,7 +431,7 @@
                         <div class="mobile-slot">
                             <div class="slot-time">
                                 <div>Tiết <?= $tiet ?></div>
-                                <small class="text-muted d-block fw-normal" style="font-size: 0.7rem">
+                                <small class="text-muted d-block fw-normal">
                                     <?= $gio_hoc[$tiet] ?? '' ?>
                                 </small>
                             </div>
@@ -244,17 +439,17 @@
                                 <?php 
                                     $loai = $s['loai_tiet'] ?? 'hoc'; 
                                     $is_changed = !empty($s['is_changed']);
-                                    $text_color = ($loai==='tam_nghi') ? 'text-danger' : (($loai==='thi') ? 'text-warning' : 'text-primary');
+                                    $text_color = ($loai==='tam_nghi') ? 'text-danger' : (($loai==='thi') ? 'text-orange' : 'text-primary');
                                     if ($thu==2 && $tiet<=2) $text_color = 'text-danger';
                                 ?>
-                                <h6 class="fw-bold mb-1 <?= $text_color ?>">
+                                <h6 class="fw-bold mb-2 <?= $text_color ?>">
                                     <?= htmlspecialchars($s['mon']) ?>
                                     <?php if($is_changed): ?>
                                         <i class="bi bi-exclamation-circle-fill text-warning ms-1"></i>
                                     <?php endif; ?>
                                 </h6>
-                                <div class="small text-muted"><i class="bi bi-person-fill me-1"></i> <?= htmlspecialchars($s['gv']) ?></div>
-                                <div class="small text-muted"><i class="bi bi-geo-alt-fill me-1"></i> Phòng: <?= htmlspecialchars($s['phong']) ?></div>
+                                <div class="small text-muted mb-1"><i class="bi bi-person-fill me-1"></i> <?= htmlspecialchars($s['gv']) ?></div>
+                                <div class="small text-muted mb-1"><i class="bi bi-geo-alt-fill me-1"></i> Phòng: <?= htmlspecialchars($s['phong']) ?></div>
                                 <?php if (!empty($s['ghi_chu'])): ?>
                                     <div class="small text-muted fst-italic"><i class="bi bi-info-circle me-1"></i><?= htmlspecialchars($s['ghi_chu']) ?></div>
                                 <?php endif; ?>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chi Tiết Bài Tập & Chấm Điểm</title>
+    <title>Chi Tiết Bài Tập - <?php echo htmlspecialchars($data['bai_tap_info']['ten_bai_tap'] ?? ''); ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
     <style>
@@ -16,6 +16,8 @@
         /* Style cho phần hiển thị bài làm */
         #cham_noi_dung_bai img { max-width: 100%; height: auto; border-radius: 5px; }
         .pre-wrap { white-space: pre-wrap; word-wrap: break-word; }
+        /* Ẩn các tùy chọn nâng cao trong modal sửa */
+        #sua_area_TuLuan, #sua_area_TracNghiem, #sua_area_UploadFile { display: none; }
     </style>
 </head>
 <body>
@@ -33,10 +35,19 @@
                         <span class="fw-bold text-danger">
                             <?php echo date('H:i - d/m/Y', strtotime($data['bai_tap_info']['han_nop'])); ?>
                         </span>
+                        <span class="badge bg-secondary ms-2"><?php echo $data['bai_tap_info']['loai_bai_tap']; ?></span>
                     </div>
-                    <div class="p-2 bg-light rounded text-secondary border">
-                        <small class="fw-bold text-uppercase">Mô tả / Đề bài:</small><br>
-                        <?php echo nl2br(htmlspecialchars($data['bai_tap_info']['mo_ta'] ?? 'Không có mô tả')); ?>
+                    <div class="p-3 bg-light rounded text-secondary border mt-2">
+                        <small class="fw-bold text-uppercase text-primary">Mô tả / Đề bài:</small><br>
+                        <div class="pre-wrap mt-1"><?php echo htmlspecialchars($data['bai_tap_info']['mo_ta'] ?? 'Không có mô tả'); ?></div>
+                        
+                        <?php if(!empty($data['bai_tap_info']['file_dinh_kem'])): ?>
+                            <div class="mt-2 pt-2 border-top">
+                                <a href="<?php echo BASE_URL . '/' . $data['bai_tap_info']['file_dinh_kem']; ?>" target="_blank" class="btn btn-sm btn-outline-primary fw-bold">
+                                    <i class="bi bi-paperclip"></i> Tải file đề bài
+                                </a>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <div>
@@ -54,8 +65,7 @@
         
         <div class="mb-4">
             <button class="btn btn-warning fw-bold text-dark shadow-sm" 
-                    data-bs-toggle="modal" 
-                    data-bs-target="#modalSuaBaiTap">
+                    onclick="openModalSuaBaiTap(<?php echo $data['bai_tap_info']['ma_bai_tap']; ?>)">
                 <i class="bi bi-pencil-square"></i> Chỉnh sửa đề bài
             </button>
             
@@ -67,7 +77,7 @@
         
         <div class="row g-4">
             <div class="col-lg-6">
-                <div class="card shadow-sm">
+                <div class="card shadow-sm h-100">
                     <div class="card-header bg-success text-white fw-bold d-flex justify-content-between align-items-center py-3">
                         <span><i class="bi bi-check-circle-fill me-2"></i> DANH SÁCH ĐÃ NỘP</span>
                         <span class="badge bg-white text-success rounded-pill fs-6 px-3">
@@ -78,7 +88,7 @@
                             ?>
                         </span>
                     </div>
-                    <div class="card-body p-0">
+                    <div class="card-body p-0 overflow-auto" style="max-height: 600px;">
                         <ul class="list-group list-group-flush">
                             <?php
                             $daNop = false;
@@ -94,24 +104,10 @@
                                                 <div class="fw-bold text-dark mb-1 fs-6">
                                                     <?php echo htmlspecialchars($hs['ho_ten']); ?>
                                                 </div>
-                                                
                                                 <small class="d-block text-muted">
                                                     <i class="bi bi-clock-history"></i> Nộp: 
-                                                    <?php 
-                                                        if (!empty($hs['ngay_nop'])) {
-                                                            echo date('H:i d/m', strtotime($hs['ngay_nop'])); 
-                                                        } else {
-                                                            echo '<span class="text-primary fst-italic">Đang làm...</span>';
-                                                        }
-                                                    ?>
+                                                    <?php echo !empty($hs['ngay_nop']) ? date('H:i d/m', strtotime($hs['ngay_nop'])) : 'Đang làm...'; ?>
                                                 </small>
-
-                                                <?php if (!empty($hs['gio_bat_dau_lam_bai']) && !empty($hs['ngay_nop'])): ?>
-                                                    <small class="badge bg-light text-secondary border mt-1 fw-normal">
-                                                        <i class="bi bi-hourglass-split"></i> 
-                                                        <?php echo isset($hs['thoi_gian_lam_bai_phut']) ? $hs['thoi_gian_lam_bai_phut'] . ' phút' : '?'; ?>
-                                                    </small>
-                                                <?php endif; ?>
                                             </div>
                                         </div>
 
@@ -143,11 +139,11 @@
             </div>
             
             <div class="col-lg-6">
-                <div class="card shadow-sm">
+                <div class="card shadow-sm h-100">
                     <div class="card-header bg-danger text-white fw-bold py-3">
                         <i class="bi bi-x-circle-fill me-2"></i> DANH SÁCH CHƯA NỘP
                     </div>
-                    <div class="card-body p-0">
+                    <div class="card-body p-0 overflow-auto" style="max-height: 600px;">
                         <ul class="list-group list-group-flush">
                             <?php
                             $chuaNop = false;
@@ -189,55 +185,70 @@
                 </div>
                 <div class="modal-body">
                     <form id="formSuaBaiTap" enctype="multipart/form-data">
-                        <input type="hidden" name="ma_bai_tap" value="<?php echo $data['bai_tap_info']['ma_bai_tap'] ?? ''; ?>">
+                        <input type="hidden" id="sua_ma_bai_tap" name="ma_bai_tap">
+                        <input type="hidden" id="sua_json_trac_nghiem" name="json_trac_nghiem">
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Tên bài tập:</label>
-                            <input type="text" class="form-control" name="ten_bai_tap" 
-                                   value="<?php echo htmlspecialchars($data['bai_tap_info']['ten_bai_tap'] ?? ''); ?>" required>
+                            <input type="text" class="form-control" id="sua_ten_bai_tap" name="ten_bai_tap" required>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Hạn nộp:</label>
-                            <?php 
-                                $hanNopVal = isset($data['bai_tap_info']['han_nop']) ? date('Y-m-d\TH:i', strtotime($data['bai_tap_info']['han_nop'])) : '';
-                            ?>
-                            <input type="datetime-local" class="form-control" name="han_nop" 
-                                   value="<?php echo $hanNopVal; ?>" required>
+                            <input type="datetime-local" class="form-control" id="sua_han_nop" name="han_nop" required>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label fw-bold">Mô tả / Ghi chú:</label>
-                            <textarea class="form-control" name="mo_ta" rows="3"><?php echo htmlspecialchars($data['bai_tap_info']['mo_ta'] ?? ''); ?></textarea>
+                            <textarea class="form-control" id="sua_mo_ta" name="mo_ta" rows="3"></textarea>
                         </div>
-                        
+
+                        <div id="sua_area_TuLuan" class="p-3 bg-light border rounded mb-3">
+                            <label class="form-label fw-bold text-primary">Nội dung đề bài chi tiết:</label>
+                            <textarea class="form-control" id="sua_noi_dung_tu_luan" name="noi_dung_tu_luan" rows="5"></textarea>
+                        </div>
+
+                        <div id="sua_area_TracNghiem" class="p-3 bg-light border rounded mb-3">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-danger">Thời gian làm bài (phút):</label>
+                                <input type="number" class="form-control" id="sua_thoi_gian_lam_bai" name="thoi_gian_lam_bai">
+                            </div>
+                            <div class="alert alert-warning small">
+                                <i class="bi bi-exclamation-triangle"></i> <strong>Lưu ý:</strong> Để sửa câu hỏi trắc nghiệm, vui lòng nhập lại đề bài và đáp án đúng theo cú pháp chuẩn vào ô bên dưới. Hệ thống sẽ tạo lại bộ câu hỏi mới.
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Dán lại nội dung Đề (Câu hỏi + A,B,C,D):</label>
+                                <textarea class="form-control" id="sua_raw_trac_nghiem" rows="6" placeholder="Câu 1: ..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Chuỗi đáp án đúng mới:</label>
+                                <input type="text" class="form-control" id="sua_chuoi_dap_an" placeholder="VD: ABCD...">
+                            </div>
+                        </div>
+
+                        <div id="sua_area_UploadFile" class="p-3 bg-light border rounded mb-3">
+                            <div class="row g-2">
+                                <div class="col-md-8">
+                                    <label class="form-label-sm">Loại file cho phép:</label>
+                                    <input type="text" class="form-control form-control-sm" id="sua_loai_file" name="loai_file_cho_phep">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label-sm">Max size (MB):</label>
+                                    <input type="number" class="form-control form-control-sm" id="sua_max_size" name="dung_luong_toi_da">
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label fw-bold">File đính kèm (Đề bài):</label>
-                            <?php if(!empty($data['bai_tap_info']['file_dinh_kem'])): ?>
-                                <div class="alert alert-info py-2 mb-2 d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <i class="bi bi-file-earmark-check-fill me-2"></i>
-                                        <strong>File hiện tại:</strong> 
-                                        <span class="text-break"><?php echo basename($data['bai_tap_info']['file_dinh_kem']); ?></span>
-                                    </div>
-                                    <a href="<?php echo BASE_URL . '/' . $data['bai_tap_info']['file_dinh_kem']; ?>" 
-                                    target="_blank" 
-                                    class="btn btn-sm btn-primary">
-                                        <i class="bi bi-download"></i> Tải về
-                                    </a>
-                                </div>
-                                <small class="text-muted d-block mb-2">⚠️ Tải lên file mới sẽ ghi đè file cũ.</small>
-                            <?php else: ?>
-                                <div class="alert alert-warning py-2 small mb-2">
-                                    <i class="bi bi-info-circle"></i> Chưa có file đính kèm.
-                                </div>
-                            <?php endif; ?>
+                            <div id="link_file_cu" class="mb-2"></div>
                             <input type="file" class="form-control" name="file_dinh_kem_new">
+                            <small class="text-muted">Chỉ chọn file nếu muốn thay đổi file cũ.</small>
                         </div>
 
                         <div class="text-end mt-4">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                            <button type="submit" class="btn btn-primary fw-bold px-4">Lưu Thay Đổi</button>
+                            <button type="submit" class="btn btn-primary fw-bold px-4" id="btnLuuSua">Lưu Thay Đổi</button>
                         </div>
                     </form>
                 </div>
@@ -303,16 +314,20 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
-        // --- CONFIG & GLOBAL VARS ---
-        // Lấy thông tin lớp/môn an toàn (tránh lỗi Undefined variable trong PHP)
+        // --- CONSTANTS ---
+        // QUAN TRỌNG: Định nghĩa BASE_URL ngay đầu script để tránh lỗi ReferenceError
+        const BASE_URL = "<?php echo BASE_URL; ?>";
         const maLop = "<?php echo $data['bai_tap_info']['ma_lop'] ?? 0; ?>";
         const maMonHoc = "<?php echo $data['bai_tap_info']['ma_mon_hoc'] ?? 0; ?>";
         
-        // Khởi tạo Modal Object
+        // --- MODAL INSTANCES ---
         const modalChamDiemEl = document.getElementById('modalChamDiem');
         const modalChamDiem = new bootstrap.Modal(modalChamDiemEl);
+        
+        const modalSuaEl = document.getElementById('modalSuaBaiTap');
+        const modalSua = new bootstrap.Modal(modalSuaEl);
 
-        // --- HÀM 1: XÓA BÀI TẬP ---
+        // --- 1. XÓA BÀI TẬP ---
         function deleteBaiTap(maBaiTap) {
             if (!confirm('CẢNH BÁO QUAN TRỌNG:\n\nBạn có chắc chắn muốn xóa bài tập này?\nHành động này sẽ xóa toàn bộ dữ liệu bài làm của học sinh (nếu có) và không thể hoàn tác.')) {
                 return;
@@ -321,58 +336,145 @@
             const formData = new FormData();
             formData.append('ma_bai_tap', maBaiTap);
 
-            fetch("<?php echo BASE_URL; ?>/giaovien/xoaBaiTapApi", {
+            fetch(BASE_URL + "/giaovien/xoaBaiTapApi", {
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.text()) 
-            .then(text => {
-                try {
-                    const result = JSON.parse(text); 
-                    if (result.success) {
-                        alert('✅ ' + result.message);
-                        window.location.href = "<?php echo BASE_URL; ?>/giaovien/danhsachbaitap/" + maLop + "/" + maMonHoc;
-                    } else {
-                        alert('⚠️ KHÔNG THỂ XÓA:\n' + result.message);
-                    }
-                } catch (e) {
-                    console.error("Server Error:", text);
-                    alert('❌ LỖI HỆ THỐNG (Xem Console).');
+            .then(response => response.json()) 
+            .then(result => {
+                if (result.success) {
+                    alert('✅ ' + result.message);
+                    window.location.href = BASE_URL + "/giaovien/danhsachbaitap/" + maLop + "/" + maMonHoc;
+                } else {
+                    alert('⚠️ KHÔNG THỂ XÓA:\n' + result.message);
                 }
             })
             .catch(err => alert('❌ Lỗi kết nối mạng: ' + err));
         }
 
-        // --- HÀM 2: SỬA BÀI TẬP ---
-        document.getElementById('formSuaBaiTap').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            if(!confirm('Bạn có chắc chắn muốn cập nhật thông tin bài tập này?')) return;
+        // --- 2. SỬA BÀI TẬP: LOAD DỮ LIỆU ---
+        function openModalSuaBaiTap(id) {
+            // Reset form
+            document.getElementById('formSuaBaiTap').reset();
+            document.getElementById('sua_area_TuLuan').style.display = 'none';
+            document.getElementById('sua_area_TracNghiem').style.display = 'none';
+            document.getElementById('sua_area_UploadFile').style.display = 'none';
+            
+            // Gọi API lấy thông tin
+            const fd = new FormData();
+            fd.append('ma_bai_tap', id);
 
-            const formData = new FormData(this);
+            fetch(BASE_URL + '/giaovien/layChiTietBaiTapDeSuaApi', {
+                method: 'POST', body: fd
+            })
+            .then(res => res.json())
+            .then(res => {
+                if(res.success) {
+                    const d = res.data;
+                    
+                    document.getElementById('sua_ma_bai_tap').value = d.ma_bai_tap;
+                    document.getElementById('sua_ten_bai_tap').value = d.ten_bai_tap;
+                    document.getElementById('sua_mo_ta').value = d.mo_ta;
+                    
+                    if(d.han_nop) {
+                        document.getElementById('sua_han_nop').value = d.han_nop.replace(' ', 'T').substring(0, 16);
+                    }
 
-            try {
-                const response = await fetch('<?php echo BASE_URL; ?>/giaovien/suaBaiTapApi', {
-                    method: 'POST',
-                    body: formData
-                });
-                const text = await response.text();
-                const result = JSON.parse(text);
-                
-                if (result.success) {
-                    alert('✅ Cập nhật thành công!');
-                    location.reload(); 
+                    const linkDiv = document.getElementById('link_file_cu');
+                    if(d.file_dinh_kem) {
+                        linkDiv.innerHTML = `<a href="${BASE_URL}/${d.file_dinh_kem}" target="_blank" class="badge bg-info text-decoration-none">File hiện tại</a>`;
+                    } else {
+                        linkDiv.innerHTML = '<span class="text-muted small">Không có file cũ</span>';
+                    }
+
+                    if (d.loai_bai_tap == 'TuLuan') {
+                        document.getElementById('sua_area_TuLuan').style.display = 'block';
+                        document.getElementById('sua_noi_dung_tu_luan').value = d.noi_dung_tu_luan;
+                    }
+                    else if (d.loai_bai_tap == 'TracNghiem') {
+                        document.getElementById('sua_area_TracNghiem').style.display = 'block';
+                        document.getElementById('sua_thoi_gian_lam_bai').value = d.thoi_gian_lam_bai;
+
+                        // --- BỔ SUNG ĐOẠN NÀY ---
+                        if (d.json_trac_nghiem) {
+                            try {
+                                const obj = JSON.parse(d.json_trac_nghiem);
+                                let raw = '';
+                                let ans = '';
+                                obj.questions.forEach((q, idx) => {
+                                    raw += `Câu ${idx+1}: ${q.text}\n`;
+                                    q.options.forEach(opt => raw += opt + '\n');
+                                    ans += q.correct;
+                                    raw += '\n';
+                                });
+                                document.getElementById('sua_raw_trac_nghiem').value = raw.trim();
+                                document.getElementById('sua_chuoi_dap_an').value = ans;
+                            } catch(e) {
+                                document.getElementById('sua_raw_trac_nghiem').value = '';
+                                document.getElementById('sua_chuoi_dap_an').value = '';
+                            }
+                        } else {
+                            document.getElementById('sua_raw_trac_nghiem').value = '';
+                            document.getElementById('sua_chuoi_dap_an').value = '';
+                        }
+                    }
+
+                    modalSua.show();
                 } else {
-                    alert('❌ Lỗi: ' + result.message);
+                    alert('Lỗi: ' + res.message);
                 }
-            } catch (err) {
-                console.error(err);
-                alert('❌ Lỗi Server hoặc Kết nối.');
+            })
+            .catch(err => alert('Lỗi kết nối: ' + err));
+        }
+
+        // --- 3. SỬA BÀI TẬP: SUBMIT ---
+        document.getElementById('formSuaBaiTap').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Xử lý trắc nghiệm nếu có nhập
+            const areaTN = document.getElementById('sua_area_TracNghiem');
+            if (areaTN.style.display !== 'none') {
+                const rawText = document.getElementById('sua_raw_trac_nghiem').value.trim();
+                const ansKey = document.getElementById('sua_chuoi_dap_an').value.trim();
+                
+                if (rawText && ansKey) {
+                    try {
+                        const jsonOutput = parseTracNghiemForEdit(rawText, ansKey); 
+                        document.getElementById('sua_json_trac_nghiem').value = jsonOutput;
+                    } catch (err) {
+                        alert('Lỗi Trắc nghiệm: ' + err.message);
+                        return;
+                    }
+                }
             }
+
+            const btn = document.getElementById('btnLuuSua');
+            btn.disabled = true;
+            btn.innerHTML = 'Đang lưu...';
+
+            const fd = new FormData(this);
+
+            fetch(BASE_URL + '/giaovien/suaBaiTapApi', {
+                method: 'POST', body: fd
+            })
+            .then(res => res.json())
+            .then(res => {
+                if(res.success) {
+                    alert('Cập nhật thành công!');
+                    location.reload();
+                } else {
+                    alert('Lỗi: ' + res.message);
+                }
+            })
+            .catch(err => alert('Lỗi: ' + err))
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = 'Lưu Thay Đổi';
+            });
         });
 
-        // --- HÀM 3: MỞ MODAL CHẤM ĐIỂM (Load dữ liệu) ---
+        // --- 4. CHẤM ĐIỂM: LOAD & HIỂN THỊ (UI ĐẸP) ---
         function moModalChamDiem(maBaiNop) {
-            // Reset UI
             document.getElementById('cham_ten_hs').textContent = 'Đang tải...';
             document.getElementById('cham_noi_dung_bai').innerHTML = '<div class="text-center mt-5"><div class="spinner-border text-primary"></div><br>Đang lấy dữ liệu bài làm...</div>';
             document.getElementById('cham_ma_bai_nop').value = maBaiNop;
@@ -381,11 +483,10 @@
             
             modalChamDiem.show();
 
-            // Gọi API
             const formData = new FormData();
             formData.append('ma_bai_nop', maBaiNop);
 
-            fetch("<?php echo BASE_URL; ?>/giaovien/layBaiLamHocSinhApi", {
+            fetch(BASE_URL + "/giaovien/layBaiLamHocSinhApi", {
                 method: 'POST',
                 body: formData
             })
@@ -394,19 +495,16 @@
                 if(res.success) {
                     const data = res.data;
                     
-                    // Điền thông tin
                     document.getElementById('cham_ten_hs').textContent = data.ho_ten;
                     document.getElementById('cham_diem_so').value = data.diem_so; 
                     document.getElementById('cham_nhan_xet').value = data.nhan_xet || '';
 
-                    // Xử lý hiển thị bài làm
                     let htmlContent = '';
                     let hasContent = false;
 
-                    // A. Nội dung Tự Luận / Trắc Nghiệm (Cột noi_dung_tra_loi)
+                    // A. Nội dung Tự Luận / Trắc Nghiệm (Text)
                     if (data.noi_dung_tra_loi && data.noi_dung_tra_loi.trim() !== '') {
                         hasContent = true;
-                        // Check xem có phải JSON trắc nghiệm không
                         if (data.noi_dung_tra_loi.trim().startsWith('{') && data.noi_dung_tra_loi.includes('"q1"')) {
                              htmlContent += `
                                 <div class="alert alert-warning mb-3 shadow-sm">
@@ -417,7 +515,6 @@
                                 </div>
                             `;
                         } else {
-                            // Tự luận thường
                             htmlContent += `
                                 <div class="mb-4">
                                     <h6 class="fw-bold text-primary border-bottom pb-2">Bài làm (Văn bản):</h6>
@@ -427,36 +524,46 @@
                         }
                     }
 
-                    // B. File Đính Kèm (Cột file_dinh_kem)
+                    // B. File Đính Kèm (Card UI)
                     if (data.file_dinh_kem && data.file_dinh_kem.trim() !== '') {
                         hasContent = true;
-                        const fileUrl = "<?php echo BASE_URL; ?>/" + data.file_dinh_kem;
+                        const fileUrl = BASE_URL + "/" + data.file_dinh_kem;
                         const ext = fileUrl.split('.').pop().toLowerCase();
+                        let rawName = data.file_dinh_kem.split('/').pop(); 
 
                         htmlContent += `
                             <div class="mb-3">
-                                <h6 class="fw-bold text-info border-bottom pb-2 mt-4">Tệp đính kèm:</h6>
+                                <h6 class="fw-bold text-info border-bottom pb-2 mt-4">
+                                    <i class="bi bi-paperclip"></i> Tệp đính kèm:
+                                </h6>
                         `;
 
                         if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-                            // Ảnh -> Hiện luôn
                             htmlContent += `
-                                <div class="text-center bg-dark p-2 rounded">
-                                    <img src="${fileUrl}" alt="Bài làm">
+                                <div class="text-center bg-dark p-2 rounded shadow-sm">
+                                    <img src="${fileUrl}" alt="Bài làm" class="img-fluid" style="max-height: 400px;">
                                 </div>
                             `;
                         } else {
-                            // File khác -> Nút tải
                             htmlContent += `
-                                <div class="d-flex align-items-center p-4 border rounded bg-light shadow-sm">
-                                    <i class="bi bi-file-earmark-arrow-down fs-1 text-primary me-3"></i>
-                                    <div class="flex-grow-1">
-                                        <h6 class="mb-1 fw-bold text-break">${data.file_dinh_kem.split('/').pop()}</h6>
-                                        <small class="text-muted">Nhấn vào nút bên cạnh để tải về chấm.</small>
+                                <div class="card border-0 shadow-sm bg-light">
+                                    <div class="card-body d-flex align-items-center">
+                                        <div class="me-3 text-primary">
+                                            <i class="bi bi-file-earmark-text-fill" style="font-size: 3rem;"></i>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <h5 class="card-title fw-bold text-dark mb-1">Bài làm của học sinh</h5>
+                                            <p class="card-text text-muted small mb-0">
+                                                Định dạng: .${ext.toUpperCase()} <br>
+                                                <span class="fst-italic text-secondary" style="font-size: 0.75rem;">
+                                                    (File hệ thống: ${rawName.substring(0, 30)}...)
+                                                </span>
+                                            </p>
+                                        </div>
+                                        <a href="${fileUrl}" target="_blank" class="btn btn-primary fw-bold px-4 py-2">
+                                            <i class="bi bi-download"></i> Tải Về
+                                        </a>
                                     </div>
-                                    <a href="${fileUrl}" target="_blank" class="btn btn-primary fw-bold">
-                                        <i class="bi bi-download"></i> Tải Về
-                                    </a>
                                 </div>
                             `;
                         }
@@ -467,7 +574,7 @@
                         htmlContent = `
                             <div class="text-center py-5 text-muted">
                                 <i class="bi bi-file-earmark-x display-1 opacity-25"></i>
-                                <p class="mt-3 fs-5">Học sinh nộp bài trống.</p>
+                                <p class="mt-3 fs-5">Học sinh chưa nộp bài hoặc nộp bài trống.</p>
                             </div>
                         `;
                     }
@@ -485,7 +592,7 @@
             });
         }
 
-        // --- HÀM 4: LƯU ĐIỂM SỐ ---
+        // --- 5. LƯU ĐIỂM ---
         document.getElementById('formLuuDiem').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -496,7 +603,7 @@
 
             const formData = new FormData(this);
 
-            fetch("<?php echo BASE_URL; ?>/giaovien/luuDiemSoApi", {
+            fetch(BASE_URL + "/giaovien/luuDiemSoApi", {
                 method: 'POST',
                 body: formData
             })
@@ -504,7 +611,7 @@
             .then(res => {
                 if (res.success) {
                     alert('✅ ' + res.message);
-                    location.reload(); // F5 để cập nhật danh sách bên ngoài
+                    location.reload(); 
                 } else {
                     alert('❌ Lỗi: ' + res.message);
                 }
@@ -514,6 +621,42 @@
                 btn.disabled = false;
                 btn.innerHTML = oldText;
             });
+        });
+
+        // Helper: Parser trắc nghiệm cho form sửa
+        function parseTracNghiemForEdit(text, key) {
+            const blocks = text.split(/(?:Câu|Câu hỏi|\d+)[ \t]*[\d\.:]+/).filter(b => b.trim() !== '');
+            const keys = key.toUpperCase().replace(/[^A-D]/g, '').split('');
+            if (blocks.length !== keys.length) throw new Error('Số câu hỏi và đáp án không khớp');
+
+            const arr = [];
+            for (let i = 0; i < blocks.length; i++) {
+                const lines = blocks[i].trim().split('\n').filter(l => l.trim()!=='');
+                const q = lines.shift().trim();
+                let opts = lines.map(l => l.trim()).filter(l => /^[A-D][\.\)]/i.test(l));
+                if(opts.length == 0) opts = lines.map((opt, idx) => `${String.fromCharCode(65 + idx)}. ${opt}`);
+
+                // --- KIỂM TRA ĐỦ 4 ĐÁP ÁN ---
+                if (opts.length !== 4) throw new Error(`Câu ${i+1} phải có đủ 4 đáp án (A, B, C, D)!`);
+
+                // --- KIỂM TRA ĐÁP ÁN ĐÚNG HỢP LỆ ---
+                if (!['A','B','C','D'].includes(keys[i])) throw new Error(`Đáp án đúng của câu ${i+1} phải là A, B, C hoặc D!`);
+
+                arr.push({ id: i+1, text: q, options: [...new Set(opts)], correct: keys[i] });
+            }
+            return JSON.stringify({ questions: arr });
+        }
+        
+        // --- 7. SESSION KEEP-ALIVE ---
+        // Giúp giáo viên không bị đăng xuất khi đang chấm điểm lâu
+        function startSessionKeepAlive(interval) {
+            setInterval(async () => {
+                try { await fetch(BASE_URL + '/giaovien/ping'); } catch (e) {}
+            }, interval);
+        }
+
+        document.addEventListener('DOMContentLoaded', (event) => {
+            startSessionKeepAlive(60000); // 1 phút
         });
     </script>
 </body>

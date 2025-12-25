@@ -274,11 +274,14 @@
         });
 
         // 1. (Helper) Vẽ bảng lịch sử
+        // Thay thế hàm renderHistoryTable cũ bằng hàm này
+        // Hàm renderHistoryTable ĐÃ NÂNG CẤP
         function renderHistoryTable(lich_su) {
             const tbodyHistory = document.getElementById('tableHistoryBody');
             tbodyHistory.innerHTML = '';
+            
             if(!lich_su || lich_su.length === 0) {
-                tbodyHistory.innerHTML = '<tr><td colspan="6" class="text-center">Chưa có phiên điểm danh nào.</td></tr>';
+                tbodyHistory.innerHTML = '<tr><td colspan="6" class="text-center text-muted p-4">Chưa có phiên điểm danh nào.</td></tr>';
                 return;
             }
 
@@ -287,51 +290,64 @@
                     ? '<span class="badge bg-secondary">GV Điểm Danh</span>' 
                     : '<span class="badge bg-info">HS Tự Động</span>';
                 
-                let thoiGianText = 'N/A';
+                // --- [SỬA ĐOẠN NÀY] XỬ LÝ HIỂN THỊ THỜI GIAN (START - END) ---
+                let thoiGianText = '--:--';
+                
+                // 1. Trường hợp HS tự điểm danh (có sẵn giờ mở - đóng cố định)
                 if (phien.loai_phien == 'HocSinh' && phien.thoi_gian_mo) {
                     let mo = new Date(phien.thoi_gian_mo).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'});
                     let dong = new Date(phien.thoi_gian_dong).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'});
                     thoiGianText = `${mo} - ${dong}`;
+                } 
+                // 2. Trường hợp GV điểm danh (giờ tạo - giờ bấm kết thúc)
+                else if (phien.loai_phien == 'GiaoVien' && phien.thoi_gian) {
+                    // Giờ bắt đầu (lấy giờ tạo phiên)
+                    let startTime = phien.thoi_gian.substring(0, 5); // 09:49:00 -> 09:49
+                    
+                    // Giờ kết thúc (lấy thoi_gian_dong)
+                    let endTime = '...'; // Mặc định là dấu ... nếu chưa kết thúc
+                    
+                    if (phien.thoi_gian_dong) {
+                        // Nếu đã kết thúc, format lại giờ đóng
+                        endTime = new Date(phien.thoi_gian_dong).toLocaleTimeString('vi-VN', {hour: '2-digit', minute: '2-digit'});
+                    }
+                    
+                    thoiGianText = `${startTime} - ${endTime}`;
                 }
+                // -------------------------------------------------------------
 
                 let trangThaiClass = '';
                 let trangThaiText = phien.trang_thai_phien;
+                
                 switch(phien.trang_thai_phien) {
                     case 'DangDiemDanh': trangThaiClass = 'text-success fw-bold'; trangThaiText = 'Đang diễn ra'; break;
                     case 'HetThoiGian': trangThaiClass = 'text-muted'; trangThaiText = 'Đã kết thúc'; break;
                     case 'ChuaMo': trangThaiClass = 'text-primary'; trangThaiText = 'Sắp diễn ra'; break;
                 }
 
-                // Nút xóa chỉ hiện khi chưa có ai điểm danh
                 let btnXoa = phien.da_diem_danh == 0 
-                    ? `<button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); xoaPhien(${phien.ma_phien})" title="Xóa phiên">
-                            <i class="bi bi-trash"></i>
-                       </button>` 
-                    : `<button class="btn btn-sm btn-secondary" disabled title="Không thể xóa - đã có học sinh điểm danh">
-                            <i class="bi bi-trash"></i>
-                       </button>`;
+                    ? `<button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); xoaPhien(${phien.ma_phien})" title="Xóa phiên"><i class="bi bi-trash"></i></button>` 
+                    : `<button class="btn btn-sm btn-secondary" disabled title="Không thể xóa"><i class="bi bi-trash"></i></button>`;
 
                 tbodyHistory.innerHTML += `
                     <tr class="history-row" onclick="openSessionDetailModal(${phien.ma_phien})">
                         <td>${new Date(phien.ngay_diem_danh).toLocaleDateString('vi-VN')}</td>
                         <td>
                             <div class="fw-bold">${phien.tieu_de}</div>
-                            <div>${loaiPhienText}</div>
+                            <div class="mt-1">${loaiPhienText}</div>
                         </td>
-                        <td>${thoiGianText}</td>
+                        <td class="fw-medium font-monospace text-primary">${thoiGianText}</td>
                         <td class="text-center fw-bold">${phien.da_diem_danh} / ${currentSiSo}</td>
                         <td class="${trangThaiClass}">${trangThaiText}</td>
                         <td onclick="event.stopPropagation()">
-                            <button class="btn btn-sm btn-warning me-1" onclick="openEditModal(${phien.ma_phien})" title="Chỉnh sửa">
-                                <i class="bi bi-pencil"></i>
-                            </button>
+                            <button class="btn btn-sm btn-warning me-1" onclick="openEditModal(${phien.ma_phien})"><i class="bi bi-pencil"></i></button>
                             ${btnXoa}
                         </td>
                     </tr>
                 `;
             });
         }
-        
+                
         // (Hàm này MỚI, dùng để tải lại lịch sử sau khi tạo/lưu)
         async function refreshHistoryTable() {
              try {
@@ -461,27 +477,23 @@
         }
         
         // 4. Mở Modal 3 (Chi Tiết Phiên)
+        // 4. Mở Modal 3 (Chi Tiết Phiên) - ĐÃ CẬP NHẬT
         async function openSessionDetailModal(maPhien, isNewManualEntry = false) {
-            // (Hàm này giữ nguyên 100% logic như file cũ)
-            // ... (Copy toàn bộ nội dung hàm 'openSessionDetailModal' từ file cũ vào đây) ...
-            
             currentMaPhien = maPhien;
             const tbody = document.getElementById('tbodyDiemDanh');
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center p-5">Đang tải chi tiết phiên...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center p-5"><div class="spinner-border text-primary"></div><br>Đang tải chi tiết phiên...</td></tr>';
             
             modalChiTietPhien.show(); 
-            modalNotification.style.display = 'none';
+            document.getElementById('notificationModal').style.display = 'none';
 
             try {
                 const formData = new FormData();
                 formData.append('ma_phien', maPhien);
                 
-                const res = await fetch(BASE_URL + '/giaovien/getChiTietPhienApi', 
-                { method: 'POST', body: formData,
-                    headers: { // <-- THÊM CÁI NÀY
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-
+                const res = await fetch(BASE_URL + '/giaovien/getChiTietPhienApi', { 
+                    method: 'POST', 
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 const data = await res.json();
                 
@@ -489,6 +501,7 @@
                     const phien_info = data.phien_info;
                     const chi_tiet = data.danh_sach_chi_tiet;
                     
+                    // Cập nhật thông tin Header
                     document.getElementById('titleDiemDanh').textContent = `Chi Tiết Phiên: ${phien_info.tieu_de}`;
                     
                     let trangThaiText = phien_info.trang_thai_phien;
@@ -496,6 +509,7 @@
                     if (trangThaiText == 'DangDiemDanh') { trangThaiText = 'ĐANG DIỄN RA'; trangThaiClass = 'alert-success'; }
                     if (trangThaiText == 'HetThoiGian') { trangThaiText = 'ĐÃ KẾT THÚC'; trangThaiClass = 'alert-danger'; }
                     if (trangThaiText == 'ChuaMo') { trangThaiText = 'SẮP DIỄN RA'; trangThaiClass = 'alert-primary'; }
+                    
                     document.getElementById('phienInfoBox').className = `alert ${trangThaiClass} d-flex justify-content-between align-items-center`;
                     document.getElementById('phienInfoTrangThai').textContent = trangThaiText;
 
@@ -508,21 +522,29 @@
                     const btnKetThuc = document.getElementById('btnKetThucPhien');
                     btnKetThuc.style.display = (phien_info.trang_thai_phien != 'HetThoiGian') ? 'block' : 'none';
 
+                    // XỬ LÝ HIỂN THỊ BẢNG
                     if (phien_info.loai_phien == 'GiaoVien') {
-                        // Nếu là phiên mới (isNewManualEntry=true) hoặc đang diễn ra, cho phép sửa
+                        // Nếu phiên đã kết thúc -> Chỉ xem (readOnly)
                         const isReadOnly = (phien_info.trang_thai_phien == 'HetThoiGian'); 
                         
-                        // QUAN TRỌNG: Khi tạo mới (isNewManualEntry), danh sách `chi_tiet` từ API trả về
-                        // sẽ chưa có HS (vì chưa ai được điểm danh).
-                        // Chúng ta phải dùng `currentStudentList` đã tải sẵn.
+                        // Nếu là tạo mới -> Dùng danh sách lớp gốc (chưa có trạng thái)
+                        // Nếu là xem lại -> Dùng danh sách chi tiết từ DB
                         const listToRender = isNewManualEntry ? currentStudentList : chi_tiet;
                         
                         renderManualEntryTable(listToRender, isReadOnly, isNewManualEntry);
+                        
+                        // === [ĐOẠN MỚI THÊM] ===
+                        // Nếu là phiên vừa tạo xong -> Tự động tích "Có mặt" hết cho tiện
+                        if (isNewManualEntry && !isReadOnly) {
+                            checkAll('CoMat'); 
+                        }
+                        // =======================
                         
                         document.getElementById('diemDanhToolbar').style.display = isReadOnly ? 'none' : 'flex';
                         document.getElementById('btnSubmitLuuDiemDanh').style.display = isReadOnly ? 'none' : 'block';
                     } 
                     else {
+                        // Phiên học sinh tự điểm danh -> Chỉ hiện bảng kết quả
                         renderReviewTable(chi_tiet, phien_info.si_so);
                         document.getElementById('diemDanhToolbar').style.display = 'none';
                         document.getElementById('btnSubmitLuuDiemDanh').style.display = 'none';
@@ -531,14 +553,14 @@
                     throw new Error(data.message || 'Lỗi không rõ');
                 }
             } catch(err) {
+                console.error(err);
                 tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger p-5">Lỗi: ${err.message}</td></tr>`;
             }
         }
 
         // 5a. (Helper) Vẽ bảng ĐIỂM DANH THỦ CÔNG (cho GV)
+        // 5a. (Helper) Vẽ bảng ĐIỂM DANH THỦ CÔNG (cho GV)
         function renderManualEntryTable(studentList, isReadOnly = false, isNew = false) {
-            // (Hàm này giữ nguyên 100% logic như file cũ)
-            // ... (Copy toàn bộ nội dung hàm 'renderManualEntryTable' từ file cũ vào đây) ...
             
             const thead = document.getElementById('theadDiemDanh');
             const tbody = document.getElementById('tbodyDiemDanh');
@@ -558,20 +580,43 @@
             const disabledAttr = isReadOnly ? 'disabled' : ''; 
             
             studentList.forEach((hs, index) => {
-                const maHs = hs.ma_nguoi_dung;
                 
-                // NẾU LÀ PHIÊN MỚI: mặc định 'CoMat'
-                // NẾU LÀ XEM LẠI: lấy 'trang_thai_diem_danh' (có thể null nếu GV chưa điểm danh em đó)
-                // => Mặc định là 'CoMat' nếu 'trang_thai_diem_danh' là null.
-                const trang_thai_cu = hs.trang_thai_diem_danh ?? 'CoMat'; 
+                // --- SỬA QUAN TRỌNG: Lấy ID học sinh chuẩn ---
+                // Khi tạo mới (isNew=true), danh sách từ getHocSinhTheoLop trả về 'ma_hoc_sinh'
+                // Khi xem lại (isNew=false), danh sách từ getChiTietDiemDanh cũng trả về 'ma_hoc_sinh' (đã fix trong Model)
+                // Tuy nhiên, để an toàn, ta check cả 2 trường hợp (hoặc ma_nguoi_dung nếu model cũ)
+                const maHs = hs.ma_hoc_sinh || hs.ma_nguoi_dung; 
+                
+                if (!maHs) {
+                    console.error("Lỗi: Không tìm thấy ID học sinh cho dòng này:", hs);
+                    return; // Bỏ qua dòng lỗi
+                }
+                // ----------------------------------------------
+
+                // Nếu là phiên mới, mặc định chưa có trạng thái (sẽ được checkAll sau)
+                // Nếu là xem lại, lấy trạng thái từ DB. Nếu null thì mặc định CoMat (đề phòng)
+                const trang_thai_cu = hs.trang_thai_diem_danh || hs.trang_thai || 'CoMat'; 
                 
                 let rowHtml = `<tr id="row-hs-${maHs}">
                     <td class="text-center">${index + 1}</td>
                     <td class="text-start fw-medium">${hs.ho_ten}</td>`;
 
                 const statuses = ['CoMat', 'VangKhongPhep', 'VangCoPhep', 'DiTre'];
+                
                 statuses.forEach((status) => {
-                    const checked = (trang_thai_cu == status) ? 'checked' : '';
+                    // Logic check:
+                    // 1. Nếu là phiên mới (isNew=true): Không check gì cả (để hàm checkAll xử lý sau) hoặc mặc định check CoMat
+                    // 2. Nếu xem lại: Check theo trạng thái cũ
+                    let checked = '';
+                    if (!isNew && trang_thai_cu == status) {
+                        checked = 'checked';
+                    } else if (isNew && status == 'CoMat') {
+                         // Mặc định check Có Mặt cho phiên mới (UI tốt hơn)
+                         checked = 'checked';
+                    }
+
+                    // --- SỬA QUAN TRỌNG: name="diemdanh[ID_HOC_SINH]" ---
+                    // Việc thêm ID vào name giúp nhóm các radio theo từng học sinh riêng biệt
                     rowHtml += `
                     <td class="text-center">
                         <div class="form-check d-flex justify-content-center">
@@ -580,6 +625,7 @@
                                    ${checked} ${disabledAttr}>
                         </div>
                     </td>`;
+                    // -----------------------------------------------------
                 });
                 rowHtml += '</tr>';
                 tbody.innerHTML += rowHtml;
@@ -588,41 +634,57 @@
 
         // 5b. (Helper) Vẽ bảng XEM KẾT QUẢ (cho HS tự điểm danh)
         function renderReviewTable(studentList, siSo) {
-            // (Hàm này giữ nguyên 100% logic như file cũ)
-            // ... (Copy toàn bộ nội dung hàm 'renderReviewTable' từ file cũ vào đây) ...
-            
-             const thead = document.getElementById('theadDiemDanh');
+            const thead = document.getElementById('theadDiemDanh');
             const tbody = document.getElementById('tbodyDiemDanh');
             tbody.innerHTML = '';
 
             thead.innerHTML = `
                 <tr>
-                    <th>STT</th>
+                    <th class="text-center">STT</th>
                     <th>Họ Tên</th>
-                    <th>Trạng Thái</th>
-                    <th>Thời gian điểm danh</th>
+                    <th class="text-center">Trạng Thái</th>
+                    <th class="text-center">Thời gian</th>
                 </tr>
             `;
 
             let daDiemDanh = 0;
+            
             studentList.forEach((hs, index) => {
-                let trangThaiText = '<span class="badge bg-danger">CHƯA ĐIỂM DANH</span>';
-                let thoiGianText = '---';
+                // --- SỬA Ở ĐÂY: Lấy đúng tên biến từ Model (trang_thai) ---
+                // Model trả về: "trang_thai" (do dùng AS trang_thai)
+                // Giá trị mặc định là 'ChuaDiemDanh'
+                const status = hs.trang_thai || 'ChuaDiemDanh'; 
                 
-                if (hs.trang_thai_diem_danh) {
+                let trangThaiBadge = '<span class="badge bg-secondary bg-opacity-25 text-secondary border">CHƯA ĐIỂM DANH</span>';
+                let thoiGianText = '<span class="text-muted">---</span>';
+                
+                // Kiểm tra nếu ĐÃ điểm danh (Khác 'ChuaDiemDanh')
+                if (status !== 'ChuaDiemDanh' && status !== null) {
                     daDiemDanh++;
-                    trangThaiText = '<span class="badge bg-success">ĐÃ CÓ MẶT</span>';
-                    thoiGianText = hs.thoi_gian_nop 
-                        ? new Date(hs.thoi_gian_nop).toLocaleString('vi-VN')
-                        : 'N/A';
+                    
+                    // Xử lý hiển thị thời gian
+                    if (hs.thoi_gian_nop) {
+                        const date = new Date(hs.thoi_gian_nop);
+                        thoiGianText = date.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit', second:'2-digit'}) + 
+                                       ' <small class="text-muted">(' + date.toLocaleDateString('vi-VN') + ')</small>';
+                    }
+
+                    // Xử lý màu sắc Badge
+                    if (status === 'CoMat') {
+                        trangThaiBadge = '<span class="badge bg-success">ĐÃ CÓ MẶT</span>';
+                    } else if (status === 'DiTre') {
+                        trangThaiBadge = '<span class="badge bg-info">ĐI TRỄ</span>';
+                    } else if (status.includes('Vang')) {
+                        trangThaiBadge = '<span class="badge bg-danger">VẮNG</span>';
+                    }
                 }
 
                 tbody.innerHTML += `
                     <tr>
                         <td class="text-center">${index + 1}</td>
-                        <td class="fw-medium">${hs.ho_ten}</td>
-                        <td class="text-center">${trangThaiText}</td>
-                        <td class="text-center">${thoiGianText}</td>
+                        <td class="fw-medium text-dark">${hs.ho_ten}</td>
+                        <td class="text-center">${trangThaiBadge}</td>
+                        <td class="text-center small">${thoiGianText}</td>
                     </tr>
                 `;
             });

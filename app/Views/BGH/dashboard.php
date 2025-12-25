@@ -423,8 +423,10 @@
                                     </td>
                                     <td class="text-end">
                                         <?php 
-                                        $da_co_diem = ($row['diem_tb_mon_hk'] !== null && $row['diem_tb_mon_hk'] !== '');
-                                        if ($da_co_diem): 
+                                        // KIỂM TRA: Nếu đã có ID bản ghi (dù điểm đang trống) thì hiện nút Chỉnh sửa (Gửi phiếu)
+                                        $da_ton_tai_dong = !empty($row['ma_diem_mon_hk']);
+                                        
+                                        if ($da_ton_tai_dong): 
                                         ?>
                                             <button class="btn btn-sm btn-warning" 
                                                     onclick="openModalChinhSuaDiem(<?php echo $row['ma_hoc_sinh']; ?>, <?php echo $row['ma_mon_hoc']; ?>, '<?php echo htmlspecialchars($row['ten_mon_hoc'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars($row['ho_ten'], ENT_QUOTES); ?>', <?php echo $row['diem_mieng'] ?? 'null'; ?>, <?php echo $row['diem_15phut'] ?? 'null'; ?>, <?php echo $row['diem_1tiet'] ?? 'null'; ?>, <?php echo $row['diem_gua_ky'] ?? 'null'; ?>, <?php echo $row['diem_cuoi_ky'] ?? 'null'; ?>)">
@@ -710,23 +712,65 @@
             modal.show();
         }
         
-        function submitNhapDiem() {
-            const form = document.getElementById('formNhapDiem');
-            if (!form.checkValidity()) {
-                alert('Vui lòng điền đầy đủ thông tin!');
-                return;
-            }
+        // function submitNhapDiem() {
+        //     const form = document.getElementById('formNhapDiem');
+        //     if (!form.checkValidity()) {
+        //         alert('Vui lòng điền đầy đủ thông tin!');
+        //         return;
+        //     }
             
+        //     const formData = new FormData();
+        //     formData.append('ma_hoc_sinh', document.getElementById('modal_ma_hs').value);
+        //     formData.append('ma_mon_hoc', document.getElementById('modal_ma_mon').value);
+        //     formData.append('ma_hoc_ky', document.getElementById('modal_hoc_ky').value);
+        //     formData.append('diem_mieng', document.getElementById('inp_mieng').value);
+        //     formData.append('diem_15phut', document.getElementById('inp_15phut').value);
+        //     formData.append('diem_1tiet', document.getElementById('inp_1tiet').value);
+        //     formData.append('diem_gua_ky', document.getElementById('inp_gk').value);
+        //     formData.append('diem_cuoi_ky', document.getElementById('inp_ck').value);
+            
+        //     fetch('<?php echo BASE_URL; ?>/diemso/nhap', {
+        //         method: 'POST',
+        //         body: formData
+        //     })
+        //     .then(res => res.json())
+        //     .then(data => {
+        //         if (data.success) {
+        //             alert(data.message);
+        //             location.reload();
+        //         } else {
+        //             alert('Lỗi: ' + data.message);
+        //         }
+        //     })
+        //     .catch(err => {
+        //         alert('Lỗi kết nối: ' + err.message);
+        //     });
+        // }
+        // HÀM NHẬP ĐIỂM MỚI (Dành cho bản ghi trống)
+        function submitNhapDiem() {
+            // 1. Lấy các thông tin định danh
+            const ma_hs = document.getElementById('modal_ma_hs').value;
+            const ma_mon = document.getElementById('modal_ma_mon').value;
+            const ma_hk = document.getElementById('modal_hoc_ky').value;
+
+            // 2. Khởi tạo FormData
             const formData = new FormData();
-            formData.append('ma_hoc_sinh', document.getElementById('modal_ma_hs').value);
-            formData.append('ma_mon_hoc', document.getElementById('modal_ma_mon').value);
-            formData.append('ma_hoc_ky', document.getElementById('modal_hoc_ky').value);
+            formData.append('ma_hoc_sinh', ma_hs);
+            formData.append('ma_mon_hoc', ma_mon);
+            formData.append('ma_hoc_ky', ma_hk);
+
+            // 3. Append điểm - QUAN TRỌNG: Tên biến phải khớp 100% với file PHP
             formData.append('diem_mieng', document.getElementById('inp_mieng').value);
             formData.append('diem_15phut', document.getElementById('inp_15phut').value);
             formData.append('diem_1tiet', document.getElementById('inp_1tiet').value);
-            formData.append('diem_gua_ky', document.getElementById('inp_gk').value);
-            formData.append('diem_cuoi_ky', document.getElementById('inp_ck').value);
             
+            // Sửa lỗi ở đây: Đổi từ 'diem_gk' thành 'diem_gua_ky'
+            formData.append('diem_gua_ky', document.getElementById('inp_gk').value);
+            
+            // Sửa lỗi ở đây: Đổi từ 'diem_ck' thành 'diem_cuoi_ky'
+            formData.append('diem_cuoi_ky', document.getElementById('inp_ck').value);
+
+            // 4. Gửi dữ liệu lên Server
             fetch('<?php echo BASE_URL; ?>/diemso/nhap', {
                 method: 'POST',
                 body: formData
@@ -734,60 +778,86 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message);
-                    location.reload();
+                    alert("Ngon lành! " + data.message);
+                    // 5. Cực kỳ quan trọng: Reload để nút "Chỉnh sửa" nhận dữ liệu mới nhất
+                    location.reload(); 
                 } else {
-                    alert('Lỗi: ' + data.message);
+                    alert('Lỗi rồi bạn ơi: ' + data.message);
                 }
             })
             .catch(err => {
+                console.error('Lỗi kết nối:', err);
                 alert('Lỗi kết nối: ' + err.message);
             });
         }
+
+        // HÀM GỬI PHIẾU YÊU CẦU SỬA ĐIỂM (Lên BGH)
+        
         
         // === CHỈNH SỬA ĐIỂM - GỬI PHIẾU YÊU CẦU ===
-        function openModalChinhSuaDiem(ma_hs, ma_mon, ten_mon, ten_hs, diem_mieng, diem_15phut, diem_1tiet, diem_gk, diem_ck) {
+        // function openModalChinhSuaDiem(ma_hs, ma_mon, ten_mon, ten_hs, diem_mieng, diem_15phut, diem_1tiet, diem_gk, diem_ck) {
+        //     document.getElementById('modal_sua_hs_name').textContent = ten_hs;
+        //     document.getElementById('modal_sua_mon_name').textContent = ten_mon;
+        //     document.getElementById('modal_sua_ma_hs').value = ma_hs;
+        //     document.getElementById('modal_sua_ma_mon').value = ma_mon;
+            
+        //     // Điền điểm cũ vào form
+        //     document.getElementById('inp_sua_mieng').value = diem_mieng !== null ? diem_mieng : '';
+        //     document.getElementById('inp_sua_15phut').value = diem_15phut !== null ? diem_15phut : '';
+        //     document.getElementById('inp_sua_1tiet').value = diem_1tiet !== null ? diem_1tiet : '';
+        //     document.getElementById('inp_sua_gk').value = diem_gk !== null ? diem_gk : '';
+        //     document.getElementById('inp_sua_ck').value = diem_ck !== null ? diem_ck : '';
+        //     document.getElementById('inp_ly_do').value = '';
+            
+        //     const modal = new bootstrap.Modal(document.getElementById('modalChinhSuaDiem'));
+        //     modal.show();
+        // }
+        function openModalChinhSuaDiem(ma_hs, ma_mon, ten_mon, ten_hs, mieng, p15, t1, gk, ck) {
             document.getElementById('modal_sua_hs_name').textContent = ten_hs;
             document.getElementById('modal_sua_mon_name').textContent = ten_mon;
             document.getElementById('modal_sua_ma_hs').value = ma_hs;
             document.getElementById('modal_sua_ma_mon').value = ma_mon;
             
-            // Điền điểm cũ vào form
-            document.getElementById('inp_sua_mieng').value = diem_mieng !== null ? diem_mieng : '';
-            document.getElementById('inp_sua_15phut').value = diem_15phut !== null ? diem_15phut : '';
-            document.getElementById('inp_sua_1tiet').value = diem_1tiet !== null ? diem_1tiet : '';
-            document.getElementById('inp_sua_gk').value = diem_gk !== null ? diem_gk : '';
-            document.getElementById('inp_sua_ck').value = diem_ck !== null ? diem_ck : '';
+            // Điền điểm cũ vào form, nếu null thì để trống
+            document.getElementById('inp_sua_mieng').value = (mieng !== null) ? mieng : '';
+            document.getElementById('inp_sua_15phut').value = (p15 !== null) ? p15 : '';
+            document.getElementById('inp_sua_1tiet').value = (t1 !== null) ? t1 : '';
+            document.getElementById('inp_sua_gk').value = (gk !== null) ? gk : '';
+            document.getElementById('inp_sua_ck').value = (ck !== null) ? ck : '';
+            
             document.getElementById('inp_ly_do').value = '';
             
             const modal = new bootstrap.Modal(document.getElementById('modalChinhSuaDiem'));
             modal.show();
         }
         
+        
         function submitChinhSuaDiem() {
-            const form = document.getElementById('formChinhSuaDiem');
-            if (!form.checkValidity()) {
-                alert('Vui lòng điền đầy đủ thông tin và lý do chỉnh sửa!');
-                return;
-            }
-            
+            const ma_hs = document.getElementById('modal_sua_ma_hs').value;
+            const ma_mon = document.getElementById('modal_sua_ma_mon').value;
+            const ma_hk = document.getElementById('modal_sua_hoc_ky').value;
             const ly_do = document.getElementById('inp_ly_do').value.trim();
-            if (ly_do === '') {
-                alert('Vui lòng nhập lý do chỉnh sửa điểm!');
+
+            if (ly_do.length < 10) {
+                alert('Phải nhập lý do chi tiết (ít nhất 10 ký tự) để BGH duyệt yêu cầu');
                 return;
             }
-            
+
             const formData = new FormData();
-            formData.append('ma_hoc_sinh', document.getElementById('modal_sua_ma_hs').value);
-            formData.append('ma_mon_hoc', document.getElementById('modal_sua_ma_mon').value);
-            formData.append('ma_hoc_ky', document.getElementById('modal_sua_hoc_ky').value);
+            formData.append('ma_hoc_sinh', ma_hs);
+            formData.append('ma_mon_hoc', ma_mon);
+            formData.append('ma_hoc_ky', ma_hk);
+            formData.append('ly_do', ly_do);
+
+            // GÁN ĐÍCH DANH TÊN BIẾN ĐỂ KHỚP VỚI PHP
             formData.append('diem_mieng', document.getElementById('inp_sua_mieng').value);
             formData.append('diem_15phut', document.getElementById('inp_sua_15phut').value);
             formData.append('diem_1tiet', document.getElementById('inp_sua_1tiet').value);
-            formData.append('diem_gua_ky', document.getElementById('inp_sua_gk').value);
-            formData.append('diem_cuoi_ky', document.getElementById('inp_sua_ck').value);
-            formData.append('ly_do', ly_do);
-            
+            formData.append('diem_gua_ky', document.getElementById('inp_sua_gk').value); // Sửa thành diem_gua_ky
+            formData.append('diem_cuoi_ky', document.getElementById('inp_sua_ck').value); // Sửa thành diem_cuoi_ky
+
+            if (!confirm("Xác nhận gửi phiếu yêu cầu chỉnh sửa này lên BGH?")) return;
+
             fetch('<?php echo BASE_URL; ?>/diemso/guiPhieuChinhSua', {
                 method: 'POST',
                 body: formData
@@ -795,15 +865,13 @@
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message + '\nPhiếu đã được gửi đến Ban Giám Hiệu để duyệt.');
-                    bootstrap.Modal.getInstance(document.getElementById('modalChinhSuaDiem')).hide();
+                    alert('Thành công! ' + data.message);
+                    location.reload(); 
                 } else {
                     alert('Lỗi: ' + data.message);
                 }
             })
-            .catch(err => {
-                alert('Lỗi kết nối: ' + err.message);
-            });
+            .catch(err => alert('Lỗi kết nối mạng!'));
         }
         
         // === QUẢN LÝ PHIẾU YÊU CẦU CỦA GIÁO VIÊN ===
@@ -949,22 +1017,75 @@
             new bootstrap.Modal(document.getElementById('modalChinhSuaCN')).show();
         }
 
-        function submitChinhSuaCN() {
-            const ma_hs = document.getElementById('cn_ma_hoc_sinh').value;
-            const so_vang = document.getElementById('cn_so_buoi_vang').value;
-            const hanh_kiem = document.getElementById('cn_hanh_kiem').value;
-            const nhan_xet = document.getElementById('cn_nhan_xet').value;
-            if (!ma_hs || !hanh_kiem) { alert('Vui lòng nhập đủ thông tin!'); return; }
+        // function submitChinhSuaCN() {
+        //     const ma_hs = document.getElementById('cn_ma_hoc_sinh').value;
+        //     const so_vang = document.getElementById('cn_so_buoi_vang').value;
+        //     const hanh_kiem = document.getElementById('cn_hanh_kiem').value;
+        //     const nhan_xet = document.getElementById('cn_nhan_xet').value;
+        //     if (!ma_hs || !hanh_kiem) { alert('Vui lòng nhập đủ thông tin!'); return; }
 
-            // Gửi cập nhật số buổi vắng
+        //     // Gửi cập nhật số buổi vắng
+        //     fetch('<?php echo BASE_URL; ?>/giaovienchunhiem/capnhatvang', {
+        //         method: 'POST',
+        //         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        //         body: `ma_hs=${ma_hs}&so_buoi_vang=${so_vang}&hoc_ky=HK1`
+        //     })
+        //     .then(res => res.json())
+        //     .then(data => {
+        //         // Gửi tiếp cập nhật hạnh kiểm
+        //         return fetch('<?php echo BASE_URL; ?>/giaovienchunhiem/capnhathanhkiem', {
+        //             method: 'POST',
+        //             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        //             body: `ma_hs=${ma_hs}&hanh_kiem=${hanh_kiem}&nhan_xet=${encodeURIComponent(nhan_xet)}&hoc_ky=HK1`
+        //         });
+        //     })
+        //     .then(res => res.json())
+        //     .then(data => {
+        //         alert('Đã lưu thay đổi!');
+        //         location.reload();
+        //     })
+        //     .catch(err => alert('Lỗi: ' + err.message));
+        // }
+        function submitChinhSuaCN() {
+            // 1. Lấy dữ liệu
+            const ma_hs = document.getElementById('cn_ma_hoc_sinh').value;
+            const so_vang = document.getElementById('cn_so_buoi_vang').value.trim();
+            const hanh_kiem = document.getElementById('cn_hanh_kiem').value;
+            const nhan_xet = document.getElementById('cn_nhan_xet').value.trim();
+
+            // 2. Kiểm tra dữ liệu (Validation)
+            if (!ma_hs) { alert('Lỗi: Không tìm thấy mã học sinh!'); return; }
+            
+            if (!hanh_kiem) { 
+                alert('Bạn vui lòng chọn Hạnh kiểm cho học sinh nhé!'); 
+                return; 
+            }
+
+            if (so_vang === "" || isNaN(so_vang) || parseInt(so_vang) < 0) {
+                alert('Số buổi vắng phải là số nguyên và không được nhỏ hơn 0!');
+                document.getElementById('cn_so_buoi_vang').focus();
+                return;
+            }
+
+            // Kiểm tra xem có phải số nguyên không (vắng 1.5 buổi là không ổn)
+            if (!Number.isInteger(Number(so_vang))) {
+                alert('Số buổi vắng phải là số nguyên, bạn đừng nhập số lẻ nhé!');
+                document.getElementById('cn_so_buoi_vang').focus();
+                return;
+            }
+
+            // 3. Thực hiện gửi dữ liệu (Xử lý tuần tự)
+            // Bước A: Cập nhật số buổi vắng
             fetch('<?php echo BASE_URL; ?>/giaovienchunhiem/capnhatvang', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                 body: `ma_hs=${ma_hs}&so_buoi_vang=${so_vang}&hoc_ky=HK1`
             })
             .then(res => res.json())
-            .then(data => {
-                // Gửi tiếp cập nhật hạnh kiểm
+            .then(dataVang => {
+                if (!dataVang.success) throw new Error("Lỗi cập nhật vắng: " + dataVang.message);
+
+                // Bước B: Nếu vắng xong xuôi thì cập nhật tiếp Hạnh kiểm & Nhận xét
                 return fetch('<?php echo BASE_URL; ?>/giaovienchunhiem/capnhathanhkiem', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -972,11 +1093,18 @@
                 });
             })
             .then(res => res.json())
-            .then(data => {
-                alert('Đã lưu thay đổi!');
-                location.reload();
+            .then(dataHk => {
+                if (dataHk.success) {
+                    alert('Tuyệt vời! Đã lưu mọi thay đổi thành công.');
+                    location.reload();
+                } else {
+                    alert('Lỗi cập nhật hạnh kiểm: ' + dataHk.message);
+                }
             })
-            .catch(err => alert('Lỗi: ' + err.message));
+            .catch(err => {
+                console.error(err);
+                alert('bạn ơi có lỗi rồi: ' + err.message);
+            });
         }
 
 

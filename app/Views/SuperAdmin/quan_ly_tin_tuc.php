@@ -94,7 +94,7 @@
         const API_URL = "<?php echo BASE_URL; ?>/quanlytintuc";
         const modal = new bootstrap.Modal(document.getElementById('newsModal'));
 
-        // Load danh sách
+        // 1. Load danh sách (Giữ nguyên logic của bác, thêm phần dịch Loại tin cho dễ nhìn)
         async function loadNews() {
             try {
                 const res = await fetch(`${API_URL}/getListApi`);
@@ -104,23 +104,25 @@
                 
                 if(json.data && json.data.length > 0) {
                     json.data.forEach(item => {
-                        // ĐÃ SỬA: Logic hiển thị Badge theo trạng thái mới
-                        let badge = '';
-                        if (item.trang_thai === 'DaDang') {
-                            badge = '<span class="badge bg-success">Đã Đăng</span>';
-                        } else if (item.trang_thai === 'Nhap') {
-                            badge = '<span class="badge bg-warning text-dark">Bản Nháp</span>';
-                        } else {
-                            badge = '<span class="badge bg-secondary">Đã Xóa</span>';
-                        }
+                        // Badge trạng thái
+                        let badge = item.trang_thai === 'DaDang' 
+                            ? '<span class="badge bg-success">Đã Đăng</span>' 
+                            : '<span class="badge bg-warning text-dark">Bản Nháp</span>';
                         
+                        // Dịch loại tin cho dễ đọc
+                        const loaiTin = {
+                            'ThongBao': 'Thông Báo',
+                            'TuyenSinh': 'Tuyển Sinh',
+                            'HoatDong': 'Hoạt Động'
+                        };
+
                         let date = new Date(item.ngay_dang).toLocaleDateString('vi-VN');
 
                         tbody.innerHTML += `
                             <tr>
                                 <td class="fw-bold text-primary">${item.tieu_de}</td>
                                 <td>${item.tac_gia}</td>
-                                <td><span class="badge border text-dark">${item.loai_bai_viet}</span></td>
+                                <td><span class="badge border text-dark">${loaiTin[item.loai_bai_viet] || item.loai_bai_viet}</span></td>
                                 <td>${date}</td>
                                 <td>${badge}</td>
                                 <td>
@@ -136,38 +138,49 @@
             } catch (e) { console.error(e); }
         }
 
-        // Mở Modal Thêm
+        // 2. Mở Modal Thêm
         function openModalAdd() {
             document.getElementById('newsForm').reset();
             document.getElementById('ma_bai_viet').value = '';
             document.getElementById('modalTitle').innerText = 'Thêm Bài Viết Mới';
-            // Mặc định chọn Đã Đăng cho tiện
             document.getElementById('trang_thai').value = 'DaDang';
             modal.show();
         }
 
-        // Mở Modal Sửa
+        // 3. Mở Modal Sửa
         function editNews(item) {
             document.getElementById('ma_bai_viet').value = item.ma_bai_viet;
             document.getElementById('tieu_de').value = item.tieu_de;
             document.getElementById('tac_gia').value = item.tac_gia;
             document.getElementById('loai_bai_viet').value = item.loai_bai_viet;
             document.getElementById('noi_dung').value = item.noi_dung;
-            document.getElementById('trang_thai').value = item.trang_thai; // Value này phải khớp với option (DaDang/Nhap)
+            document.getElementById('trang_thai').value = item.trang_thai;
             
             document.getElementById('modalTitle').innerText = 'Cập Nhật Bài Viết';
             modal.show();
         }
 
-        // Lưu (Thêm hoặc Sửa)
+        // 4. LƯU (ĐÃ THÊM CHECK VALIDATION ĐƠN GIẢN)
         async function saveNews() {
+            // Lấy dữ liệu và trim() (xóa khoảng trắng thừa)
             const id = document.getElementById('ma_bai_viet').value;
+            const tieu_de = document.getElementById('tieu_de').value.trim();
+            const noi_dung = document.getElementById('noi_dung').value.trim();
+            const tac_gia = document.getElementById('tac_gia').value.trim();
+            const loai_bai_viet = document.getElementById('loai_bai_viet').value;
+            const trang_thai = document.getElementById('trang_thai').value;
+
+            // --- BƯỚC CHECK NHANH ---
+            if (!tieu_de) { alert("Bạn chưa nhập Tiêu đề!"); return; }
+            if (!noi_dung) { alert("Nội dung không được để trống!"); return; }
+            if (!tac_gia) { alert("Chưa nhập tên tác giả!"); return; }
+
             const payload = {
-                tieu_de: document.getElementById('tieu_de').value,
-                tac_gia: document.getElementById('tac_gia').value,
-                loai_bai_viet: document.getElementById('loai_bai_viet').value,
-                noi_dung: document.getElementById('noi_dung').value,
-                trang_thai: document.getElementById('trang_thai').value
+                tieu_de,
+                tac_gia,
+                loai_bai_viet,
+                noi_dung,
+                trang_thai
             };
 
             let url = `${API_URL}/addApi`;
@@ -183,25 +196,28 @@
                     body: JSON.stringify(payload)
                 });
                 const json = await res.json();
+                
                 if (json.success) {
                     alert(json.message);
                     modal.hide();
-                    loadNews();
+                    loadNews(); // Load lại bảng ngay lập tức
                 } else {
-                    alert('Lỗi: ' + json.message);
+                    alert('Lỗi từ máy chủ: ' + json.message);
                 }
             } catch (e) { 
                 console.error(e);
-                alert('Lỗi hệ thống: ' + e.message);
+                alert('Lỗi kết nối hệ thống!');
             }
         }
 
-        // Xóa
+        // 5. Xóa
         async function deleteNews(id) {
             if (!confirm('Bạn có chắc muốn xóa bài này?')) return;
             try {
                 const res = await fetch(`${API_URL}/deleteApi`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id: id})
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({id: id})
                 });
                 const json = await res.json();
                 if (json.success) {
@@ -209,7 +225,7 @@
                 } else {
                     alert(json.message);
                 }
-            } catch(e) {}
+            } catch(e) { console.error(e); }
         }
 
         // Chạy lần đầu
