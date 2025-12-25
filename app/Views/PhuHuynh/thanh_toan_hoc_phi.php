@@ -451,9 +451,35 @@ document.addEventListener("DOMContentLoaded", () => {
     // -----------------------------------------------------------
     // 2. XỬ LÝ SEPAY (POLLING)
     // -----------------------------------------------------------
-    window.pollInterval = null;
-    window.startPolling = (maHoaDon) => {
-        const statusEl = document.getElementById('qr_status');
+    // window.pollInterval = null;
+    // window.startPolling = (maHoaDon) => {
+    //     const statusEl = document.getElementById('qr_status');
+    //     if (window.pollInterval) clearInterval(window.pollInterval);
+        
+    //     window.pollInterval = setInterval(() => {
+    //         $.ajax({
+    //             url: `${BASE_URL}/thanhtoan/checkSepayStatus`,
+    //             method: 'POST',
+    //             data: { ma_hoa_don: maHoaDon },
+    //             dataType: 'json',
+    //             success: function(res) {
+    //                 if (res.trang_thai_hoa_don === "DaThanhToan") {
+    //                     clearInterval(window.pollInterval);
+    //                     showSuccessModal(maHoaDon); // Hiện modal thành công
+    //                 } else if (res.trang_thai_hoa_don === "order_not_found") {
+    //                     clearInterval(window.pollInterval);
+    //                     statusEl.className = 'badge bg-danger';
+    //                     statusEl.textContent = 'Lỗi hóa đơn';
+    //                 }
+    //             }
+    //         });
+    //     }, 2000);
+    // }
+
+
+    // --- BẮT ĐẦU ĐOẠN CODE POLLING CHUẨN ---
+    window.startPolling = (maHoaDon) => { 
+        console.log("🚀 Bắt đầu hỏi thăm trạng thái hóa đơn ID:", maHoaDon);
         if (window.pollInterval) clearInterval(window.pollInterval);
         
         window.pollInterval = setInterval(() => {
@@ -462,19 +488,30 @@ document.addEventListener("DOMContentLoaded", () => {
                 method: 'POST',
                 data: { ma_hoa_don: maHoaDon },
                 dataType: 'json',
+                cache: false, // Quan trọng: Luôn lấy dữ liệu mới nhất
                 success: function(res) {
+                    console.log("🔄 Trạng thái Server:", res.trang_thai_hoa_don);
                     if (res.trang_thai_hoa_don === "DaThanhToan") {
                         clearInterval(window.pollInterval);
-                        showSuccessModal(maHoaDon); // Hiện modal thành công
-                    } else if (res.trang_thai_hoa_don === "order_not_found") {
+                        showSuccessModal(maHoaDon);
+                    } 
+                    else if (res.trang_thai_hoa_don === "LoiSaiTien") {
                         clearInterval(window.pollInterval);
-                        statusEl.className = 'badge bg-danger';
-                        statusEl.textContent = 'Lỗi hóa đơn';
+                        alert("❌ LỖI THANH TOÁN: Số tiền không khớp!\n\nVui lòng nộp đúng số tiền hoặc liên hệ nhà trường!");
+                        window.location.reload();
                     }
+                },
+                error: function() {
+                    // Bỏ alert lỗi kết nối, chỉ log để nó tự thử lại ở lần sau
+                    console.log("⚠️ Đang đợi Webhook cập nhật Database...");
                 }
             });
         }, 2000);
-    }
+    };
+                    
+    
+
+    
 
     // -----------------------------------------------------------
     // 3. CÁC HÀM CŨ (MODAL THANH TOÁN, LỌC...)

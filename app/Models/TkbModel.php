@@ -597,11 +597,6 @@ class TkbModel {
         }
     }
 
-
-
-
-
-
     /**
      * Lấy danh sách môn học + giáo viên (Giữ nguyên)
      */

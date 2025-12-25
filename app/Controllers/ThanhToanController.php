@@ -631,36 +631,63 @@ class ThanhToanController extends Controller
     /**
      * Endpoint AJAX để kiểm tra trạng thái thanh toán của hóa đơn Sepay (Polling)
      */
+    // public function checkSepayStatus()
+    // {
+    //     // KHÔNG cần checkAuth vì đây là AJAX/Polling ngắn hạn
+    //     header('Content-Type: application/json; charset=utf-8');
+
+    //     if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['ma_hoa_don'])) {
+    //         http_response_code(400);
+    //         echo json_encode(['trang_thai_hoa_don' => 'error', 'message' => 'Invalid request.']);
+    //         exit;
+    //     }
+
+    //     $ma_hoa_don = filter_input(INPUT_POST, 'ma_hoa_don', FILTER_VALIDATE_INT);
+
+    //     // Lấy trạng thái hóa đơn chỉ bằng ID (không cần check ma_phu_huynh cho Polling)
+    //     $ma_hoa_don = filter_input(INPUT_POST, 'ma_hoa_don', FILTER_VALIDATE_INT);
+    
+    //     try {
+    //         // *** Dùng hàm mới của Model thay vì truy cập $this->thanhToanModel->db ***
+    //         $trang_thai = $this->thanhToanModel->getTrangThaiHoaDon($ma_hoa_don); 
+
+    //         if ($trang_thai) {
+    //             echo json_encode(['trang_thai_hoa_don' => $trang_thai]);
+    //         } else {
+    //             echo json_encode(['trang_thai_hoa_don' => 'order_not_found']);
+    //         }
+
+    //     } catch (Exception $e) {
+    //         error_log("[checkSepayStatus] Error: " . $e->getMessage());
+    //         echo json_encode(['trang_thai_hoa_don' => 'error', 'message' => 'DB error.']);
+    //     }
+    //     exit;
+    // }
     public function checkSepayStatus()
     {
-        // KHÔNG cần checkAuth vì đây là AJAX/Polling ngắn hạn
+        // 1. Xóa mọi nội dung rác lỡ bị echo trước đó (từ index.php chẳng hạn)
+        if (ob_get_length()) ob_clean(); 
+
         header('Content-Type: application/json; charset=utf-8');
 
         if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['ma_hoa_don'])) {
-            http_response_code(400);
-            echo json_encode(['trang_thai_hoa_don' => 'error', 'message' => 'Invalid request.']);
+            echo json_encode(['trang_thai_hoa_don' => 'error']);
             exit;
         }
 
         $ma_hoa_don = filter_input(INPUT_POST, 'ma_hoa_don', FILTER_VALIDATE_INT);
 
-        // Lấy trạng thái hóa đơn chỉ bằng ID (không cần check ma_phu_huynh cho Polling)
-        $ma_hoa_don = filter_input(INPUT_POST, 'ma_hoa_don', FILTER_VALIDATE_INT);
-    
         try {
-            // *** Dùng hàm mới của Model thay vì truy cập $this->thanhToanModel->db ***
             $trang_thai = $this->thanhToanModel->getTrangThaiHoaDon($ma_hoa_don); 
-
+            
             if ($trang_thai) {
                 echo json_encode(['trang_thai_hoa_don' => $trang_thai]);
             } else {
                 echo json_encode(['trang_thai_hoa_don' => 'order_not_found']);
             }
-
         } catch (Exception $e) {
-            error_log("[checkSepayStatus] Error: " . $e->getMessage());
-            echo json_encode(['trang_thai_hoa_don' => 'error', 'message' => 'DB error.']);
+            echo json_encode(['trang_thai_hoa_don' => 'error']);
         }
-        exit;
+        exit; // Luôn dùng exit để ngăn framework in thêm các nội dung khác
     }
 }

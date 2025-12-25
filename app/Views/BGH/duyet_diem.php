@@ -249,6 +249,77 @@
             confirmModal.show();
         }
 
+        // async function handleSubmit() {
+        //     const maPhieu = document.getElementById('confirmMaPhieu').value;
+        //     const action = document.getElementById('confirmAction').value;
+        //     const lyDo = document.getElementById('lyDoInput').value.trim();
+        //     const confirmNotif = document.getElementById('confirmNotification');
+        //     confirmNotif.textContent = '';
+
+        //     if (action === 'tuchoi' && lyDo === '') {
+        //         confirmNotif.textContent = '⚠️ Lý do từ chối không được để trống.';
+        //         return;
+        //     }
+
+        //     // ✅ SỬA: Tạo object JSON thay vì FormData
+        //     const payload = {
+        //         ma_phieu: maPhieu,
+        //         action: action
+        //     };
+            
+        //     if (action === 'tuchoi') {
+        //         payload.ly_do = lyDo;
+        //     }
+
+        //     try {
+        //         const response = await fetch(`${BASE_URL}/bgh/xuLyPhieuDiem`, {
+        //             method: 'POST',
+        //             headers: {
+        //                 'Content-Type': 'application/json'
+        //             },
+        //             body: JSON.stringify(payload)
+        //         });
+
+        //         const result = await response.json();
+
+        //         if (result.success) {
+        //             // Đóng modal
+        //             confirmModal.hide();
+                    
+        //             // Hiển thị thông báo thành công
+        //             showGlobalNotification(result.message, 'success');
+                    
+        //             // Cập nhật UI hàng
+        //             const row = document.getElementById(`row-phieu-${maPhieu}`);
+        //             if (row) {
+        //                 row.style.opacity = '0.5';
+                        
+        //                 // Đổi badge trạng thái
+        //                 const badge = row.querySelector('.badge-status-' + maPhieu);
+        //                 if (badge) {
+        //                     if (action === 'duyet') {
+        //                         badge.className = 'badge bg-success badge-status-' + maPhieu;
+        //                         badge.textContent = 'Đã Duyệt';
+        //                     } else {
+        //                         badge.className = 'badge bg-danger badge-status-' + maPhieu;
+        //                         badge.textContent = 'Từ Chối';
+        //                     }
+        //                 }
+                        
+        //                 // Vô hiệu hóa nút
+        //                 const btnGroup = row.querySelector('.btn-group-' + maPhieu);
+        //                 if (btnGroup) {
+        //                     btnGroup.innerHTML = '<small class="text-muted"><i class="bi bi-check-all"></i> Đã xử lý</small>';
+        //                 }
+        //             }
+        //         } else {
+        //             confirmNotif.textContent = '❌ ' + (result.message || 'Lỗi không xác định.');
+        //         }
+        //     } catch (error) {
+        //         console.error("Lỗi fetch xuLyPhieuDiem:", error);
+        //         confirmNotif.textContent = '❌ Lỗi kết nối máy chủ. Vui lòng thử lại.';
+        //     }
+        // }
         async function handleSubmit() {
             const maPhieu = document.getElementById('confirmMaPhieu').value;
             const action = document.getElementById('confirmAction').value;
@@ -261,63 +332,27 @@
                 return;
             }
 
-            // ✅ SỬA: Tạo object JSON thay vì FormData
-            const payload = {
-                ma_phieu: maPhieu,
-                action: action
-            };
-            
-            if (action === 'tuchoi') {
-                payload.ly_do = lyDo;
-            }
+            const payload = { ma_phieu: maPhieu, action: action, ly_do: lyDo };
 
             try {
                 const response = await fetch(`${BASE_URL}/bgh/xuLyPhieuDiem`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
-                    // Đóng modal
                     confirmModal.hide();
-                    
-                    // Hiển thị thông báo thành công
-                    showGlobalNotification(result.message, 'success');
-                    
-                    // Cập nhật UI hàng
-                    const row = document.getElementById(`row-phieu-${maPhieu}`);
-                    if (row) {
-                        row.style.opacity = '0.5';
-                        
-                        // Đổi badge trạng thái
-                        const badge = row.querySelector('.badge-status-' + maPhieu);
-                        if (badge) {
-                            if (action === 'duyet') {
-                                badge.className = 'badge bg-success badge-status-' + maPhieu;
-                                badge.textContent = 'Đã Duyệt';
-                            } else {
-                                badge.className = 'badge bg-danger badge-status-' + maPhieu;
-                                badge.textContent = 'Từ Chối';
-                            }
-                        }
-                        
-                        // Vô hiệu hóa nút
-                        const btnGroup = row.querySelector('.btn-group-' + maPhieu);
-                        if (btnGroup) {
-                            btnGroup.innerHTML = '<small class="text-muted"><i class="bi bi-check-all"></i> Đã xử lý</small>';
-                        }
-                    }
+                    // Hiển thị thông báo và LOAD lại trang để thấy kết quả
+                    alert(result.message);
+                    location.reload(); 
                 } else {
-                    confirmNotif.textContent = '❌ ' + (result.message || 'Lỗi không xác định.');
+                    confirmNotif.textContent = '❌ ' + result.message;
                 }
             } catch (error) {
-                console.error("Lỗi fetch xuLyPhieuDiem:", error);
-                confirmNotif.textContent = '❌ Lỗi kết nối máy chủ. Vui lòng thử lại.';
+                confirmNotif.textContent = '❌ Lỗi kết nối máy chủ.';
             }
         }
         
